@@ -109,6 +109,34 @@ export const purchasesApi = {
   detail: (id: number) => api.get<PurchaseDetailResponse>(`/api/purchases/${id}`),
 };
 
+// ─── HR ───────────────────────────────────────────────────────────────────────
+
+export const hrApi = {
+  attendance: {
+    list: (params?: { employeeId?: number; projectId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
+      api.get<AttendanceListResponse>('/api/hr/attendance', { params }),
+    detail: (id: number) => api.get<AttendanceDetailResponse>(`/api/hr/attendance/${id}`),
+  },
+  salaryComponents: {
+    list: (params?: { employeeId?: number; active?: boolean; page?: number; limit?: number }) =>
+      api.get<SalaryComponentListResponse>('/api/hr/salary-components', { params }),
+  },
+  salaryPayments: {
+    list: (params?: { employeeId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
+      api.get<SalaryPaymentListResponse>('/api/hr/salary-payments', { params }),
+    detail: (id: number) => api.get<SalaryPaymentDetailResponse>(`/api/hr/salary-payments/${id}`),
+  },
+  incentives: {
+    list: (params?: { employeeId?: number; projectId?: number; incentiveType?: string; page?: number; limit?: number }) =>
+      api.get<SalaryIncentiveListResponse>('/api/hr/incentives', { params }),
+  },
+  epfEsic: {
+    list: (params?: { employeeId?: number; isPaid?: boolean; page?: number; limit?: number }) =>
+      api.get<EpfEsicListResponse>('/api/hr/epf-esic', { params }),
+    detail: (id: number) => api.get<EpfEsicDetailResponse>(`/api/hr/epf-esic/${id}`),
+  },
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AuthUser {
@@ -125,6 +153,7 @@ export interface DashboardResponse {
     customers: KpiItem; tenders: KpiItem; projects: KpiItem;
     vendors: KpiItem; employees: KpiItem; inventory: KpiItem;
     orders: KpiItem; invoices: KpiItem; purchases: KpiItem;
+    attendance: KpiItem; salaryPayments: KpiItem; incentives: KpiItem;
   };
   migratedPhase: number;
 }
@@ -260,3 +289,50 @@ export interface PurchaseDetail extends PurchaseSummary {
 }
 export interface PurchaseListResponse { purchases: PurchaseSummary[]; total: number; }
 export interface PurchaseDetailResponse { purchase: PurchaseDetail; }
+
+// ─── HR Types ─────────────────────────────────────────────────────────────────
+
+export interface AttendanceRecord {
+  id: number; date: string; hoursWorked: string; overtimeHours: string;
+  isPresent: boolean; attendanceStatus: string; notes: string; createdAt: string;
+  employee: { id: number; name: string; employeeCode: string };
+  project: { id: number; name: string; projectNo: string } | null;
+}
+export interface AttendanceListResponse { records: AttendanceRecord[]; total: number; page: number; limit: number; }
+export interface AttendanceDetailResponse { record: AttendanceRecord; }
+
+export interface SalaryComponent {
+  id: number; componentType: string; name: string; amount: string;
+  isActive: boolean; effectiveFrom: string; effectiveTo: string | null; notes: string;
+  createdAt: string; updatedAt: string;
+  employee: { id: number; name: string; employeeCode: string };
+}
+export interface SalaryComponentListResponse { components: SalaryComponent[]; total: number; page: number; limit: number; }
+
+export interface SalaryPayment {
+  id: number; paymentMonth: string; paymentDate: string; amount: string;
+  paymentMethod: string; referenceNumber: string; notes: string;
+  createdAt: string; updatedAt: string;
+  employee: { id: number; name: string; employeeCode: string };
+}
+export interface SalaryPaymentListResponse { payments: SalaryPayment[]; total: number; page: number; limit: number; }
+export interface SalaryPaymentDetailResponse { payment: SalaryPayment; }
+
+export interface SalaryIncentive {
+  id: number; incentiveType: string; amount: string; paymentDate: string;
+  description: string; paymentMethod: string; referenceNumber: string;
+  createdAt: string; updatedAt: string;
+  employee: { id: number; name: string; employeeCode: string };
+  project: { id: number; name: string; projectNo: string } | null;
+}
+export interface SalaryIncentiveListResponse { incentives: SalaryIncentive[]; total: number; page: number; limit: number; }
+
+export interface EpfEsicRecord {
+  id: number; month: string; basicWage: string; grossWages: string; workingDays: number;
+  epfEmployee: string; epfEmployer: string; esicEmployee: string; esicEmployer: string;
+  epfAdminCharges: string; totalDeduction: string; isPaid: boolean; paidDate: string | null; notes: string;
+  createdAt: string; updatedAt: string;
+  employee: { id: number; name: string; employeeCode: string } | null;
+}
+export interface EpfEsicListResponse { records: EpfEsicRecord[]; total: number; page: number; limit: number; }
+export interface EpfEsicDetailResponse { record: EpfEsicRecord; }

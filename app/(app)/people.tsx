@@ -36,6 +36,13 @@ const CARDS: CardDef[] = [
     route: '/(app)/employees',
     count: (k) => k.employees?.total ?? 0,
   },
+  {
+    title: 'HR & Payroll',
+    sub: 'attendance · salary · EPF',
+    icon: 'briefcase-outline',
+    route: '/(app)/hr',
+    count: (k) => k.attendance?.total ?? 0,
+  },
 ];
 
 export default function PeopleScreen() {
