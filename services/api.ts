@@ -109,6 +109,22 @@ export const purchasesApi = {
   detail: (id: number) => api.get<PurchaseDetailResponse>(`/api/purchases/${id}`),
 };
 
+// ─── Estimates ────────────────────────────────────────────────────────────────
+
+export const estimatesApi = {
+  list: (params?: { search?: string; status?: string; customerId?: number; projectId?: number; page?: number; limit?: number }) =>
+    api.get<EstimateListResponse>('/api/estimates', { params }),
+  detail: (id: number) => api.get<EstimateDetailResponse>(`/api/estimates/${id}`),
+};
+
+// ─── GST ──────────────────────────────────────────────────────────────────────
+
+export const gstApi = {
+  list: (params?: { transactionType?: string; isFiled?: boolean; customerId?: number; vendorId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
+    api.get<GstListResponse>('/api/gst', { params }),
+  detail: (id: number) => api.get<GstDetailResponse>(`/api/gst/${id}`),
+};
+
 // ─── HR ───────────────────────────────────────────────────────────────────────
 
 export const hrApi = {
@@ -154,6 +170,7 @@ export interface DashboardResponse {
     vendors: KpiItem; employees: KpiItem; inventory: KpiItem;
     orders: KpiItem; invoices: KpiItem; purchases: KpiItem;
     attendance: KpiItem; salaryPayments: KpiItem; incentives: KpiItem;
+    estimates: KpiItem; gstRecords: KpiItem;
   };
   migratedPhase: number;
 }
@@ -336,3 +353,42 @@ export interface EpfEsicRecord {
 }
 export interface EpfEsicListResponse { records: EpfEsicRecord[]; total: number; page: number; limit: number; }
 export interface EpfEsicDetailResponse { record: EpfEsicRecord; }
+
+// ─── Estimate Types ───────────────────────────────────────────────────────────
+
+export interface EstimateSummary {
+  id: number; estimateNo: string; status: string;
+  estimateDate: string; validUntil: string; totalAmount: string;
+  customer: { id: number; customerName: string; phone: string } | null;
+  project:  { id: number; projectNo: string; name: string } | null;
+  _count: { items: number };
+}
+export interface EstimateItemType {
+  id: number; description: string; quantity: string; unitPrice: string; total: string;
+}
+export interface EstimateDetail extends EstimateSummary {
+  notes: string; createdAt: string; updatedAt: string;
+  items: EstimateItemType[];
+  customer: { id: number; customerName: string; businessName: string; phone: string; email: string; address: string } | null;
+  project:  { id: number; projectNo: string; name: string; status: string } | null;
+}
+export interface EstimateListResponse { estimates: EstimateSummary[]; total: number; page: number; limit: number; }
+export interface EstimateDetailResponse { estimate: EstimateDetail; }
+
+// ─── GST Types ────────────────────────────────────────────────────────────────
+
+export interface GstRecord {
+  id: number; gstNo: string; transactionType: string; invoiceNo: string;
+  transactionDate: string; taxableAmount: string;
+  cgst: string; sgst: string; igst: string; totalGst: string; totalAmount: string;
+  gstRate: string; isFiled: boolean; filingDate: string | null; notes: string;
+  createdAt: string; updatedAt: string;
+  customer: { id: number; customerName: string } | null;
+  vendor:   { id: number; name: string } | null;
+}
+export interface GstSummary {
+  taxableAmount: string | null; cgst: string | null; sgst: string | null;
+  igst: string | null; totalGst: string | null; totalAmount: string | null;
+}
+export interface GstListResponse { records: GstRecord[]; total: number; page: number; limit: number; summary: GstSummary; }
+export interface GstDetailResponse { record: GstRecord; }
