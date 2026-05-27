@@ -191,6 +191,11 @@ const styles = StyleSheet.create({
     height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 4,
     paddingHorizontal: 12, fontSize: 14, color: Colors.textPrimary,
     backgroundColor: Colors.surface,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
   },
   inputFocused: {
     borderColor: Colors.accent, borderWidth: 1.5,
@@ -202,7 +207,18 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: Colors.border, borderRadius: 4,
     backgroundColor: Colors.surface, paddingHorizontal: 12,
   },
-  passwordInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  passwordInput: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.textPrimary,
+    borderWidth: 0,
+    padding: 0,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
+  },
   eyeBtn: { padding: 4 },
 
   signInBtn: {

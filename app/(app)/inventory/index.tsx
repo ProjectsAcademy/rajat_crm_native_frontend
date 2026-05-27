@@ -82,6 +82,11 @@ export default function InventoryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <TouchableOpacity style={styles.ledgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.8}>
+        <Ionicons name="git-branch-outline" size={14} color={Colors.info} />
+        <Text style={styles.ledgerBtnText}>Stock Ledger — all movements</Text>
+        <Ionicons name="chevron-forward" size={13} color={Colors.info} style={{ marginLeft: 'auto' } as any} />
+      </TouchableOpacity>
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
@@ -127,6 +132,12 @@ export default function InventoryScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
+  ledgerBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.infoLight, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  ledgerBtnText: { fontSize: 12, fontWeight: '600', color: Colors.info },
   searchRow: {
     padding: 12, backgroundColor: Colors.surface,
     borderBottomWidth: 1, borderBottomColor: Colors.border,

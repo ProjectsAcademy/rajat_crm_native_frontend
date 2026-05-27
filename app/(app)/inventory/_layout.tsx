@@ -13,6 +13,7 @@ export default function InventoryLayout() {
     >
       <Stack.Screen name="index" options={{ title: 'Inventory' }} />
       <Stack.Screen name="[id]" options={{ title: 'Item Details' }} />
+      <Stack.Screen name="stock" options={{ title: 'Stock Ledger' }} />
     </Stack>
   );
 }

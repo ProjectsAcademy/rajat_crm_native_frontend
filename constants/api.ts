@@ -17,7 +17,7 @@ import { Platform } from 'react-native';
 //   Android emulator: use http://10.0.2.2:3000
 // ─────────────────────────────────────────────────────────────────────────────
 
-const WIFI_IP = '192.168.1.13'; // ← update for local device testing
+const WIFI_IP = '192.168.1.5'; // ← update for local device testing
 
 export const API_BASE_URL =
   Platform.OS === 'web'

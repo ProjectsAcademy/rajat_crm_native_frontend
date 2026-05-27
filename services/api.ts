@@ -117,6 +117,13 @@ export const estimatesApi = {
   detail: (id: number) => api.get<EstimateDetailResponse>(`/api/estimates/${id}`),
 };
 
+// ─── Stock ────────────────────────────────────────────────────────────────────
+
+export const stockApi = {
+  list: (params?: { inventoryId?: number; transactionType?: string; from?: string; to?: string; page?: number; limit?: number }) =>
+    api.get<StockListResponse>('/api/stock', { params }),
+};
+
 // ─── GST ──────────────────────────────────────────────────────────────────────
 
 export const gstApi = {
@@ -171,6 +178,7 @@ export interface DashboardResponse {
     orders: KpiItem; invoices: KpiItem; purchases: KpiItem;
     attendance: KpiItem; salaryPayments: KpiItem; incentives: KpiItem;
     estimates: KpiItem; gstRecords: KpiItem;
+    stockMovements: KpiItem; orderPayments: KpiItem;
   };
   migratedPhase: number;
 }
@@ -238,7 +246,10 @@ export interface InventoryItem {
 export interface StockMovement {
   id: number; quantity: string; transactionType: string;
   reference: string; notes: string; location: string; createdAt: string;
+  inventory?: { id: number; itemCode: string; name: string; unit: string };
 }
+export interface StockSummary { in: number; out: number; adjustment: number; }
+export interface StockListResponse { movements: StockMovement[]; total: number; page: number; limit: number; summary: StockSummary; }
 export interface InventoryDetail extends InventoryItem {
   description: string; updatedAt: string;
   recentStocks: StockMovement[];
