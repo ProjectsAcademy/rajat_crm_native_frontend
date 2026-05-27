@@ -1,10 +1,11 @@
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { inventoryApi, InventoryDetail, StockMovement } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import MediaSection from '../../../components/MediaSection';
 
 const TX_COLORS: Record<string, { bg: string; text: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
   in:         { bg: Colors.successLight, text: Colors.success, icon: 'arrow-down-circle-outline' },
@@ -48,12 +49,14 @@ export default function InventoryDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const loadItem = useCallback(() => {
     inventoryApi.detail(parseInt(id!))
       .then(({ data }) => setItem(data.item))
       .catch(() => setError('Could not load item.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { loadItem(); }, [loadItem]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !item) {
@@ -131,6 +134,16 @@ export default function InventoryDetailScreen() {
             </View>
           </View>
         )}
+
+        {/* Attachments */}
+        <View style={styles.section}>
+          <MediaSection
+            entity="inventory"
+            entityId={item.id}
+            files={item.mediaFiles ?? []}
+            onRefresh={loadItem}
+          />
+        </View>
 
       </ScrollView>
     </SafeAreaView>

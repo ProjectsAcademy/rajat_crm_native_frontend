@@ -160,7 +160,34 @@ export const hrApi = {
   },
 };
 
+// ─── Vehicles ─────────────────────────────────────────────────────────────────
+
+export const vehiclesApi = {
+  list: (params?: { search?: string; vehicleType?: string; active?: boolean; limit?: number }) =>
+    api.get<VehicleListResponse>('/api/vehicles', { params }),
+  detail: (id: number) => api.get<VehicleDetailResponse>(`/api/vehicles/${id}`),
+};
+
+// ─── Maintenance ──────────────────────────────────────────────────────────────
+
+export const maintenanceApi = {
+  list: (params?: { status?: string; projectId?: number; limit?: number }) =>
+    api.get<MaintenanceListResponse>('/api/maintenance', { params }),
+  fdAlerts: (params?: { alertType?: string; isSent?: boolean; limit?: number }) =>
+    api.get<FdAlertListResponse>('/api/maintenance/fd-alerts', { params }),
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface MediaFile {
+  id: number;
+  fileName: string;
+  fileUrl: string;
+  fileSize: string | null;
+  fileType: string;
+  uploadedAt: string;
+  isPrimary?: boolean;
+}
 
 export interface AuthUser {
   id: number; username: string; email: string;
@@ -179,6 +206,7 @@ export interface DashboardResponse {
     attendance: KpiItem; salaryPayments: KpiItem; incentives: KpiItem;
     estimates: KpiItem; gstRecords: KpiItem;
     stockMovements: KpiItem; orderPayments: KpiItem;
+    vehicles: KpiItem; maintenancePeriods: KpiItem;
   };
   migratedPhase: number;
 }
@@ -201,6 +229,7 @@ export interface Tender extends TenderSummary {
   description: string; maintenancePeriod: number | null; tenderRemark: string | null;
   updatedAt: string;
   projects: { id: number; projectNo: string; name: string; status: string; budget: string }[];
+  mediaFiles: MediaFile[];
 }
 export interface TenderListResponse { tenders: TenderSummary[]; total: number; page: number; limit: number; }
 export interface TenderDetailResponse { tender: Tender; }
@@ -253,6 +282,7 @@ export interface StockListResponse { movements: StockMovement[]; total: number; 
 export interface InventoryDetail extends InventoryItem {
   description: string; updatedAt: string;
   recentStocks: StockMovement[];
+  mediaFiles: MediaFile[];
 }
 export interface InventoryListResponse { inventory: InventoryItem[]; total: number; page: number; limit: number; }
 export interface InventoryDetailResponse { item: InventoryDetail; }
@@ -277,6 +307,7 @@ export interface OrderDetail extends OrderSummary {
   notes: string | null; createdAt: string;
   items: OrderItem[];
   payments: OrderPayment[];
+  mediaFiles: MediaFile[];
 }
 export interface OrderListResponse { orders: OrderSummary[]; total: number; }
 export interface OrderDetailResponse { order: OrderDetail; }
@@ -296,6 +327,7 @@ export interface InvoiceItem {
 export interface InvoiceDetail extends InvoiceSummary {
   notes: string | null; createdAt: string;
   items: InvoiceItem[];
+  mediaFiles: MediaFile[];
 }
 export interface InvoiceListResponse { invoices: InvoiceSummary[]; total: number; }
 export interface InvoiceDetailResponse { invoice: InvoiceDetail; }
@@ -403,3 +435,46 @@ export interface GstSummary {
 }
 export interface GstListResponse { records: GstRecord[]; total: number; page: number; limit: number; summary: GstSummary; }
 export interface GstDetailResponse { record: GstRecord; }
+
+// ─── Vehicle Types ────────────────────────────────────────────────────────────
+
+export interface VehicleSummary {
+  id: number; vehicleNo: string; vehicleType: string; make: string; vehicleModel: string;
+  year: number | null; driverName: string; driverPhone: string; isActive: boolean;
+  insuranceExpiry: string | null; permitExpiry: string | null; fitnessExpiry: string | null;
+  createdAt: string;
+  _count: { usages: number };
+}
+export interface VehicleUsageEntry {
+  id: number; date: string; startKm: number | null; endKm: number | null;
+  distanceKm: string | null; fuelCost: string; driverName: string; purpose: string; notes: string;
+  createdAt: string;
+  project: { id: number; projectNo: string; name: string } | null;
+}
+export interface VehicleDetail extends VehicleSummary {
+  registrationDate: string | null; notes: string; updatedAt: string;
+  usages: VehicleUsageEntry[];
+}
+export interface VehicleListResponse { vehicles: VehicleSummary[]; total: number; }
+export interface VehicleDetailResponse { vehicle: VehicleDetail; }
+
+// ─── Maintenance Types ────────────────────────────────────────────────────────
+
+export interface FdAlert {
+  id: number; alertDate: string; alertType: string; isSent: boolean;
+  sentAt: string | null; notes: string; createdAt: string;
+}
+export interface MaintenancePeriod {
+  id: number; startDate: string; endDate: string; durationMonths: number;
+  status: string; createdAt: string;
+  project: { id: number; projectNo: string; name: string };
+  fdAlerts: FdAlert[];
+}
+export interface FdAlertWithPeriod extends FdAlert {
+  maintenancePeriod: {
+    id: number; startDate: string; endDate: string; status: string;
+    project: { id: number; projectNo: string; name: string };
+  };
+}
+export interface MaintenanceListResponse { periods: MaintenancePeriod[]; total: number; }
+export interface FdAlertListResponse { alerts: FdAlertWithPeriod[]; total: number; }

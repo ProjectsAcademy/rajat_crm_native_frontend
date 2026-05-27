@@ -24,7 +24,7 @@ export default function WorkScreen() {
     <View style={styles.safe}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Work</Text>
-        <Text style={styles.headerSub}>Tenders & Projects</Text>
+        <Text style={styles.headerSub}>Tenders, Projects & Vehicles</Text>
       </View>
 
       {loading ? (
@@ -59,6 +59,38 @@ export default function WorkScreen() {
               <Text style={styles.cardTitle}>Projects</Text>
               <Text style={styles.cardCount}>{kpis?.projects?.total ?? 0}</Text>
               <Text style={styles.cardSub}>total projects</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push('/(app)/vehicles' as any)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconBox, { backgroundColor: Colors.infoLight }]}>
+              <Ionicons name="car-outline" size={26} color={Colors.info} />
+            </View>
+            <View style={styles.cardBody}>
+              <Text style={styles.cardTitle}>Vehicles</Text>
+              <Text style={[styles.cardCount, { color: Colors.info }]}>{kpis?.vehicles?.total ?? 0}</Text>
+              <Text style={styles.cardSub}>active vehicles</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push('/(app)/maintenance' as any)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconBox, { backgroundColor: Colors.warningLight }]}>
+              <Ionicons name="shield-checkmark-outline" size={26} color="#7A5400" />
+            </View>
+            <View style={styles.cardBody}>
+              <Text style={styles.cardTitle}>Maintenance & FD Alerts</Text>
+              <Text style={[styles.cardCount, { color: '#7A5400' }]}>{kpis?.maintenancePeriods?.total ?? 0}</Text>
+              <Text style={styles.cardSub}>maintenance periods</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>

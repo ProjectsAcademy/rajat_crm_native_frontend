@@ -1,10 +1,11 @@
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { tendersApi, Tender } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import MediaSection from '../../../components/MediaSection';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: '#F3F4F6', text: '#374151' },
@@ -49,12 +50,14 @@ export default function TenderDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const loadTender = useCallback(() => {
     tendersApi.detail(parseInt(id!))
       .then(({ data }) => setTender(data.tender))
       .catch(() => setError('Could not load tender.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { loadTender(); }, [loadTender]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !tender) {
@@ -145,6 +148,16 @@ export default function TenderDetailScreen() {
             })}
           </View>
         )}
+
+        {/* Attachments */}
+        <View style={styles.section}>
+          <MediaSection
+            entity="tender"
+            entityId={tender.id}
+            files={tender.mediaFiles ?? []}
+            onRefresh={loadTender}
+          />
+        </View>
 
       </ScrollView>
     </SafeAreaView>

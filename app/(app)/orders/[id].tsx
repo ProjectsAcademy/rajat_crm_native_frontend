@@ -1,10 +1,11 @@
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ordersApi, OrderDetail } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import MediaSection from '../../../components/MediaSection';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: '#FFF8E1', text: '#F57F17' },
@@ -33,12 +34,14 @@ export default function OrderDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const loadOrder = useCallback(() => {
     ordersApi.detail(parseInt(id!))
       .then(({ data }) => setOrder(data.order))
       .catch(() => setError('Could not load order.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { loadOrder(); }, [loadOrder]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !order) return (
@@ -149,6 +152,16 @@ export default function OrderDetailScreen() {
             <View style={styles.card}><Text style={styles.notes}>{order.notes}</Text></View>
           </View>
         ) : null}
+
+        {/* Attachments */}
+        <View style={styles.section}>
+          <MediaSection
+            entity="order"
+            entityId={order.id}
+            files={order.mediaFiles ?? []}
+            onRefresh={loadOrder}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
