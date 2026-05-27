@@ -109,6 +109,50 @@ export const purchasesApi = {
   detail: (id: number) => api.get<PurchaseDetailResponse>(`/api/purchases/${id}`),
 };
 
+// ─── Estimates ────────────────────────────────────────────────────────────────
+
+export const estimatesApi = {
+  list: (params?: { search?: string; status?: string; customerId?: number; projectId?: number; page?: number; limit?: number }) =>
+    api.get<EstimateListResponse>('/api/estimates', { params }),
+  detail: (id: number) => api.get<EstimateDetailResponse>(`/api/estimates/${id}`),
+};
+
+// ─── GST ──────────────────────────────────────────────────────────────────────
+
+export const gstApi = {
+  list: (params?: { transactionType?: string; isFiled?: boolean; customerId?: number; vendorId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
+    api.get<GstListResponse>('/api/gst', { params }),
+  detail: (id: number) => api.get<GstDetailResponse>(`/api/gst/${id}`),
+};
+
+// ─── HR ───────────────────────────────────────────────────────────────────────
+
+export const hrApi = {
+  attendance: {
+    list: (params?: { employeeId?: number; projectId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
+      api.get<AttendanceListResponse>('/api/hr/attendance', { params }),
+    detail: (id: number) => api.get<AttendanceDetailResponse>(`/api/hr/attendance/${id}`),
+  },
+  salaryComponents: {
+    list: (params?: { employeeId?: number; active?: boolean; page?: number; limit?: number }) =>
+      api.get<SalaryComponentListResponse>('/api/hr/salary-components', { params }),
+  },
+  salaryPayments: {
+    list: (params?: { employeeId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
+      api.get<SalaryPaymentListResponse>('/api/hr/salary-payments', { params }),
+    detail: (id: number) => api.get<SalaryPaymentDetailResponse>(`/api/hr/salary-payments/${id}`),
+  },
+  incentives: {
+    list: (params?: { employeeId?: number; projectId?: number; incentiveType?: string; page?: number; limit?: number }) =>
+      api.get<SalaryIncentiveListResponse>('/api/hr/incentives', { params }),
+  },
+  epfEsic: {
+    list: (params?: { employeeId?: number; isPaid?: boolean; page?: number; limit?: number }) =>
+      api.get<EpfEsicListResponse>('/api/hr/epf-esic', { params }),
+    detail: (id: number) => api.get<EpfEsicDetailResponse>(`/api/hr/epf-esic/${id}`),
+  },
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AuthUser {
@@ -125,6 +169,8 @@ export interface DashboardResponse {
     customers: KpiItem; tenders: KpiItem; projects: KpiItem;
     vendors: KpiItem; employees: KpiItem; inventory: KpiItem;
     orders: KpiItem; invoices: KpiItem; purchases: KpiItem;
+    attendance: KpiItem; salaryPayments: KpiItem; incentives: KpiItem;
+    estimates: KpiItem; gstRecords: KpiItem;
   };
   migratedPhase: number;
 }
@@ -260,3 +306,89 @@ export interface PurchaseDetail extends PurchaseSummary {
 }
 export interface PurchaseListResponse { purchases: PurchaseSummary[]; total: number; }
 export interface PurchaseDetailResponse { purchase: PurchaseDetail; }
+
+// ─── HR Types ─────────────────────────────────────────────────────────────────
+
+export interface AttendanceRecord {
+  id: number; date: string; hoursWorked: string; overtimeHours: string;
+  isPresent: boolean; attendanceStatus: string; notes: string; createdAt: string;
+  employee: { id: number; name: string; employeeCode: string };
+  project: { id: number; name: string; projectNo: string } | null;
+}
+export interface AttendanceListResponse { records: AttendanceRecord[]; total: number; page: number; limit: number; }
+export interface AttendanceDetailResponse { record: AttendanceRecord; }
+
+export interface SalaryComponent {
+  id: number; componentType: string; name: string; amount: string;
+  isActive: boolean; effectiveFrom: string; effectiveTo: string | null; notes: string;
+  createdAt: string; updatedAt: string;
+  employee: { id: number; name: string; employeeCode: string };
+}
+export interface SalaryComponentListResponse { components: SalaryComponent[]; total: number; page: number; limit: number; }
+
+export interface SalaryPayment {
+  id: number; paymentMonth: string; paymentDate: string; amount: string;
+  paymentMethod: string; referenceNumber: string; notes: string;
+  createdAt: string; updatedAt: string;
+  employee: { id: number; name: string; employeeCode: string };
+}
+export interface SalaryPaymentListResponse { payments: SalaryPayment[]; total: number; page: number; limit: number; }
+export interface SalaryPaymentDetailResponse { payment: SalaryPayment; }
+
+export interface SalaryIncentive {
+  id: number; incentiveType: string; amount: string; paymentDate: string;
+  description: string; paymentMethod: string; referenceNumber: string;
+  createdAt: string; updatedAt: string;
+  employee: { id: number; name: string; employeeCode: string };
+  project: { id: number; name: string; projectNo: string } | null;
+}
+export interface SalaryIncentiveListResponse { incentives: SalaryIncentive[]; total: number; page: number; limit: number; }
+
+export interface EpfEsicRecord {
+  id: number; month: string; basicWage: string; grossWages: string; workingDays: number;
+  epfEmployee: string; epfEmployer: string; esicEmployee: string; esicEmployer: string;
+  epfAdminCharges: string; totalDeduction: string; isPaid: boolean; paidDate: string | null; notes: string;
+  createdAt: string; updatedAt: string;
+  employee: { id: number; name: string; employeeCode: string } | null;
+}
+export interface EpfEsicListResponse { records: EpfEsicRecord[]; total: number; page: number; limit: number; }
+export interface EpfEsicDetailResponse { record: EpfEsicRecord; }
+
+// ─── Estimate Types ───────────────────────────────────────────────────────────
+
+export interface EstimateSummary {
+  id: number; estimateNo: string; status: string;
+  estimateDate: string; validUntil: string; totalAmount: string;
+  customer: { id: number; customerName: string; phone: string } | null;
+  project:  { id: number; projectNo: string; name: string } | null;
+  _count: { items: number };
+}
+export interface EstimateItemType {
+  id: number; description: string; quantity: string; unitPrice: string; total: string;
+}
+export interface EstimateDetail extends EstimateSummary {
+  notes: string; createdAt: string; updatedAt: string;
+  items: EstimateItemType[];
+  customer: { id: number; customerName: string; businessName: string; phone: string; email: string; address: string } | null;
+  project:  { id: number; projectNo: string; name: string; status: string } | null;
+}
+export interface EstimateListResponse { estimates: EstimateSummary[]; total: number; page: number; limit: number; }
+export interface EstimateDetailResponse { estimate: EstimateDetail; }
+
+// ─── GST Types ────────────────────────────────────────────────────────────────
+
+export interface GstRecord {
+  id: number; gstNo: string; transactionType: string; invoiceNo: string;
+  transactionDate: string; taxableAmount: string;
+  cgst: string; sgst: string; igst: string; totalGst: string; totalAmount: string;
+  gstRate: string; isFiled: boolean; filingDate: string | null; notes: string;
+  createdAt: string; updatedAt: string;
+  customer: { id: number; customerName: string } | null;
+  vendor:   { id: number; name: string } | null;
+}
+export interface GstSummary {
+  taxableAmount: string | null; cgst: string | null; sgst: string | null;
+  igst: string | null; totalGst: string | null; totalAmount: string | null;
+}
+export interface GstListResponse { records: GstRecord[]; total: number; page: number; limit: number; summary: GstSummary; }
+export interface GstDetailResponse { record: GstRecord; }

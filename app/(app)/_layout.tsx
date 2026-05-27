@@ -71,6 +71,9 @@ export default function AppLayout() {
       <Tabs.Screen name="orders"    options={{ href: null }} />
       <Tabs.Screen name="invoices"  options={{ href: null }} />
       <Tabs.Screen name="purchases" options={{ href: null }} />
+      <Tabs.Screen name="estimates"             options={{ href: null }} />
+      <Tabs.Screen name="gst"                   options={{ href: null }} />
+      <Tabs.Screen name="hr"        options={{ href: null }} />
     </Tabs>
   );
 }
