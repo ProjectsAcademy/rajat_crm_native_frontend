@@ -87,10 +87,38 @@ export const projectsApi = {
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
+export interface OrderItemInput {
+  inventoryId?: number | null;
+  description?: string;
+  quantity: string;
+  unitPrice: string;
+  isRental?: boolean;
+}
+export interface OrderCreateInput {
+  customerId?: number; projectId?: number;
+  orderDate: string; deliveryDate?: string;
+  status?: string; notes?: string;
+  items?: OrderItemInput[];
+}
+export interface OrderUpdateInput {
+  customerId?: number | null; projectId?: number | null;
+  orderDate?: string; deliveryDate?: string | null;
+  status?: string; notes?: string;
+  items?: OrderItemInput[];
+}
+export interface OrderPaymentInput {
+  amount: string; paymentMode: string; paymentDate: string; referenceNo?: string;
+}
+
 export const ordersApi = {
   list: (params?: { search?: string; status?: string; paymentStatus?: string; limit?: number }) =>
     api.get<OrderListResponse>('/api/orders', { params }),
-  detail: (id: number) => api.get<OrderDetailResponse>(`/api/orders/${id}`),
+  detail:     (id: number) => api.get<OrderDetailResponse>(`/api/orders/${id}`),
+  create:     (data: OrderCreateInput) => api.post<{ order: OrderSummary }>('/api/orders', data),
+  update:     (id: number, data: OrderUpdateInput) => api.put<{ order: OrderSummary }>(`/api/orders/${id}`, data),
+  remove:     (id: number) => api.delete<{ success: boolean }>(`/api/orders/${id}`),
+  addPayment:    (id: number, data: OrderPaymentInput) => api.post<{ payment: OrderPayment }>(`/api/orders/${id}/payments`, data),
+  updatePayment: (id: number, paymentId: number, data: OrderPaymentInput) => api.put<{ success: boolean }>(`/api/orders/${id}/payments/${paymentId}`, data),
 };
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────

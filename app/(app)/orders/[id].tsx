@@ -1,11 +1,13 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ordersApi, OrderDetail } from '../../../services/api';
+import { ordersApi, OrderDetail, OrderPayment } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
+import OrderFormSheet from '../../../components/OrderFormSheet';
+import PaymentFormSheet from '../../../components/PaymentFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: '#FFF8E1', text: '#F57F17' },
@@ -30,9 +32,13 @@ function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-IN',{day
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [order,       setOrder]       = useState<OrderDetail | null>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState('');
+  const [showEdit,    setShowEdit]    = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [editPayment, setEditPayment] = useState<OrderPayment | null>(null);
+  const [deleting,    setDeleting]    = useState(false);
 
   const loadOrder = useCallback(() => {
     ordersApi.detail(parseInt(id!))
@@ -42,6 +48,31 @@ export default function OrderDetailScreen() {
   }, [id]);
 
   useEffect(() => { loadOrder(); }, [loadOrder]);
+
+  const handleDelete = () => {
+    const msg = `Delete order "${order?.orderNo}"? This will also remove all items, payments and attachments. This cannot be undone.`;
+
+    const doDelete = async () => {
+      setDeleting(true);
+      try {
+        await ordersApi.remove(parseInt(id!));
+        router.back();
+      } catch {
+        Alert.alert('Error', 'Could not delete order.');
+        setDeleting(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) doDelete();
+      return;
+    }
+
+    Alert.alert('Delete Order', msg, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: doDelete },
+    ]);
+  };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !order) return (
@@ -59,6 +90,7 @@ export default function OrderDetailScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
@@ -70,6 +102,20 @@ export default function OrderDetailScreen() {
           {order.customer && <Text style={styles.customerName}>{order.customer.customerName}</Text>}
           {order.project  && <Text style={styles.projectName}>{order.project.projectNo} · {order.project.name}</Text>}
           <Text style={styles.dateText}>Date: {fmtDate(order.orderDate)}{order.deliveryDate ? `  ·  Due: ${fmtDate(order.deliveryDate)}` : ''}</Text>
+
+          {/* Action buttons */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+              <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
+              {deleting
+                ? <ActivityIndicator size="small" color={Colors.error} />
+                : <><Ionicons name="trash-outline" size={14} color={Colors.error} /><Text style={styles.deleteBtnText}>Delete</Text></>
+              }
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Financials */}
@@ -124,9 +170,15 @@ export default function OrderDetailScreen() {
         )}
 
         {/* Payments */}
-        {order.payments.length > 0 && (
-          <View style={styles.section}>
+        <View style={styles.section}>
+          <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Payments ({order.payments.length})</Text>
+            <TouchableOpacity style={styles.addPayBtn} onPress={() => setShowPayment(true)}>
+              <Ionicons name="add" size={14} color={Colors.accent} />
+              <Text style={styles.addPayBtnText}>Add Payment</Text>
+            </TouchableOpacity>
+          </View>
+          {order.payments.length > 0 && (
             <View style={styles.card}>
               {order.payments.map((p, i) => (
                 <View key={p.id} style={[styles.payRow, i > 0 && styles.itemBorder]}>
@@ -139,11 +191,18 @@ export default function OrderDetailScreen() {
                     <Text style={styles.payDate}>{fmtDate(p.paymentDate)}</Text>
                   </View>
                   <Text style={styles.payAmt}>{fmtAmt(p.amount)}</Text>
+                  <TouchableOpacity
+                    style={styles.payEditBtn}
+                    onPress={() => { setEditPayment(p); setShowPayment(true); }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+                  </TouchableOpacity>
                 </View>
               ))}
             </View>
-          </View>
-        )}
+          )}
+        </View>
 
         {/* Notes */}
         {order.notes ? (
@@ -155,40 +214,55 @@ export default function OrderDetailScreen() {
 
         {/* Attachments */}
         <View style={styles.section}>
-          <MediaSection
-            entity="order"
-            entityId={order.id}
-            files={order.mediaFiles ?? []}
-            onRefresh={loadOrder}
-          />
+          <MediaSection entity="order" entityId={order.id} files={order.mediaFiles ?? []} onRefresh={loadOrder} />
         </View>
       </ScrollView>
+
+      <OrderFormSheet
+        visible={showEdit}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => loadOrder()}
+        order={order}
+      />
+      <PaymentFormSheet
+        visible={showPayment}
+        orderId={order.id}
+        payment={editPayment}
+        onClose={() => { setShowPayment(false); setEditPayment(null); }}
+        onSaved={loadOrder}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  content: { paddingBottom: 40 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
+  safe:      { flex: 1, backgroundColor: Colors.background },
+  content:   { paddingBottom: 40 },
+  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
   errorText: { color: Colors.textSecondary, fontSize: 14 },
-  backBtn: { backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 4 },
-  backBtnText: { color: '#111', fontWeight: '700' },
+  backBtn:   { backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 4 },
+  backBtnText:{ color: '#111', fontWeight: '700' },
 
-  header: { backgroundColor: Colors.primary, padding: 20 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  orderNo: { fontSize: 13, fontWeight: '700', color: Colors.accent, letterSpacing: 0.5 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
-  badgeText: { fontSize: 10, fontWeight: '800' },
-  customerName: { fontSize: 18, fontWeight: '700', color: '#fff', lineHeight: 24 },
-  projectName:  { fontSize: 12, color: Colors.accent, marginTop: 2, fontWeight: '600' },
-  dateText:     { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 6 },
+  header:        { backgroundColor: Colors.primary, padding: 20 },
+  headerTop:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  orderNo:       { fontSize: 13, fontWeight: '700', color: Colors.accent, letterSpacing: 0.5 },
+  badge:         { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
+  badgeText:     { fontSize: 10, fontWeight: '800' },
+  customerName:  { fontSize: 18, fontWeight: '700', color: '#fff', lineHeight: 24 },
+  projectName:   { fontSize: 12, color: Colors.accent, marginTop: 2, fontWeight: '600' },
+  dateText:      { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 6 },
 
-  statsRow: { flexDirection: 'row', backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  statBox:  { flex: 1, padding: 14, alignItems: 'center' },
+  headerActions: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  editBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,153,0,0.15)', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: Colors.accent },
+  editBtnText:   { fontSize: 13, fontWeight: '600', color: Colors.accent },
+  deleteBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(209,50,18,0.12)', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: Colors.error },
+  deleteBtnText: { fontSize: 13, fontWeight: '600', color: Colors.error },
+
+  statsRow:   { flexDirection: 'row', backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  statBox:    { flex: 1, padding: 14, alignItems: 'center' },
   statBorder: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: Colors.border },
-  statLabel: { fontSize: 10, color: Colors.textMuted, marginBottom: 4, fontWeight: '500' },
-  statValue: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center' },
+  statLabel:  { fontSize: 10, color: Colors.textMuted, marginBottom: 4, fontWeight: '500' },
+  statValue:  { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center' },
 
   chipRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingTop: 14, flexWrap: 'wrap' },
   chip:    { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
@@ -196,7 +270,10 @@ const styles = StyleSheet.create({
   chipText:{ fontSize: 12, fontWeight: '700' },
 
   section:      { marginTop: 16, paddingHorizontal: 14 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  sectionRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  addPayBtn:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentLight, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5 },
+  addPayBtnText:{ fontSize: 12, fontWeight: '600', color: Colors.accent },
   card:         { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
 
   itemRow:   { padding: 14, flexDirection: 'row', gap: 12 },
@@ -216,6 +293,7 @@ const styles = StyleSheet.create({
   payRef:    { fontSize: 11, color: Colors.textSecondary, marginTop: 1 },
   payDate:   { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
   payAmt:    { fontSize: 14, fontWeight: '800', color: Colors.success },
+  payEditBtn:{ width: 28, height: 28, justifyContent: 'center', alignItems: 'center' },
 
   notes: { padding: 14, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
 });

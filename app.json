@@ -34,6 +34,12 @@
     "experiments": {
       "typedRoutes": true
     },
-    "scheme": "crm"
+    "scheme": "crm",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d1d74972-54df-4980-8239-46e8c0e31194"
+      }
+    }
   }
 }
