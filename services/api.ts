@@ -43,6 +43,10 @@ export const customersApi = {
   list: (params?: { search?: string; active?: boolean; page?: number; limit?: number }) =>
     api.get<CustomerListResponse>('/api/customers', { params }),
   detail: (id: number) => api.get<CustomerDetailResponse>(`/api/customers/${id}`),
+  create: (data: CustomerPayload) => api.post<CustomerDetailResponse>('/api/customers', data),
+  update: (id: number, data: Partial<CustomerPayload>) =>
+    api.put<CustomerDetailResponse>(`/api/customers/${id}`, data),
+  deactivate: (id: number) => api.delete(`/api/customers/${id}`),
 };
 
 // ─── Tenders ──────────────────────────────────────────────────────────────────
@@ -246,6 +250,17 @@ export interface Customer {
 }
 export interface CustomerListResponse { customers: Customer[]; total: number; page: number; limit: number; }
 export interface CustomerDetailResponse { customer: Customer; }
+export interface CustomerPayload {
+  customerCode?: string;
+  customerName: string;
+  businessName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  gstin?: string;
+  isActive?: boolean;
+}
+
 
 export interface TenderSummary {
   id: number; tenderNo: string; title: string; status: string;
