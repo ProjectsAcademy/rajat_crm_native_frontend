@@ -2,12 +2,13 @@ import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { vendorsApi, VendorSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import VendorFormSheet from '../../../components/VendorFormSheet';
 
 const ACTIVE_FILTERS = [
   { label: 'All',      value: undefined },
@@ -16,12 +17,13 @@ const ACTIVE_FILTERS = [
 ];
 
 export default function VendorsScreen() {
-  const [vendors, setVendors] = useState<VendorSummary[]>([]);
-  const [search, setSearch] = useState('');
+  const [vendors, setVendors]       = useState<VendorSummary[]>([]);
+  const [search, setSearch]         = useState('');
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal]           = useState(0);
+  const [showForm, setShowForm]     = useState(false);
 
   const fetchVendors = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -35,6 +37,18 @@ export default function VendorsScreen() {
     finally { setLoading(false); setRefreshing(false); }
   }, [search, activeFilter]);
 
+  // Stable ref — keeps useFocusEffect callback stable across search/filter changes
+  const fetchRef = useRef(fetchVendors);
+  useEffect(() => { fetchRef.current = fetchVendors; }, [fetchVendors]);
+
+  // Re-fetch silently whenever screen gains focus (covers back-nav after delete/edit)
+  useFocusEffect(
+    useCallback(() => {
+      fetchRef.current(true);
+    }, [])
+  );
+
+  // Debounced re-fetch on search/filter change
   useEffect(() => {
     const t = setTimeout(() => fetchVendors(), 350);
     return () => clearTimeout(t);
@@ -61,9 +75,7 @@ export default function VendorsScreen() {
           </View>
         </View>
         <Text style={styles.vendorName} numberOfLines={1}>{item.name}</Text>
-        {item.contactPerson ? (
-          <Text style={styles.contactPerson} numberOfLines={1}>{item.contactPerson}</Text>
-        ) : null}
+        {item.contactPerson ? <Text style={styles.contactPerson} numberOfLines={1}>{item.contactPerson}</Text> : null}
         <View style={styles.cardMeta}>
           {item.phone ? (
             <View style={styles.metaItem}>
@@ -85,6 +97,7 @@ export default function VendorsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {/* Search */}
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
@@ -106,6 +119,7 @@ export default function VendorsScreen() {
         </View>
       </View>
 
+      {/* Filter pills */}
       <View style={styles.filterRow}>
         {ACTIVE_FILTERS.map((f) => (
           <TouchableOpacity
@@ -137,6 +151,25 @@ export default function VendorsScreen() {
           }
         />
       )}
+
+      {/* FAB — Add Vendor */}
+      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+        <Ionicons name="add" size={26} color="#111" />
+      </TouchableOpacity>
+
+      {/* Create form */}
+      <VendorFormSheet
+        visible={showForm}
+        onClose={() => setShowForm(false)}
+        onSaved={(newId) => {
+          setShowForm(false);
+          if (newId) {
+            router.push(`/(app)/vendors/${newId}` as any);
+          } else {
+            fetchVendors(true);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -155,20 +188,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 10,
     backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  pill: {
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
-    backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border,
-  },
+  pill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },
   pillActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   pillText: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
   pillTextActive: { color: '#111' },
   totalText: { marginLeft: 'auto', fontSize: 12, color: Colors.textMuted },
 
-  listContent: { padding: 12 },
+  listContent: { padding: 12, paddingBottom: 100 },
   card: {
     backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1,
-    borderColor: Colors.border, padding: 14, flexDirection: 'row',
-    alignItems: 'center', gap: 12,
+    borderColor: Colors.border, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12,
   },
   avatar: {
     width: 44, height: 44, borderRadius: 22,
@@ -189,4 +218,14 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 10 },
   emptyText: { color: Colors.textSecondary, fontSize: 14 },
+
+  fab: {
+    position: 'absolute', bottom: 24, right: 20,
+    width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.accent,
+    justifyContent: 'center', alignItems: 'center',
+    ...Platform.select({
+      web: { boxShadow: '0 4px 12px rgba(255,153,0,0.45)' },
+      default: { elevation: 6, shadowColor: Colors.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.45, shadowRadius: 12 },
+    }),
+  },
 });

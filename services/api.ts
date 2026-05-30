@@ -71,6 +71,10 @@ export const vendorsApi = {
   list: (params?: { search?: string; active?: boolean; page?: number; limit?: number }) =>
     api.get<VendorListResponse>('/api/vendors', { params }),
   detail: (id: number) => api.get<VendorDetailResponse>(`/api/vendors/${id}`),
+  create: (data: VendorPayload) => api.post<VendorDetailResponse>('/api/vendors', data),
+  update: (id: number, data: Partial<VendorPayload>) =>
+    api.put<VendorDetailResponse>(`/api/vendors/${id}`, data),
+  delete: (id: number) => api.delete(`/api/vendors/${id}`),
 };
 
 // ─── Employees ────────────────────────────────────────────────────────────────
@@ -299,6 +303,20 @@ export interface Vendor extends VendorSummary {
 }
 export interface VendorListResponse { vendors: VendorSummary[]; total: number; page: number; limit: number; }
 export interface VendorDetailResponse { vendor: Vendor; }
+export interface VendorPayload {
+  vendorCode?: string;
+  name: string;
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  gstin?: string;
+  pan?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  isActive?: boolean;
+}
 
 export interface EmployeeSummary {
   id: number; employeeCode: string; name: string; phone: string; email: string;
