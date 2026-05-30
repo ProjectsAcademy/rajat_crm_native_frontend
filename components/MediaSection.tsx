@@ -65,6 +65,7 @@ export default function MediaSection({ entity, entityId, files, onRefresh }: Pro
   const [selectMode,   setSelectMode]   = useState(false);
   const [selected,     setSelected]     = useState<Set<number>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [setPrimaryId, setSetPrimaryId] = useState<number | null>(null);
 
   const exitSelectMode = () => { setSelectMode(false); setSelected(new Set()); };
 
@@ -155,6 +156,16 @@ export default function MediaSection({ entity, entityId, files, onRefresh }: Pro
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: doDelete },
     ]);
+  };
+
+  // ── Set primary image (inventory only) ───────────────────────────────────
+  const handleSetPrimary = async (file: MediaFile) => {
+    setSetPrimaryId(file.id);
+    try {
+      await api.put(`/api/media/inventory/${file.id}/primary`);
+      onRefresh();
+    } catch { Alert.alert('Error', 'Could not update primary image.'); }
+    finally { setSetPrimaryId(null); }
   };
 
   // ── Bulk delete ───────────────────────────────────────────────────────────
@@ -303,6 +314,24 @@ export default function MediaSection({ entity, entityId, files, onRefresh }: Pro
 
               {!selectMode && (
                 <>
+                  {/* Set as main photo button — inventory images only */}
+                  {entity === 'inventory' && isImage && (
+                    <TouchableOpacity
+                      onPress={e => { e.stopPropagation(); handleSetPrimary(file); }}
+                      style={styles.actionBtn}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    >
+                      {setPrimaryId === file.id
+                        ? <ActivityIndicator size="small" color={Colors.accent} />
+                        : <Ionicons
+                            name={file.isPrimary ? 'star' : 'star-outline'}
+                            size={16}
+                            color={file.isPrimary ? Colors.accent : Colors.textMuted}
+                          />
+                      }
+                    </TouchableOpacity>
+                  )}
                   {openingId === file.id
                     ? <ActivityIndicator size="small" color={Colors.info} style={{ width: 32 }} />
                     : (

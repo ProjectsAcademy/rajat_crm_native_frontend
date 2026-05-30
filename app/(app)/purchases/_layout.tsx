@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { STACK_SCREEN_OPTIONS } from '../../../constants/stackOptions';
 import { Colors } from '../../../constants/colors';
 
 export default function PurchasesLayout() {

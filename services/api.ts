@@ -63,7 +63,14 @@ export const inventoryApi = {
   list: (params?: { search?: string; active?: boolean; page?: number; limit?: number }) =>
     api.get<InventoryListResponse>('/api/inventory', { params }),
   detail: (id: number) => api.get<InventoryDetailResponse>(`/api/inventory/${id}`),
+  create: (data: InventoryPayload) => api.post<{ item: InventoryDetail }>('/api/inventory', data),
+  update: (id: number, data: Partial<InventoryPayload>) =>
+    api.put<{ item: InventoryDetail }>(`/api/inventory/${id}`, data),
+  deactivate: (id: number) => api.delete(`/api/inventory/${id}`),
+  permanentDelete: (id: number) => api.delete(`/api/inventory/${id}/permanent`),
+  categories: () => api.get<{ categories: string[] }>('/api/inventory/categories'),
 };
+
 
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 
@@ -158,6 +165,8 @@ export const estimatesApi = {
 export const stockApi = {
   list: (params?: { inventoryId?: number; transactionType?: string; from?: string; to?: string; page?: number; limit?: number }) =>
     api.get<StockListResponse>('/api/stock', { params }),
+  create: (data: StockPayload) => api.post<{ movement: StockMovement; newCurrentStock: number }>('/api/stock', data),
+  remove: (id: number) => api.delete<{ message: string; newCurrentStock: number }>(`/api/stock/${id}`),
 };
 
 // ─── GST ──────────────────────────────────────────────────────────────────────
@@ -332,6 +341,7 @@ export interface InventoryItem {
   id: number; itemCode: string; name: string; category: string;
   unit: string; unitPrice: string; reorderLevel: string;
   isActive: boolean; currentStock: number;
+  primaryImage: { id: number; fileType: string } | null;
 }
 export interface StockMovement {
   id: number; quantity: string; transactionType: string;
@@ -347,6 +357,30 @@ export interface InventoryDetail extends InventoryItem {
 }
 export interface InventoryListResponse { inventory: InventoryItem[]; total: number; page: number; limit: number; }
 export interface InventoryDetailResponse { item: InventoryDetail; }
+export interface InventoryPayload {
+  itemCode?: string;
+  name: string;
+  description?: string;
+  category?: string;
+  unit?: string;
+  unitPrice: number | string;
+  reorderLevel?: number | string;
+  isActive?: boolean;
+  // Create-only: seeds an initial stock movement
+  initialStock?: number | string;
+  initialLocation?: string;
+  initialReference?: string;
+}
+export interface StockPayload {
+  inventoryId: number;
+  quantity: number | string;
+  transactionType: 'in' | 'out' | 'adjustment';
+  location?: string;
+  batchNo?: string;
+  reference?: string;
+  notes?: string;
+}
+
 
 export interface OrderSummary {
   id: number; orderNo: string; status: string; paymentStatus: string;
