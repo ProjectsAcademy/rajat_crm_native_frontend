@@ -107,6 +107,7 @@ export default function PaymentFormSheet({ visible, orderId, payment, onClose, o
               style={[s.input, { flex: 1 }]} value={amount} onChangeText={setAmount}
               placeholder="0.00" placeholderTextColor={Colors.textMuted}
               keyboardType="decimal-pad" autoFocus
+              autoComplete="off" textContentType="none" importantForAutofill="no"
             />
           </View>
 
@@ -134,6 +135,7 @@ export default function PaymentFormSheet({ visible, orderId, payment, onClose, o
               onChangeText={t => setDate(autoDate(t))}
               placeholder="DD/MM/YYYY" placeholderTextColor={Colors.textMuted}
               keyboardType="numeric" maxLength={10}
+              autoComplete="off" textContentType="none" importantForAutofill="no"
             />
           </View>
 
@@ -145,6 +147,7 @@ export default function PaymentFormSheet({ visible, orderId, payment, onClose, o
                 style={s.standaloneInput} value={refNo} onChangeText={setRefNo}
                 placeholder="UTR / Cheque No / Transaction ID"
                 placeholderTextColor={Colors.textMuted} autoCapitalize="characters"
+                autoComplete="off" textContentType="none" importantForAutofill="no"
               />
             </>
           )}
@@ -185,11 +188,12 @@ const s = StyleSheet.create({
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
     borderRadius: 8, paddingHorizontal: 12, marginBottom: 14,
   },
-  input:         { fontSize: 16, color: Colors.textPrimary, paddingVertical: 13 },
+  input:         { fontSize: 16, color: Colors.textPrimary, paddingVertical: 13, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   standaloneInput:{
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
     borderRadius: 8, paddingHorizontal: 12, paddingVertical: 13,
     fontSize: 15, color: Colors.textPrimary, marginBottom: 14,
+    ...Platform.select({ web: { outlineStyle: 'none' } }),
   },
   rupee: { fontSize: 18, color: Colors.textMuted, fontWeight: '600' },
 

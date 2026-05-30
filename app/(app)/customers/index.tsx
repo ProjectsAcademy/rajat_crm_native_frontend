@@ -1,6 +1,6 @@
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl,
+  StyleSheet, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
@@ -91,6 +91,9 @@ export default function CustomersScreen() {
             onChangeText={setSearch}
             autoCorrect={false}
             autoCapitalize="none"
+            autoComplete="new-password"
+            textContentType="none"
+            importantForAutofill="no"
           />
           {search ? (
             <TouchableOpacity onPress={() => setSearch('')}>
@@ -146,7 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background, borderRadius: 8, borderWidth: 1,
     borderColor: Colors.border, paddingHorizontal: 10, height: 40,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   filterRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 12, paddingVertical: 10,

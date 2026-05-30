@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,7 +74,8 @@ export default function PurchasesScreen() {
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
           <TextInput style={styles.searchInput} placeholder="Search purchases, vendors..." placeholderTextColor={Colors.textMuted}
-            value={search} onChangeText={setSearch} autoCorrect={false} autoCapitalize="none" />
+            value={search} onChangeText={setSearch} autoCorrect={false} autoCapitalize="none"
+            autoComplete="new-password" textContentType="none" importantForAutofill="no" />
           {search ? <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={16} color={Colors.textMuted} /></TouchableOpacity> : null}
         </View>
         <Text style={styles.totalText}>{total} purchases</Text>
@@ -94,7 +95,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   searchRow: { padding: 12, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.background, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, height: 40 },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   totalText: { fontSize: 12, color: Colors.textMuted },
   list: { padding: 12 },
   card: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },

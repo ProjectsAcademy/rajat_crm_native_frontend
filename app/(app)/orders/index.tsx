@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,7 +84,8 @@ export default function OrdersScreen() {
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
           <TextInput style={styles.searchInput} placeholder="Search orders, customers..." placeholderTextColor={Colors.textMuted}
-            value={search} onChangeText={setSearch} autoCorrect={false} autoCapitalize="none" />
+            value={search} onChangeText={setSearch} autoCorrect={false} autoCapitalize="none"
+            autoComplete="new-password" textContentType="none" importantForAutofill="no" />
           {search ? <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={16} color={Colors.textMuted} /></TouchableOpacity> : null}
         </View>
         <Text style={styles.totalText}>{total} orders</Text>
@@ -122,7 +123,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   searchRow: { padding: 12, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.background, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, height: 40 },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   totalText: { fontSize: 12, color: Colors.textMuted },
   list: { padding: 12 },
   card: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -144,7 +145,10 @@ const styles = StyleSheet.create({
     width: 56, height: 56, borderRadius: 28,
     backgroundColor: Colors.accent,
     justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25, shadowRadius: 8, elevation: 8,
+    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 8px rgba(0,0,0,0.25)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8 },
+    }),
   },
 });

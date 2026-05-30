@@ -263,11 +263,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: Colors.accent,
     padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
     elevation: 2,
+    ...Platform.select({
+      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
+    }),
   },
   summaryLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   summaryIcon: {
@@ -317,11 +317,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
     elevation: 1,
+    ...Platform.select({
+      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4 },
+    }),
   },
   kpiIconBox: {
     width: 38,

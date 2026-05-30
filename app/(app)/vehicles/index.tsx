@@ -1,6 +1,6 @@
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl,
+  StyleSheet, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
@@ -116,6 +116,7 @@ export default function VehiclesScreen() {
             placeholderTextColor={Colors.textMuted}
             value={search} onChangeText={setSearch}
             autoCorrect={false} autoCapitalize="none"
+            autoComplete="new-password" textContentType="none" importantForAutofill="no"
           />
           {search ? (
             <TouchableOpacity onPress={() => setSearch('')}>
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background, borderRadius: 8, borderWidth: 1,
     borderColor: Colors.border, paddingHorizontal: 10, height: 40,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   totalText: { fontSize: 12, color: Colors.textMuted },
   list: { padding: 12 },
   card: {

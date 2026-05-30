@@ -99,7 +99,8 @@ function SearchPickerModal({ visible, title, items, loading, onSelect }: {
         <View style={sp.searchRow}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
           <TextInput style={sp.searchInput} placeholder="Search..." placeholderTextColor={Colors.textMuted}
-            value={q} onChangeText={setQ} autoFocus autoCorrect={false} />
+            value={q} onChangeText={setQ} autoFocus autoCorrect={false}
+            autoComplete="new-password" textContentType="none" importantForAutofill="no" />
         </View>
         {loading ? <View style={sp.center}><ActivityIndicator color={Colors.accent} /></View> : (
           <FlatList data={filtered} keyExtractor={i => String(i.id)}
@@ -123,7 +124,7 @@ const sp = StyleSheet.create({
   title:      { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
   closeBtn:   { padding: 4 },
   searchRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.surface, margin: 12, paddingHorizontal: 12, height: 44, borderRadius: 8, borderWidth: 1, borderColor: Colors.border },
-  searchInput:{ flex: 1, fontSize: 15, color: Colors.textPrimary },
+  searchInput:{ flex: 1, fontSize: 15, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   item:       { paddingHorizontal: 16, paddingVertical: 14, backgroundColor: Colors.surface },
   itemLabel:  { fontSize: 15, color: Colors.textPrimary, fontWeight: '500' },
   itemSub:    { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
@@ -690,7 +691,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
 // ── Web styles ───────────────────────────────────────────────────────────────────
 const w = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  dialog:   { width: '100%', maxWidth: 960, backgroundColor: Colors.background, borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 32, elevation: 32 },
+  dialog:   { width: '100%', maxWidth: 960, backgroundColor: Colors.background, borderRadius: 12, overflow: 'hidden', elevation: 32, ...Platform.select({ web: { boxShadow: '0 12px 32px rgba(0,0,0,0.35)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 32 } }) },
 
   header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 14, backgroundColor: Colors.primary, borderBottomWidth: 1, borderBottomColor: Colors.primaryLight },
   headerLeft:    { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -715,14 +716,14 @@ const w = StyleSheet.create({
   pickerValue:      { fontSize: 14, color: Colors.textPrimary, flex: 1 },
   pickerPlaceholder:{ fontSize: 14, color: Colors.textMuted, flex: 1 },
   inputRow:         { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 10, marginBottom: 12 },
-  input:            { fontSize: 14, color: Colors.textPrimary, paddingVertical: 9 },
+  input:            { fontSize: 14, color: Colors.textPrimary, paddingVertical: 9, ...Platform.select({ web: { outlineStyle: 'none' } }) },
 
   chip:          { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
   chipActive:    { backgroundColor: Colors.accent, borderColor: Colors.accent },
   chipText:      { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   chipTextActive:{ color: '#111' },
 
-  textArea: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, minHeight: 72, fontSize: 14, color: Colors.textPrimary },
+  textArea: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, minHeight: 72, fontSize: 14, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
 
   divider: { height: 1, backgroundColor: Colors.border, marginVertical: 20 },
 
@@ -752,7 +753,7 @@ const w = StyleSheet.create({
   invPlaceholderWeb: { fontSize: 12, color: Colors.textMuted },
   stockTagWeb:       { fontSize: 10, color: Colors.success, fontWeight: '600', marginTop: 2 },
 
-  tableInput:  { backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, color: Colors.textPrimary, minHeight: 34 },
+  tableInput:  { backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, color: Colors.textPrimary, minHeight: 34, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   maxHint:     { fontSize: 10, color: Colors.textMuted, marginTop: 3 },
 
   // priceBox: one bordered container housing ₹ prefix + TextInput.
@@ -760,7 +761,7 @@ const w = StyleSheet.create({
   // from ignoring flex and refusing to shrink below its intrinsic width on web.
   priceBox:    { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, minHeight: 34, overflow: 'hidden' },
   rupeePrefix: { fontSize: 13, color: Colors.textMuted, fontWeight: '600', paddingLeft: 8, flexShrink: 0 },
-  priceInput:  { flex: 1, minWidth: 0, textAlign: 'right', fontSize: 13, fontWeight: '600', color: Colors.textPrimary, paddingVertical: 6, paddingLeft: 4, paddingRight: 8, borderWidth: 0, backgroundColor: 'transparent' },
+  priceInput:  { flex: 1, minWidth: 0, textAlign: 'right', fontSize: 13, fontWeight: '600', color: Colors.textPrimary, paddingVertical: 6, paddingLeft: 4, paddingRight: 8, borderWidth: 0, backgroundColor: 'transparent', ...Platform.select({ web: { outlineStyle: 'none' } }) },
   lineTotalWeb:{ fontSize: 13, fontWeight: '700', color: Colors.textPrimary, textAlign: 'right' },
 
   rentalToggle:       { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1 },
