@@ -2,12 +2,13 @@ import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { employeesApi, EmployeeSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import EmployeeFormSheet from '../../../components/EmployeeFormSheet';
 
 const SKILL_FILTERS = [
   { label: 'All',        value: undefined },
@@ -37,6 +38,7 @@ export default function EmployeesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [total, setTotal] = useState(0);
+  const [showForm, setShowForm] = useState(false);
 
   const fetchEmployees = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -51,6 +53,13 @@ export default function EmployeesScreen() {
     } catch { setEmployees([]); }
     finally { setLoading(false); setRefreshing(false); }
   }, [search, skillFilter]);
+
+  const fetchRef = useRef(fetchEmployees);
+  useEffect(() => { fetchRef.current = fetchEmployees; }, [fetchEmployees]);
+
+  useFocusEffect(
+    useCallback(() => { fetchRef.current(true); }, [])
+  );
 
   useEffect(() => {
     const t = setTimeout(() => fetchEmployees(), 350);
@@ -153,6 +162,21 @@ export default function EmployeesScreen() {
           }
         />
       )}
+
+      {/* FAB */}
+      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+        <Ionicons name="add" size={26} color="#111" />
+      </TouchableOpacity>
+
+      <EmployeeFormSheet
+        visible={showForm}
+        onClose={() => setShowForm(false)}
+        onSaved={(newId) => {
+          setShowForm(false);
+          if (newId) router.push(`/(app)/employees/${newId}` as any);
+          else fetchEmployees(true);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -205,4 +229,14 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 10 },
   emptyText: { color: Colors.textSecondary, fontSize: 14 },
+
+  fab: {
+    position: 'absolute', bottom: 24, right: 20,
+    width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.accent,
+    justifyContent: 'center', alignItems: 'center',
+    ...Platform.select({
+      web:     { boxShadow: '0 4px 12px rgba(255,153,0,0.45)' },
+      default: { elevation: 6, shadowColor: Colors.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.45, shadowRadius: 12 },
+    }),
+  },
 });

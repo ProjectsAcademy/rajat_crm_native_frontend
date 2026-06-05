@@ -86,10 +86,25 @@ export const vendorsApi = {
 
 // ─── Employees ────────────────────────────────────────────────────────────────
 
+export interface EmployeePayload {
+  employeeCode?: string;
+  name: string;
+  phone?: string; email?: string; address?: string;
+  aadharNo?: string; pan?: string;
+  skillType?: string;
+  dailyWage?: number; ctc?: number; basicSalary?: number;
+  isActive?: boolean;
+}
+
 export const employeesApi = {
   list: (params?: { search?: string; skillType?: string; active?: boolean; page?: number; limit?: number }) =>
     api.get<EmployeeListResponse>('/api/employees', { params }),
   detail: (id: number) => api.get<EmployeeDetailResponse>(`/api/employees/${id}`),
+  create: (data: EmployeePayload) => api.post('/api/employees', data),
+  update: (id: number, data: Partial<EmployeePayload>) => api.put(`/api/employees/${id}`, data),
+  deactivate: (id: number) => api.put(`/api/employees/${id}`, { isActive: false }),
+  reactivate: (id: number) => api.put(`/api/employees/${id}`, { isActive: true }),
+  permanentDelete: (id: number) => api.delete(`/api/employees/${id}`),
 };
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
@@ -329,13 +344,15 @@ export interface VendorPayload {
 
 export interface EmployeeSummary {
   id: number; employeeCode: string; name: string; phone: string; email: string;
-  skillType: string; dailyWage: string; ctc: string; isActive: boolean; createdAt: string;
+  skillType: string; dailyWage: string; ctc: string; basicSalary: string;
+  isActive: boolean; createdAt: string;
 }
 export interface Employee extends EmployeeSummary {
-  address: string; aadharNo: string; pan: string; basicSalary: string; updatedAt: string;
+  address: string; aadharNo: string; pan: string; updatedAt: string;
 }
 export interface EmployeeListResponse { employees: EmployeeSummary[]; total: number; page: number; limit: number; }
 export interface EmployeeDetailResponse { employee: Employee; }
+
 
 export interface InventoryItem {
   id: number; itemCode: string; name: string; category: string;
