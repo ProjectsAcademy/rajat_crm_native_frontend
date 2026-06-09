@@ -123,6 +123,7 @@ export interface OrderItemInput {
   quantity: string;
   unitPrice: string;
   isRental?: boolean;
+  rentalDays?: number;
 }
 export interface OrderCreateInput {
   customerId?: number; projectId?: number;
@@ -162,9 +163,12 @@ export const invoicesApi = {
 // ─── Purchases ────────────────────────────────────────────────────────────────
 
 export const purchasesApi = {
-  list: (params?: { search?: string; status?: string; paymentStatus?: string; limit?: number }) =>
+  list:   (params?: { search?: string; status?: string; paymentStatus?: string; limit?: number }) =>
     api.get<PurchaseListResponse>('/api/purchases', { params }),
   detail: (id: number) => api.get<PurchaseDetailResponse>(`/api/purchases/${id}`),
+  create: (data: PurchaseCreateInput) => api.post<PurchaseDetailResponse>('/api/purchases', data),
+  update: (id: number, data: PurchaseUpdateInput) => api.put<PurchaseDetailResponse>(`/api/purchases/${id}`, data),
+  remove: (id: number) => api.delete(`/api/purchases/${id}`),
 };
 
 // ─── Estimates ────────────────────────────────────────────────────────────────
@@ -178,9 +182,11 @@ export const estimatesApi = {
 // ─── Stock ────────────────────────────────────────────────────────────────────
 
 export const stockApi = {
-  list: (params?: { inventoryId?: number; transactionType?: string; from?: string; to?: string; page?: number; limit?: number }) =>
+  list: (params?: { inventoryId?: number; transactionType?: string; referenceId?: number; referenceType?: string; search?: string; from?: string; to?: string; page?: number; limit?: number }) =>
     api.get<StockListResponse>('/api/stock', { params }),
   create: (data: StockPayload) => api.post<{ movement: StockMovement; newCurrentStock: number }>('/api/stock', data),
+  update: (id: number, data: Partial<Omit<StockPayload, 'inventoryId'>>) =>
+    api.put<{ movement: StockMovement; newCurrentStock: number }>(`/api/stock/${id}`, data),
   remove: (id: number) => api.delete<{ message: string; newCurrentStock: number }>(`/api/stock/${id}`),
 };
 
@@ -362,7 +368,9 @@ export interface InventoryItem {
 }
 export interface StockMovement {
   id: number; quantity: string; transactionType: string;
-  reference: string; notes: string; location: string; createdAt: string;
+  reference: string; notes: string; location: string; batchNo: string;
+  referenceType: string | null; referenceId: number | null;
+  createdAt: string;
   inventory?: { id: number; itemCode: string; name: string; unit: string };
 }
 export interface StockSummary { in: number; out: number; adjustment: number; }
@@ -396,6 +404,8 @@ export interface StockPayload {
   batchNo?: string;
   reference?: string;
   notes?: string;
+  referenceType?: string;
+  referenceId?: number;
 }
 
 
@@ -409,7 +419,7 @@ export interface OrderSummary {
 }
 export interface OrderItem {
   id: number; description: string | null; quantity: string; unitPrice: string;
-  totalPrice: string; isRental: boolean;
+  totalPrice: string; isRental: boolean; rentalDays: number;
   inventory: { id: number; itemCode: string; name: string; unit: string } | null;
 }
 export interface OrderPayment {
@@ -447,11 +457,13 @@ export interface InvoiceDetailResponse { invoice: InvoiceDetail; }
 export interface PurchaseSummary {
   id: number; purchaseNo: string; status: string; paymentStatus: string;
   purchaseDate: string; deliveryDate: string | null;
-  totalAmount: string; paidAmount: string; taxAmount: string | null; isGst: boolean;
+  totalAmount: string; paidAmount: string; taxAmount: string | null; subtotal: string; isGst: boolean;
   vendor: { id: number; vendorCode: string; name: string } | null;
 }
 export interface PurchaseItem {
-  id: number; quantity: string; unitPrice: string; taxRate: string; total: string;
+  id: number; description: string; unit: string;
+  quantity: string; unitPrice: string; taxRate: string; total: string;
+  stockedQty: string;
   inventory: { id: number; itemCode: string; name: string; unit: string } | null;
 }
 export interface PurchaseDetail extends PurchaseSummary {
@@ -461,6 +473,27 @@ export interface PurchaseDetail extends PurchaseSummary {
 }
 export interface PurchaseListResponse { purchases: PurchaseSummary[]; total: number; }
 export interface PurchaseDetailResponse { purchase: PurchaseDetail; }
+
+export interface PurchaseItemInput {
+  id?: number;          // present for existing items; absent for new ones
+  inventoryId?: number;
+  description?: string;
+  unit?: string;
+  quantity: string;
+  unitPrice: string;
+  taxRate: string;
+}
+export interface PurchaseCreateInput {
+  vendorId?: number;
+  purchaseDate: string;
+  deliveryDate?: string;
+  isGst: boolean;
+  status: string;
+  notes: string;
+  paidAmount: string;
+  items: PurchaseItemInput[];
+}
+export type PurchaseUpdateInput = PurchaseCreateInput;
 
 // ─── HR Types ─────────────────────────────────────────────────────────────────
 

@@ -157,11 +157,16 @@ export default function OrderDetailScreen() {
                   <View style={styles.itemLeft}>
                     {it.inventory && <Text style={styles.itemCode}>{it.inventory.itemCode}</Text>}
                     <Text style={styles.itemDesc}>{it.description || it.inventory?.name || '—'}</Text>
-                    <Text style={styles.itemMeta}>{parseFloat(it.quantity).toFixed(2)} {it.inventory?.unit ?? 'pcs'} × {fmtAmt(it.unitPrice)}</Text>
+                    <Text style={styles.itemMeta}>
+                      {parseFloat(it.quantity).toFixed(2)} {it.inventory?.unit ?? 'pcs'} × {fmtAmt(it.unitPrice)}
+                      {it.isRental && it.rentalDays > 1 ? ` × ${it.rentalDays} days` : ''}
+                    </Text>
                   </View>
                   <View style={styles.itemRight}>
                     <Text style={styles.itemTotal}>{fmtAmt(it.totalPrice)}</Text>
-                    {it.isRental && <Text style={styles.rentalTag}>RENTAL</Text>}
+                    {it.isRental && (
+                      <Text style={styles.rentalTag}>RENTAL{it.rentalDays > 1 ? ` · ${it.rentalDays}d` : ''}</Text>
+                    )}
                   </View>
                 </View>
               ))}

@@ -1,10 +1,11 @@
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Platform } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { purchasesApi, PurchaseSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import PurchaseFormSheet from '../../../components/PurchaseFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,        text: Colors.textMuted  },
@@ -28,6 +29,8 @@ export default function PurchasesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [total, setTotal]     = useState(0);
+  const [showForm, setShowForm] = useState(false);
+  const isFirstFocus = useRef(true);
 
   const fetchItems = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -39,7 +42,27 @@ export default function PurchasesScreen() {
     finally { setLoading(false); setRefreshing(false); }
   }, [search]);
 
-  useEffect(() => { const t = setTimeout(() => fetchItems(), 350); return () => clearTimeout(t); }, [fetchItems]);
+  // Debounced re-fetch when search changes
+  useEffect(() => {
+    const t = setTimeout(() => fetchItems(), 350);
+    return () => clearTimeout(t);
+  }, [fetchItems]);
+
+  // Silent refresh when navigating back to this screen
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) { isFirstFocus.current = false; return; }
+      fetchItems(true);
+    }, [fetchItems])
+  );
+
+  const onSaved = (newId?: number) => {
+    if (newId) {
+      router.push(`/(app)/purchases/${newId}` as any);
+    } else {
+      fetchItems(true);
+    }
+  };
 
   const renderItem = ({ item }: { item: PurchaseSummary }) => {
     const sc = STATUS_COLORS[item.status] ?? STATUS_COLORS.draft;
@@ -80,6 +103,7 @@ export default function PurchasesScreen() {
         </View>
         <Text style={styles.totalText}>{total} purchases</Text>
       </View>
+
       {loading ? <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View> : (
         <FlatList data={items} keyExtractor={i => String(i.id)} renderItem={renderItem}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchItems(true); }} tintColor={Colors.accent} />}
@@ -87,6 +111,13 @@ export default function PurchasesScreen() {
           ListEmptyComponent={<View style={styles.center}><Ionicons name="cart-outline" size={48} color={Colors.textMuted} /><Text style={styles.emptyText}>No purchases found</Text></View>}
         />
       )}
+
+      {/* FAB */}
+      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+        <Ionicons name="add" size={26} color="#111" />
+      </TouchableOpacity>
+
+      <PurchaseFormSheet visible={showForm} onClose={() => setShowForm(false)} onSaved={onSaved} />
     </SafeAreaView>
   );
 }
@@ -97,7 +128,7 @@ const styles = StyleSheet.create({
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.background, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, height: 40 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   totalText: { fontSize: 12, color: Colors.textMuted },
-  list: { padding: 12 },
+  list: { padding: 12, paddingBottom: 100 },
   card: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardMain: { flex: 1 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
@@ -113,4 +144,15 @@ const styles = StyleSheet.create({
   gstTag:    { marginTop: 4, alignSelf: 'flex-start', fontSize: 9, fontWeight: '800', color: '#1565C0', backgroundColor: '#E3F2FD', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 10 },
   emptyText: { color: Colors.textSecondary, fontSize: 14 },
+  fab: {
+    position: 'absolute', bottom: 28, right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.accent,
+    justifyContent: 'center', alignItems: 'center',
+    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 14px rgba(0,0,0,0.25)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8 },
+    }),
+  },
 });

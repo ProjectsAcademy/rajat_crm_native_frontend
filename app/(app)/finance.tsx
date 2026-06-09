@@ -7,11 +7,12 @@ import { dashboardApi } from '../../services/api';
 import { Colors } from '../../constants/colors';
 
 const CARDS = [
-  { key: 'orders',    label: 'Orders',    icon: 'receipt-outline'       as const, route: '/(app)/orders',    color: '#1565C0' },
-  { key: 'invoices',  label: 'Invoices',  icon: 'document-text-outline' as const, route: '/(app)/invoices',  color: '#6A1B9A' },
-  { key: 'purchases', label: 'Purchases', icon: 'cart-outline'          as const, route: '/(app)/purchases', color: '#2E7D32' },
-  { key: 'estimates', label: 'Estimates', icon: 'document-outline'      as const, route: '/(app)/estimates', color: '#E65100' },
-  { key: 'gstRecords',label: 'GST',       icon: 'shield-half-outline'   as const, route: '/(app)/gst',       color: '#006064' },
+  { key: 'orders',    label: 'Orders',    icon: 'receipt-outline'       as const, route: '/(app)/orders',           color: '#1565C0' },
+  { key: 'invoices',  label: 'Invoices',  icon: 'document-text-outline' as const, route: '/(app)/invoices',         color: '#6A1B9A' },
+  { key: 'purchases', label: 'Purchases', icon: 'cart-outline'          as const, route: '/(app)/purchases',        color: '#2E7D32' },
+  { key: 'estimates', label: 'Estimates', icon: 'document-outline'      as const, route: '/(app)/estimates',        color: '#E65100' },
+  { key: 'gstRecords',label: 'GST',       icon: 'shield-half-outline'   as const, route: '/(app)/gst',              color: '#006064' },
+  { key: 'stockMovements', label: 'Stock', icon: 'layers-outline'        as const, route: '/(app)/inventory/stock',  color: '#00695C' },
 ];
 
 export default function FinanceScreen() {

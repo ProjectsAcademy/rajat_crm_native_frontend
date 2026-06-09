@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { useState, useCallback, useRef } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/auth';
@@ -42,6 +42,8 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
+  const isFirstRender = useRef(true);
+
   const fetchDashboard = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError('');
@@ -56,7 +58,16 @@ export default function DashboardScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchDashboard(); }, []);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        fetchDashboard();
+      } else {
+        fetchDashboard(true);
+      }
+    }, [fetchDashboard])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

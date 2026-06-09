@@ -19,12 +19,13 @@ interface LocalItem {
   quantity: string;
   unitPrice: string;
   isRental: boolean;
+  rentalDays: string;
 }
 function makeItem(): LocalItem {
   return {
     key: `${Date.now()}-${Math.random()}`,
     inventoryId: null, inventoryLabel: '', inventoryUnit: 'pcs', inventoryStock: null,
-    description: '', quantity: '1', unitPrice: '', isRental: true,
+    description: '', quantity: '1', unitPrice: '', isRental: true, rentalDays: '1',
   };
 }
 
@@ -72,9 +73,10 @@ function fmtCurrency(n: number): string {
   return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function lineTotal(item: LocalItem): number {
-  const q = parseFloat(item.quantity || '0');
+  const q = parseFloat(item.quantity  || '0');
   const p = parseFloat(item.unitPrice || '0');
-  return isNaN(q) || isNaN(p) ? 0 : q * p;
+  const d = item.isRental ? (parseInt(item.rentalDays || '1') || 1) : 1;
+  return isNaN(q) || isNaN(p) ? 0 : q * p * d;
 }
 
 // ── SearchPickerModal ────────────────────────────────────────────────────────────
@@ -185,6 +187,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
         quantity:       parseFloat(it.quantity).toString(),
         unitPrice:      parseFloat(it.unitPrice).toString(),
         isRental:       it.isRental,
+        rentalDays:     String(it.rentalDays ?? 1),
       })));
     } else {
       setCustomerId(null); setCustomerName('');
@@ -267,9 +270,10 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
     const itemPayload = items.map(it => ({
       inventoryId: it.inventoryId ?? undefined,
       description: it.description,
-      quantity: it.quantity || '1',
-      unitPrice: it.unitPrice || '0',
-      isRental: it.isRental,
+      quantity:    it.quantity   || '1',
+      unitPrice:   it.unitPrice  || '0',
+      isRental:    it.isRental,
+      rentalDays:  it.isRental ? (parseInt(it.rentalDays || '1') || 1) : 1,
     }));
 
     setSaving(true);
@@ -436,8 +440,9 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
                     <Text style={[w.thCell, { flex: 1 }]}>Description</Text>
                     <Text style={[w.thCell, { width: 90 }]}>Qty</Text>
                     <Text style={[w.thCell, { width: 150 }]}>Unit Price</Text>
-                    <Text style={[w.thCell, w.thRight, { width: 110 }]}>Total</Text>
                     <Text style={[w.thCell, { width: 80, textAlign: 'center' }]}>Rental</Text>
+                    <Text style={[w.thCell, { width: 80 }]}>Days</Text>
+                    <Text style={[w.thCell, w.thRight, { width: 110 }]}>Total</Text>
                     <View style={{ width: 44 }} />
                   </View>
 
@@ -514,11 +519,6 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
                           </View>
                         </View>
 
-                        {/* Line total */}
-                        <View style={[{ width: 110, flexShrink: 0 }, w.tdCell]}>
-                          <Text style={w.lineTotalWeb} numberOfLines={1}>{fmtCurrency(total)}</Text>
-                        </View>
-
                         {/* Rental toggle */}
                         <View style={[{ width: 80, flexShrink: 0 }, w.tdCell]}>
                           <TouchableOpacity
@@ -529,6 +529,33 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
                               {item.isRental ? 'Rental' : 'Sale'}
                             </Text>
                           </TouchableOpacity>
+                        </View>
+
+                        {/* Rental days — only active when isRental */}
+                        <View style={[{ width: 80, flexShrink: 0 }, w.tdCell]}>
+                          {item.isRental ? (
+                            <View style={w.daysBox}>
+                              <TextInput
+                                style={w.daysInput}
+                                value={item.rentalDays}
+                                onChangeText={v => updateItem(item.key, { rentalDays: v })}
+                                keyboardType="number-pad"
+                                placeholder="1"
+                                placeholderTextColor={Colors.textMuted}
+                              />
+                              <Text style={w.daysSuffix}>d</Text>
+                            </View>
+                          ) : (
+                            <Text style={w.daysNa}>—</Text>
+                          )}
+                        </View>
+
+                        {/* Line total */}
+                        <View style={[{ width: 110, flexShrink: 0 }, w.tdCell]}>
+                          <Text style={w.lineTotalWeb} numberOfLines={1}>{fmtCurrency(total)}</Text>
+                          {item.isRental && parseInt(item.rentalDays || '1') > 1 && (
+                            <Text style={w.lineTotalHint}>{item.rentalDays}d × ₹{parseFloat(item.unitPrice||'0').toFixed(0)}</Text>
+                          )}
                         </View>
 
                         {/* Delete */}
@@ -648,6 +675,21 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
                     <View style={[s.radioOuter, !item.isRental && s.radioOuterActive]}>{!item.isRental && <View style={s.radioInner} />}</View>
                     <Text style={s.radioText}>No</Text>
                   </TouchableOpacity>
+                  {item.isRental && (
+                    <View style={s.rentalDaysField}>
+                      <Text style={s.rentalLabel}>Days</Text>
+                      <View style={s.rentalDaysInput}>
+                        <TextInput
+                          style={s.numericInput}
+                          value={item.rentalDays}
+                          onChangeText={v => updateItem(item.key, { rentalDays: v })}
+                          keyboardType="number-pad"
+                          placeholder="1"
+                          placeholderTextColor={Colors.textMuted}
+                        />
+                      </View>
+                    </View>
+                  )}
                 </View>
               </View>
             );
@@ -771,6 +813,12 @@ const w = StyleSheet.create({
   rentalToggleTextOn: { color: Colors.accentDark },
   rentalToggleTextOff:{ color: Colors.textMuted },
 
+  daysBox:     { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.accentLight, borderWidth: 1, borderColor: Colors.accent, borderRadius: 5, minHeight: 34, overflow: 'hidden' },
+  daysInput:   { flex: 1, minWidth: 0, textAlign: 'center', fontSize: 13, fontWeight: '700', color: Colors.accentDark, paddingVertical: 6, paddingHorizontal: 6, borderWidth: 0, backgroundColor: 'transparent', ...Platform.select({ web: { outlineStyle: 'none' } }) },
+  daysSuffix:  { fontSize: 11, fontWeight: '700', color: Colors.accentDark, paddingRight: 7, flexShrink: 0 },
+  daysNa:      { fontSize: 12, color: Colors.textMuted, textAlign: 'center' },
+  lineTotalHint: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+
   grandTotalRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, backgroundColor: Colors.primary, gap: 12 },
   grandTotalHint:  { flex: 1, fontSize: 11, color: 'rgba(255,255,255,0.5)' },
   grandTotalLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5 },
@@ -819,8 +867,10 @@ const s = StyleSheet.create({
   totalLabel:   { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
   totalValue:   { fontSize: 14, color: Colors.textPrimary, fontWeight: '800', marginTop: 2 },
 
-  rentalRow:        { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  rentalRow:        { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
   rentalLabel:      { fontSize: 12, color: Colors.textSecondary, fontWeight: '600' },
+  rentalDaysField:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8 },
+  rentalDaysInput:  { backgroundColor: Colors.accentLight, borderRadius: 6, borderWidth: 1, borderColor: Colors.accent, paddingHorizontal: 8, paddingVertical: 4, minWidth: 52 },
   radioBtn:         { flexDirection: 'row', alignItems: 'center', gap: 6 },
   radioOuter:       { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
   radioOuterActive: { borderColor: Colors.accent },
