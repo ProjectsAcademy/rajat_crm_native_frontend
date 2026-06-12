@@ -51,10 +51,27 @@ export const customersApi = {
 
 // ─── Tenders ──────────────────────────────────────────────────────────────────
 
+export interface TenderPayload {
+  tenderNo?: string;            // omit/blank → server auto-generates
+  title: string;
+  description?: string;
+  status?: string;
+  tenderDate: string;           // YYYY-MM-DD, required
+  closingDate: string;          // required
+  tenderAmount?: number | string | null;
+  biddingPercentage?: number | string;
+  workOrderNo?: string | null;
+  maintenancePeriod?: number | null;
+  tenderRemark?: string | null;
+}
+
 export const tendersApi = {
   list: (params?: { search?: string; status?: string; page?: number; limit?: number }) =>
     api.get<TenderListResponse>('/api/tenders', { params }),
   detail: (id: number) => api.get<TenderDetailResponse>(`/api/tenders/${id}`),
+  create: (data: TenderPayload) => api.post<TenderDetailResponse>('/api/tenders', data),
+  update: (id: number, data: Partial<TenderPayload>) => api.put<TenderDetailResponse>(`/api/tenders/${id}`, data),
+  remove: (id: number) => api.delete<{ message: string }>(`/api/tenders/${id}`),
 };
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
