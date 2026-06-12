@@ -109,10 +109,23 @@ export const employeesApi = {
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
+export interface ProjectPayload {
+  name: string;
+  description?: string;
+  status?: string;
+  budget?: number | string;
+  startDate?: string | null;   // YYYY-MM-DD
+  endDate?: string | null;
+  tenderId?: number | null;
+}
+
 export const projectsApi = {
   list: (params?: { search?: string; status?: string; page?: number; limit?: number }) =>
     api.get<ProjectListResponse>('/api/projects', { params }),
   detail: (id: number) => api.get<ProjectDetailResponse>(`/api/projects/${id}`),
+  create: (data: ProjectPayload) => api.post<ProjectDetailResponse>('/api/projects', data),
+  update: (id: number, data: Partial<ProjectPayload>) => api.put<ProjectDetailResponse>(`/api/projects/${id}`, data),
+  remove: (id: number) => api.delete<{ message: string }>(`/api/projects/${id}`),
 };
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
