@@ -163,8 +163,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     justifyContent: 'center', alignItems: 'center',
     marginBottom: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
+    elevation: 6,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 10px rgba(0,0,0,0.18)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10 },
+    }),
   },
   brand:    { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, letterSpacing: 0.3 },
   brandSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
@@ -172,8 +175,11 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface, borderRadius: 8,
     borderWidth: 1, borderColor: Colors.border, padding: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07, shadowRadius: 8, elevation: 3,
+    elevation: 3,
+    ...Platform.select({
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.07)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8 },
+    }),
   },
   cardTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 20 },
 
@@ -191,25 +197,47 @@ const styles = StyleSheet.create({
     height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 4,
     paddingHorizontal: 12, fontSize: 14, color: Colors.textPrimary,
     backgroundColor: Colors.surface,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
   },
   inputFocused: {
     borderColor: Colors.accent, borderWidth: 1.5,
-    shadowColor: Colors.accent, shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2, shadowRadius: 4, elevation: 2,
+    elevation: 2,
+    ...Platform.select({
+      web: { boxShadow: '0 0 4px rgba(255,153,0,0.2)' },
+      default: { shadowColor: Colors.accent, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 4 },
+    }),
   },
   passwordRow: {
     flexDirection: 'row', alignItems: 'center', height: 44,
     borderWidth: 1.5, borderColor: Colors.border, borderRadius: 4,
     backgroundColor: Colors.surface, paddingHorizontal: 12,
   },
-  passwordInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  passwordInput: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.textPrimary,
+    borderWidth: 0,
+    padding: 0,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
+  },
   eyeBtn: { padding: 4 },
 
   signInBtn: {
     height: 44, backgroundColor: Colors.accent, borderRadius: 4,
     justifyContent: 'center', alignItems: 'center', marginTop: 8,
-    shadowColor: Colors.accent, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
+    elevation: 4,
+    ...Platform.select({
+      web: { boxShadow: '0 2px 6px rgba(255,153,0,0.3)' },
+      default: { shadowColor: Colors.accent, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 6 },
+    }),
   },
   signInBtnDisabled: { opacity: 0.65 },
   signInText: { fontSize: 15, fontWeight: '700', color: '#111', letterSpacing: 0.2 },

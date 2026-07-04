@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1E3A5F"
+      "backgroundColor": "#232F3E"
     },
     "ios": {
       "supportsTablet": true,
@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1E3A5F"
+        "backgroundColor": "#232F3E"
       },
       "package": "com.rajatelectricals.crm"
     },
@@ -34,6 +34,13 @@
     "experiments": {
       "typedRoutes": true
     },
-    "scheme": "crm"
+    "scheme": "crm",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d1d74972-54df-4980-8239-46e8c0e31194"
+      }
+    }
   }
 }
+

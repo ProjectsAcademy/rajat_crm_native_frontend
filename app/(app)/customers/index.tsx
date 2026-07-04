@@ -1,13 +1,14 @@
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl,
+  StyleSheet, ActivityIndicator, RefreshControl, Platform, Alert,
 } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { customersApi, Customer } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import CustomerFormSheet from '../../../components/CustomerFormSheet';
 
 const ACTIVE_FILTERS = [
   { label: 'All', value: undefined },
@@ -22,6 +23,7 @@ export default function CustomersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [total, setTotal] = useState(0);
+  const [showForm, setShowForm] = useState(false);
 
   const fetchCustomers = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -41,6 +43,21 @@ export default function CustomersScreen() {
     }
   }, [search, activeFilter]);
 
+  // Keep a stable ref that always points to the latest fetchCustomers.
+  // useFocusEffect uses this ref so its callback is stable ([] deps)
+  // and never causes search-filter debounce to re-trigger.
+  const fetchRef = useRef(fetchCustomers);
+  useEffect(() => { fetchRef.current = fetchCustomers; }, [fetchCustomers]);
+
+  // Re-fetch silently whenever screen gains focus:
+  // covers back-navigation after delete, edit, or any detail screen action.
+  useFocusEffect(
+    useCallback(() => {
+      fetchRef.current(true); // silent = no loading spinner, just updates list
+    }, []) // stable — never re-runs due to search/filter changes
+  );
+
+  // Debounced re-fetch on search or filter change (existing behaviour unchanged)
   useEffect(() => {
     const t = setTimeout(() => fetchCustomers(), 350);
     return () => clearTimeout(t);
@@ -91,6 +108,9 @@ export default function CustomersScreen() {
             onChangeText={setSearch}
             autoCorrect={false}
             autoCapitalize="none"
+            autoComplete="new-password"
+            textContentType="none"
+            importantForAutofill="no"
           />
           {search ? (
             <TouchableOpacity onPress={() => setSearch('')}>
@@ -134,6 +154,26 @@ export default function CustomersScreen() {
           }
         />
       )}
+
+      {/* FAB — Add Customer */}
+      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+        <Ionicons name="add" size={26} color="#111" />
+      </TouchableOpacity>
+
+      {/* Create form sheet */}
+      <CustomerFormSheet
+        visible={showForm}
+        onClose={() => setShowForm(false)}
+        onSaved={(newId) => {
+          setShowForm(false);
+          if (newId) {
+            // Navigate directly to the new customer's detail page
+            router.push(`/(app)/customers/${newId}` as any);
+          } else {
+            fetchCustomers(true);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -146,7 +186,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background, borderRadius: 8, borderWidth: 1,
     borderColor: Colors.border, paddingHorizontal: 10, height: 40,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   filterRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 12, paddingVertical: 10,
@@ -161,7 +201,7 @@ const styles = StyleSheet.create({
   pillTextActive: { color: '#111' },
   totalText: { marginLeft: 'auto', fontSize: 12, color: Colors.textMuted },
 
-  listContent: { paddingVertical: 8, paddingHorizontal: 12 },
+  listContent: { paddingVertical: 8, paddingHorizontal: 12, paddingBottom: 100 },
   separator: { height: 8 },
   card: {
     backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1,
@@ -186,4 +226,15 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 10 },
   emptyText: { color: Colors.textSecondary, fontSize: 14 },
+
+  fab: {
+    position: 'absolute', bottom: 24, right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.accent,
+    justifyContent: 'center', alignItems: 'center',
+    ...Platform.select({
+      web: { boxShadow: '0 4px 12px rgba(255,153,0,0.45)' },
+      default: { elevation: 6, shadowColor: Colors.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.45, shadowRadius: 12 },
+    }),
+  },
 });

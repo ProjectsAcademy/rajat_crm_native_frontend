@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { useState, useCallback, useRef } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/auth';
@@ -42,6 +42,8 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
+  const isFirstRender = useRef(true);
+
   const fetchDashboard = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError('');
@@ -56,7 +58,16 @@ export default function DashboardScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchDashboard(); }, []);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        fetchDashboard();
+      } else {
+        fetchDashboard(true);
+      }
+    }, [fetchDashboard])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -263,11 +274,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: Colors.accent,
     padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
     elevation: 2,
+    ...Platform.select({
+      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
+    }),
   },
   summaryLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   summaryIcon: {
@@ -317,11 +328,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
     elevation: 1,
+    ...Platform.select({
+      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4 },
+    }),
   },
   kpiIconBox: {
     width: 38,

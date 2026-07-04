@@ -1,10 +1,12 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { projectsApi, Project } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import { useAuthStore } from '../../../store/auth';
+import ProjectFormSheet from '../../../components/ProjectFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   planning:    { bg: Colors.infoLight,    text: Colors.info },
@@ -42,13 +44,51 @@ export default function ProjectDetailScreen() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showEdit, setShowEdit] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  const user = useAuthStore(s => s.user);
+  const canDelete = !!(user?.isStaff || user?.isSuperuser);
+
+  const loadProject = useCallback(() => {
     projectsApi.detail(parseInt(id!))
       .then(({ data }) => setProject(data.project))
       .catch(() => setError('Could not load project.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { loadProject(); }, [loadProject]);
+
+  const handleDelete = () => {
+    const msg = `Delete project "${project?.projectNo}"? This cannot be undone.`;
+
+    const doDelete = async () => {
+      setDeleting(true);
+      try {
+        await projectsApi.remove(parseInt(id!));
+        router.back();
+      } catch (e: any) {
+        // Surface the backend guard message ("project has N order(s)...")
+        const errMsg = e?.response?.data?.error || 'Could not delete project.';
+        if (Platform.OS === 'web') {
+          window.alert(errMsg);
+        } else {
+          Alert.alert('Error', errMsg);
+        }
+        setDeleting(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) doDelete();
+      return;
+    }
+
+    Alert.alert('Delete Project', msg, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: doDelete },
+    ]);
+  };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !project) {
@@ -79,6 +119,22 @@ export default function ProjectDetailScreen() {
           </View>
           <Text style={styles.projectName}>{project.name}</Text>
           {project.description ? <Text style={styles.desc}>{project.description}</Text> : null}
+
+          {/* Action buttons */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+              <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+            {canDelete && (
+              <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
+                {deleting
+                  ? <ActivityIndicator size="small" color={Colors.error} />
+                  : <><Ionicons name="trash-outline" size={14} color={Colors.error} /><Text style={styles.deleteBtnText}>Delete</Text></>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Stats row */}
@@ -133,6 +189,13 @@ export default function ProjectDetailScreen() {
         </View>
 
       </ScrollView>
+
+      <ProjectFormSheet
+        visible={showEdit}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => loadProject()}
+        project={project}
+      />
     </SafeAreaView>
   );
 }
@@ -152,6 +215,12 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '700' },
   projectName: { fontSize: 18, fontWeight: '700', color: '#fff', lineHeight: 26 },
   desc: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 8, lineHeight: 20 },
+
+  headerActions: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  editBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,153,0,0.15)', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: Colors.accent },
+  editBtnText:   { fontSize: 13, fontWeight: '600', color: Colors.accent },
+  deleteBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(209,50,18,0.12)', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: Colors.error },
+  deleteBtnText: { fontSize: 13, fontWeight: '600', color: Colors.error },
 
   statsRow: {
     flexDirection: 'row', backgroundColor: Colors.surface,

@@ -1,16 +1,24 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import {
+  View, Text, ScrollView, StyleSheet, ActivityIndicator,
+  TouchableOpacity, Alert, Platform,
+} from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { employeesApi, Employee } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import EmployeeFormSheet from '../../../components/EmployeeFormSheet';
 
 const SKILL_COLORS: Record<string, { bg: string; text: string }> = {
   unskilled:   { bg: '#F3F4F6',           text: '#374151' },
-  semi_skilled: { bg: Colors.infoLight,   text: Colors.info },
+  semi_skilled:{ bg: Colors.infoLight,    text: Colors.info },
   skilled:     { bg: Colors.warningLight, text: '#7A5400' },
   supervisor:  { bg: Colors.successLight, text: Colors.success },
+  electrician: { bg: Colors.accentLight,  text: Colors.accent },
+  helper:      { bg: '#F3F4F6',           text: '#374151' },
+  driver:      { bg: Colors.infoLight,    text: Colors.info },
+  other:       { bg: '#F3F4F6',           text: '#374151' },
 };
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -23,24 +31,91 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function fmtAmount(val: string, suffix = '') {
-  const n = parseFloat(val || '0');
+function fmtAmount(val: string | number) {
+  const n = parseFloat(String(val || '0'));
   if (n === 0) return '—';
-  return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${suffix}`;
+  return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function EmployeeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [employee, setEmployee] = useState<Employee | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
+  const [showEdit, setShowEdit] = useState(false);
+  const [actioning, setActioning] = useState(false);
 
-  useEffect(() => {
-    employeesApi.detail(parseInt(id!))
-      .then(({ data }) => setEmployee(data.employee))
-      .catch(() => setError('Could not load employee.'))
-      .finally(() => setLoading(false));
+  const loadEmployee = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await employeesApi.detail(parseInt(id!));
+      setEmployee(data.employee);
+    } catch {
+      setError('Could not load employee.');
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => { loadEmployee(); }, [loadEmployee]);
+
+  // ── Deactivate ──
+  const handleDeactivate = () => {
+    const doIt = async () => {
+      setActioning(true);
+      try {
+        await employeesApi.deactivate(parseInt(id!));
+        await loadEmployee();
+      } catch (e: any) {
+        Alert.alert('Error', e?.response?.data?.error || 'Could not deactivate employee.');
+      } finally { setActioning(false); }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Deactivate this employee? They will be hidden from active lists.')) doIt();
+      return;
+    }
+    Alert.alert(
+      'Deactivate Employee',
+      'This will mark the employee as inactive. Their HR records are preserved.',
+      [{ text: 'Cancel', style: 'cancel' }, { text: 'Deactivate', style: 'destructive', onPress: doIt }],
+    );
+  };
+
+  // ── Reactivate ──
+  const handleReactivate = async () => {
+    setActioning(true);
+    try {
+      await employeesApi.reactivate(parseInt(id!));
+      await loadEmployee();
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.error || 'Could not reactivate employee.');
+    } finally { setActioning(false); }
+  };
+
+  // ── Permanent delete ──
+  const handleDelete = () => {
+    const doIt = async () => {
+      setActioning(true);
+      try {
+        await employeesApi.permanentDelete(parseInt(id!));
+        router.back();
+      } catch (e: any) {
+        const msg = e?.response?.data?.error || 'Could not delete employee.';
+        Alert.alert('Cannot Delete', msg);
+      } finally { setActioning(false); }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Permanently delete this employee? This cannot be undone.')) doIt();
+      return;
+    }
+    Alert.alert(
+      'Delete Employee',
+      'Permanently delete this employee? This cannot be undone.\n\nIf they have salary or HR records, deactivate instead.',
+      [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: doIt }],
+    );
+  };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !employee) {
@@ -61,7 +136,7 @@ export default function EmployeeDetailScreen() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
+        {/* Header card */}
         <View style={styles.headerCard}>
           <View style={styles.bigAvatar}>
             <Text style={styles.bigAvatarText}>{employee.name.charAt(0).toUpperCase()}</Text>
@@ -80,6 +155,50 @@ export default function EmployeeDetailScreen() {
               </Text>
             </View>
           </View>
+
+          {/* Action buttons */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)} activeOpacity={0.8}>
+              <Ionicons name="create-outline" size={15} color="#111" />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+            {employee.isActive ? (
+              <TouchableOpacity
+                style={[styles.deactivateBtn, actioning && { opacity: 0.5 }]}
+                onPress={handleDeactivate}
+                disabled={actioning}
+                activeOpacity={0.8}
+              >
+                {actioning
+                  ? <ActivityIndicator size="small" color={Colors.error} />
+                  : <Ionicons name="person-remove-outline" size={15} color={Colors.error} />}
+                <Text style={styles.deactivateBtnText}>Deactivate</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.reactivateBtn, actioning && { opacity: 0.5 }]}
+                onPress={handleReactivate}
+                disabled={actioning}
+                activeOpacity={0.8}
+              >
+                {actioning
+                  ? <ActivityIndicator size="small" color={Colors.success} />
+                  : <Ionicons name="person-add-outline" size={15} color={Colors.success} />}
+                <Text style={styles.reactivateBtnText}>Reactivate</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Permanent delete */}
+          <TouchableOpacity
+            style={[styles.deleteBtn, actioning && { opacity: 0.5 }]}
+            onPress={handleDelete}
+            disabled={actioning}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trash-outline" size={14} color={Colors.error} />
+            <Text style={styles.deleteBtnText}>Delete Permanently</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Compensation stats */}
@@ -101,20 +220,28 @@ export default function EmployeeDetailScreen() {
           </View>
         </View>
 
-        {/* Personal */}
+        {/* Personal info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
           <View style={styles.card}>
-            <InfoRow label="Phone" value={employee.phone} />
-            <InfoRow label="Email" value={employee.email} />
-            <InfoRow label="Address" value={employee.address} />
+            <InfoRow label="Phone"     value={employee.phone} />
+            <InfoRow label="Email"     value={employee.email} />
+            <InfoRow label="Address"   value={employee.address} />
             <InfoRow label="Aadhar No" value={employee.aadharNo} />
-            <InfoRow label="PAN" value={employee.pan} />
-            <InfoRow label="Added On" value={new Date(employee.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />
+            <InfoRow label="PAN"       value={employee.pan} />
+            <InfoRow label="Added On"  value={new Date(employee.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />
           </View>
         </View>
 
       </ScrollView>
+
+      {/* Edit sheet */}
+      <EmployeeFormSheet
+        visible={showEdit}
+        employee={employee}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => { setShowEdit(false); loadEmployee(); }}
+      />
     </SafeAreaView>
   );
 }
@@ -142,6 +269,33 @@ const styles = StyleSheet.create({
   badgeRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.accent, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8,
+  },
+  editBtnText: { fontSize: 13, fontWeight: '700', color: '#111' },
+  deactivateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.errorLight, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.error + '40',
+  },
+  deactivateBtnText: { fontSize: 13, fontWeight: '700', color: Colors.error },
+  reactivateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.successLight, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.success + '40',
+  },
+  reactivateBtnText: { fontSize: 13, fontWeight: '700', color: Colors.success },
+
+  deleteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 10, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.error + '60',
+    backgroundColor: 'rgba(220,38,38,0.08)',
+  },
+  deleteBtnText: { fontSize: 12, fontWeight: '600', color: Colors.error },
 
   statsRow: {
     flexDirection: 'row', backgroundColor: Colors.surface,

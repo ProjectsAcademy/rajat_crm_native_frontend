@@ -43,14 +43,35 @@ export const customersApi = {
   list: (params?: { search?: string; active?: boolean; page?: number; limit?: number }) =>
     api.get<CustomerListResponse>('/api/customers', { params }),
   detail: (id: number) => api.get<CustomerDetailResponse>(`/api/customers/${id}`),
+  create: (data: CustomerPayload) => api.post<CustomerDetailResponse>('/api/customers', data),
+  update: (id: number, data: Partial<CustomerPayload>) =>
+    api.put<CustomerDetailResponse>(`/api/customers/${id}`, data),
+  deactivate: (id: number) => api.delete(`/api/customers/${id}`),
 };
 
 // ─── Tenders ──────────────────────────────────────────────────────────────────
+
+export interface TenderPayload {
+  tenderNo?: string;            // omit/blank → server auto-generates
+  title: string;
+  description?: string;
+  status?: string;
+  tenderDate: string;           // YYYY-MM-DD, required
+  closingDate: string;          // required
+  tenderAmount?: number | string | null;
+  biddingPercentage?: number | string;
+  workOrderNo?: string | null;
+  maintenancePeriod?: number | null;
+  tenderRemark?: string | null;
+}
 
 export const tendersApi = {
   list: (params?: { search?: string; status?: string; page?: number; limit?: number }) =>
     api.get<TenderListResponse>('/api/tenders', { params }),
   detail: (id: number) => api.get<TenderDetailResponse>(`/api/tenders/${id}`),
+  create: (data: TenderPayload) => api.post<TenderDetailResponse>('/api/tenders', data),
+  update: (id: number, data: Partial<TenderPayload>) => api.put<TenderDetailResponse>(`/api/tenders/${id}`, data),
+  remove: (id: number) => api.delete<{ message: string }>(`/api/tenders/${id}`),
 };
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
@@ -59,7 +80,14 @@ export const inventoryApi = {
   list: (params?: { search?: string; active?: boolean; page?: number; limit?: number }) =>
     api.get<InventoryListResponse>('/api/inventory', { params }),
   detail: (id: number) => api.get<InventoryDetailResponse>(`/api/inventory/${id}`),
+  create: (data: InventoryPayload) => api.post<{ item: InventoryDetail }>('/api/inventory', data),
+  update: (id: number, data: Partial<InventoryPayload>) =>
+    api.put<{ item: InventoryDetail }>(`/api/inventory/${id}`, data),
+  deactivate: (id: number) => api.delete(`/api/inventory/${id}`),
+  permanentDelete: (id: number) => api.delete(`/api/inventory/${id}/permanent`),
+  categories: () => api.get<{ categories: string[] }>('/api/inventory/categories'),
 };
+
 
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 
@@ -67,30 +95,91 @@ export const vendorsApi = {
   list: (params?: { search?: string; active?: boolean; page?: number; limit?: number }) =>
     api.get<VendorListResponse>('/api/vendors', { params }),
   detail: (id: number) => api.get<VendorDetailResponse>(`/api/vendors/${id}`),
+  create: (data: VendorPayload) => api.post<VendorDetailResponse>('/api/vendors', data),
+  update: (id: number, data: Partial<VendorPayload>) =>
+    api.put<VendorDetailResponse>(`/api/vendors/${id}`, data),
+  delete: (id: number) => api.delete(`/api/vendors/${id}`),
 };
 
 // ─── Employees ────────────────────────────────────────────────────────────────
+
+export interface EmployeePayload {
+  employeeCode?: string;
+  name: string;
+  phone?: string; email?: string; address?: string;
+  aadharNo?: string; pan?: string;
+  skillType?: string;
+  dailyWage?: number; ctc?: number; basicSalary?: number;
+  isActive?: boolean;
+}
 
 export const employeesApi = {
   list: (params?: { search?: string; skillType?: string; active?: boolean; page?: number; limit?: number }) =>
     api.get<EmployeeListResponse>('/api/employees', { params }),
   detail: (id: number) => api.get<EmployeeDetailResponse>(`/api/employees/${id}`),
+  create: (data: EmployeePayload) => api.post('/api/employees', data),
+  update: (id: number, data: Partial<EmployeePayload>) => api.put(`/api/employees/${id}`, data),
+  deactivate: (id: number) => api.put(`/api/employees/${id}`, { isActive: false }),
+  reactivate: (id: number) => api.put(`/api/employees/${id}`, { isActive: true }),
+  permanentDelete: (id: number) => api.delete(`/api/employees/${id}`),
 };
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
+
+export interface ProjectPayload {
+  name: string;
+  description?: string;
+  status?: string;
+  budget?: number | string;
+  startDate?: string | null;   // YYYY-MM-DD
+  endDate?: string | null;
+  tenderId?: number | null;
+}
 
 export const projectsApi = {
   list: (params?: { search?: string; status?: string; page?: number; limit?: number }) =>
     api.get<ProjectListResponse>('/api/projects', { params }),
   detail: (id: number) => api.get<ProjectDetailResponse>(`/api/projects/${id}`),
+  create: (data: ProjectPayload) => api.post<ProjectDetailResponse>('/api/projects', data),
+  update: (id: number, data: Partial<ProjectPayload>) => api.put<ProjectDetailResponse>(`/api/projects/${id}`, data),
+  remove: (id: number) => api.delete<{ message: string }>(`/api/projects/${id}`),
 };
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
+export interface OrderItemInput {
+  inventoryId?: number | null;
+  description?: string;
+  quantity: string;
+  unitPrice: string;
+  isRental?: boolean;
+  rentalDays?: number;
+}
+export interface OrderCreateInput {
+  customerId?: number; projectId?: number;
+  orderDate: string; deliveryDate?: string;
+  status?: string; notes?: string;
+  items?: OrderItemInput[];
+}
+export interface OrderUpdateInput {
+  customerId?: number | null; projectId?: number | null;
+  orderDate?: string; deliveryDate?: string | null;
+  status?: string; notes?: string;
+  items?: OrderItemInput[];
+}
+export interface OrderPaymentInput {
+  amount: string; paymentMode: string; paymentDate: string; referenceNo?: string;
+}
+
 export const ordersApi = {
   list: (params?: { search?: string; status?: string; paymentStatus?: string; limit?: number }) =>
     api.get<OrderListResponse>('/api/orders', { params }),
-  detail: (id: number) => api.get<OrderDetailResponse>(`/api/orders/${id}`),
+  detail:     (id: number) => api.get<OrderDetailResponse>(`/api/orders/${id}`),
+  create:     (data: OrderCreateInput) => api.post<{ order: OrderSummary }>('/api/orders', data),
+  update:     (id: number, data: OrderUpdateInput) => api.put<{ order: OrderSummary }>(`/api/orders/${id}`, data),
+  remove:     (id: number) => api.delete<{ success: boolean }>(`/api/orders/${id}`),
+  addPayment:    (id: number, data: OrderPaymentInput) => api.post<{ payment: OrderPayment }>(`/api/orders/${id}/payments`, data),
+  updatePayment: (id: number, paymentId: number, data: OrderPaymentInput) => api.put<{ success: boolean }>(`/api/orders/${id}/payments/${paymentId}`, data),
 };
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────
@@ -104,9 +193,12 @@ export const invoicesApi = {
 // ─── Purchases ────────────────────────────────────────────────────────────────
 
 export const purchasesApi = {
-  list: (params?: { search?: string; status?: string; paymentStatus?: string; limit?: number }) =>
+  list:   (params?: { search?: string; status?: string; paymentStatus?: string; limit?: number }) =>
     api.get<PurchaseListResponse>('/api/purchases', { params }),
   detail: (id: number) => api.get<PurchaseDetailResponse>(`/api/purchases/${id}`),
+  create: (data: PurchaseCreateInput) => api.post<PurchaseDetailResponse>('/api/purchases', data),
+  update: (id: number, data: PurchaseUpdateInput) => api.put<PurchaseDetailResponse>(`/api/purchases/${id}`, data),
+  remove: (id: number) => api.delete(`/api/purchases/${id}`),
 };
 
 // ─── Estimates ────────────────────────────────────────────────────────────────
@@ -115,6 +207,17 @@ export const estimatesApi = {
   list: (params?: { search?: string; status?: string; customerId?: number; projectId?: number; page?: number; limit?: number }) =>
     api.get<EstimateListResponse>('/api/estimates', { params }),
   detail: (id: number) => api.get<EstimateDetailResponse>(`/api/estimates/${id}`),
+};
+
+// ─── Stock ────────────────────────────────────────────────────────────────────
+
+export const stockApi = {
+  list: (params?: { inventoryId?: number; transactionType?: string; referenceId?: number; referenceType?: string; search?: string; from?: string; to?: string; page?: number; limit?: number }) =>
+    api.get<StockListResponse>('/api/stock', { params }),
+  create: (data: StockPayload) => api.post<{ movement: StockMovement; newCurrentStock: number }>('/api/stock', data),
+  update: (id: number, data: Partial<Omit<StockPayload, 'inventoryId'>>) =>
+    api.put<{ movement: StockMovement; newCurrentStock: number }>(`/api/stock/${id}`, data),
+  remove: (id: number) => api.delete<{ message: string; newCurrentStock: number }>(`/api/stock/${id}`),
 };
 
 // ─── GST ──────────────────────────────────────────────────────────────────────
@@ -153,7 +256,34 @@ export const hrApi = {
   },
 };
 
+// ─── Vehicles ─────────────────────────────────────────────────────────────────
+
+export const vehiclesApi = {
+  list: (params?: { search?: string; vehicleType?: string; active?: boolean; limit?: number }) =>
+    api.get<VehicleListResponse>('/api/vehicles', { params }),
+  detail: (id: number) => api.get<VehicleDetailResponse>(`/api/vehicles/${id}`),
+};
+
+// ─── Maintenance ──────────────────────────────────────────────────────────────
+
+export const maintenanceApi = {
+  list: (params?: { status?: string; projectId?: number; limit?: number }) =>
+    api.get<MaintenanceListResponse>('/api/maintenance', { params }),
+  fdAlerts: (params?: { alertType?: string; isSent?: boolean; limit?: number }) =>
+    api.get<FdAlertListResponse>('/api/maintenance/fd-alerts', { params }),
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface MediaFile {
+  id: number;
+  fileName: string;
+  fileUrl: string;
+  fileSize: string | null;
+  fileType: string;
+  uploadedAt: string;
+  isPrimary?: boolean;
+}
 
 export interface AuthUser {
   id: number; username: string; email: string;
@@ -171,6 +301,8 @@ export interface DashboardResponse {
     orders: KpiItem; invoices: KpiItem; purchases: KpiItem;
     attendance: KpiItem; salaryPayments: KpiItem; incentives: KpiItem;
     estimates: KpiItem; gstRecords: KpiItem;
+    stockMovements: KpiItem; orderPayments: KpiItem;
+    vehicles: KpiItem; maintenancePeriods: KpiItem;
   };
   migratedPhase: number;
 }
@@ -182,6 +314,17 @@ export interface Customer {
 }
 export interface CustomerListResponse { customers: Customer[]; total: number; page: number; limit: number; }
 export interface CustomerDetailResponse { customer: Customer; }
+export interface CustomerPayload {
+  customerCode?: string;
+  customerName: string;
+  businessName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  gstin?: string;
+  isActive?: boolean;
+}
+
 
 export interface TenderSummary {
   id: number; tenderNo: string; title: string; status: string;
@@ -193,6 +336,7 @@ export interface Tender extends TenderSummary {
   description: string; maintenancePeriod: number | null; tenderRemark: string | null;
   updatedAt: string;
   projects: { id: number; projectNo: string; name: string; status: string; budget: string }[];
+  mediaFiles: MediaFile[];
 }
 export interface TenderListResponse { tenders: TenderSummary[]; total: number; page: number; limit: number; }
 export interface TenderDetailResponse { tender: Tender; }
@@ -219,32 +363,81 @@ export interface Vendor extends VendorSummary {
 }
 export interface VendorListResponse { vendors: VendorSummary[]; total: number; page: number; limit: number; }
 export interface VendorDetailResponse { vendor: Vendor; }
+export interface VendorPayload {
+  vendorCode?: string;
+  name: string;
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  gstin?: string;
+  pan?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  isActive?: boolean;
+}
 
 export interface EmployeeSummary {
   id: number; employeeCode: string; name: string; phone: string; email: string;
-  skillType: string; dailyWage: string; ctc: string; isActive: boolean; createdAt: string;
+  skillType: string; dailyWage: string; ctc: string; basicSalary: string;
+  isActive: boolean; createdAt: string;
 }
 export interface Employee extends EmployeeSummary {
-  address: string; aadharNo: string; pan: string; basicSalary: string; updatedAt: string;
+  address: string; aadharNo: string; pan: string; updatedAt: string;
 }
 export interface EmployeeListResponse { employees: EmployeeSummary[]; total: number; page: number; limit: number; }
 export interface EmployeeDetailResponse { employee: Employee; }
+
 
 export interface InventoryItem {
   id: number; itemCode: string; name: string; category: string;
   unit: string; unitPrice: string; reorderLevel: string;
   isActive: boolean; currentStock: number;
+  primaryImage: { id: number; fileType: string } | null;
 }
 export interface StockMovement {
   id: number; quantity: string; transactionType: string;
-  reference: string; notes: string; location: string; createdAt: string;
+  reference: string; notes: string; location: string; batchNo: string;
+  referenceType: string | null; referenceId: number | null;
+  createdAt: string;
+  inventory?: { id: number; itemCode: string; name: string; unit: string };
 }
+export interface StockSummary { in: number; out: number; adjustment: number; }
+export interface StockListResponse { movements: StockMovement[]; total: number; page: number; limit: number; summary: StockSummary; }
 export interface InventoryDetail extends InventoryItem {
   description: string; updatedAt: string;
   recentStocks: StockMovement[];
+  mediaFiles: MediaFile[];
 }
 export interface InventoryListResponse { inventory: InventoryItem[]; total: number; page: number; limit: number; }
 export interface InventoryDetailResponse { item: InventoryDetail; }
+export interface InventoryPayload {
+  itemCode?: string;
+  name: string;
+  description?: string;
+  category?: string;
+  unit?: string;
+  unitPrice: number | string;
+  reorderLevel?: number | string;
+  isActive?: boolean;
+  // Create-only: seeds an initial stock movement
+  initialStock?: number | string;
+  initialLocation?: string;
+  initialReference?: string;
+}
+export interface StockPayload {
+  inventoryId: number;
+  quantity: number | string;
+  transactionType: 'in' | 'out' | 'adjustment';
+  location?: string;
+  batchNo?: string;
+  reference?: string;
+  notes?: string;
+  referenceType?: string;
+  referenceId?: number;
+}
+
 
 export interface OrderSummary {
   id: number; orderNo: string; status: string; paymentStatus: string;
@@ -256,7 +449,7 @@ export interface OrderSummary {
 }
 export interface OrderItem {
   id: number; description: string | null; quantity: string; unitPrice: string;
-  totalPrice: string; isRental: boolean;
+  totalPrice: string; isRental: boolean; rentalDays: number;
   inventory: { id: number; itemCode: string; name: string; unit: string } | null;
 }
 export interface OrderPayment {
@@ -266,6 +459,7 @@ export interface OrderDetail extends OrderSummary {
   notes: string | null; createdAt: string;
   items: OrderItem[];
   payments: OrderPayment[];
+  mediaFiles: MediaFile[];
 }
 export interface OrderListResponse { orders: OrderSummary[]; total: number; }
 export interface OrderDetailResponse { order: OrderDetail; }
@@ -285,6 +479,7 @@ export interface InvoiceItem {
 export interface InvoiceDetail extends InvoiceSummary {
   notes: string | null; createdAt: string;
   items: InvoiceItem[];
+  mediaFiles: MediaFile[];
 }
 export interface InvoiceListResponse { invoices: InvoiceSummary[]; total: number; }
 export interface InvoiceDetailResponse { invoice: InvoiceDetail; }
@@ -292,11 +487,13 @@ export interface InvoiceDetailResponse { invoice: InvoiceDetail; }
 export interface PurchaseSummary {
   id: number; purchaseNo: string; status: string; paymentStatus: string;
   purchaseDate: string; deliveryDate: string | null;
-  totalAmount: string; paidAmount: string; taxAmount: string | null; isGst: boolean;
+  totalAmount: string; paidAmount: string; taxAmount: string | null; subtotal: string; isGst: boolean;
   vendor: { id: number; vendorCode: string; name: string } | null;
 }
 export interface PurchaseItem {
-  id: number; quantity: string; unitPrice: string; taxRate: string; total: string;
+  id: number; description: string; unit: string;
+  quantity: string; unitPrice: string; taxRate: string; total: string;
+  stockedQty: string;
   inventory: { id: number; itemCode: string; name: string; unit: string } | null;
 }
 export interface PurchaseDetail extends PurchaseSummary {
@@ -306,6 +503,27 @@ export interface PurchaseDetail extends PurchaseSummary {
 }
 export interface PurchaseListResponse { purchases: PurchaseSummary[]; total: number; }
 export interface PurchaseDetailResponse { purchase: PurchaseDetail; }
+
+export interface PurchaseItemInput {
+  id?: number;          // present for existing items; absent for new ones
+  inventoryId?: number;
+  description?: string;
+  unit?: string;
+  quantity: string;
+  unitPrice: string;
+  taxRate: string;
+}
+export interface PurchaseCreateInput {
+  vendorId?: number;
+  purchaseDate: string;
+  deliveryDate?: string;
+  isGst: boolean;
+  status: string;
+  notes: string;
+  paidAmount: string;
+  items: PurchaseItemInput[];
+}
+export type PurchaseUpdateInput = PurchaseCreateInput;
 
 // ─── HR Types ─────────────────────────────────────────────────────────────────
 
@@ -392,3 +610,46 @@ export interface GstSummary {
 }
 export interface GstListResponse { records: GstRecord[]; total: number; page: number; limit: number; summary: GstSummary; }
 export interface GstDetailResponse { record: GstRecord; }
+
+// ─── Vehicle Types ────────────────────────────────────────────────────────────
+
+export interface VehicleSummary {
+  id: number; vehicleNo: string; vehicleType: string; make: string; vehicleModel: string;
+  year: number | null; driverName: string; driverPhone: string; isActive: boolean;
+  insuranceExpiry: string | null; permitExpiry: string | null; fitnessExpiry: string | null;
+  createdAt: string;
+  _count: { usages: number };
+}
+export interface VehicleUsageEntry {
+  id: number; date: string; startKm: number | null; endKm: number | null;
+  distanceKm: string | null; fuelCost: string; driverName: string; purpose: string; notes: string;
+  createdAt: string;
+  project: { id: number; projectNo: string; name: string } | null;
+}
+export interface VehicleDetail extends VehicleSummary {
+  registrationDate: string | null; notes: string; updatedAt: string;
+  usages: VehicleUsageEntry[];
+}
+export interface VehicleListResponse { vehicles: VehicleSummary[]; total: number; }
+export interface VehicleDetailResponse { vehicle: VehicleDetail; }
+
+// ─── Maintenance Types ────────────────────────────────────────────────────────
+
+export interface FdAlert {
+  id: number; alertDate: string; alertType: string; isSent: boolean;
+  sentAt: string | null; notes: string; createdAt: string;
+}
+export interface MaintenancePeriod {
+  id: number; startDate: string; endDate: string; durationMonths: number;
+  status: string; createdAt: string;
+  project: { id: number; projectNo: string; name: string };
+  fdAlerts: FdAlert[];
+}
+export interface FdAlertWithPeriod extends FdAlert {
+  maintenancePeriod: {
+    id: number; startDate: string; endDate: string; status: string;
+    project: { id: number; projectNo: string; name: string };
+  };
+}
+export interface MaintenanceListResponse { periods: MaintenancePeriod[]; total: number; }
+export interface FdAlertListResponse { alerts: FdAlertWithPeriod[]; total: number; }

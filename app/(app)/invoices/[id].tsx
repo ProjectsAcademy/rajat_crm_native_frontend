@@ -1,10 +1,11 @@
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { invoicesApi, InvoiceDetail } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import MediaSection from '../../../components/MediaSection';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,       text: Colors.textMuted },
@@ -23,12 +24,14 @@ export default function InvoiceDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
 
-  useEffect(() => {
+  const loadInvoice = useCallback(() => {
     invoicesApi.detail(parseInt(id!))
       .then(({ data }) => setInvoice(data.invoice))
       .catch(() => setError('Could not load invoice.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { loadInvoice(); }, [loadInvoice]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !invoice) return (
@@ -128,6 +131,16 @@ export default function InvoiceDetailScreen() {
             <View style={styles.card}><Text style={styles.notes}>{invoice.notes}</Text></View>
           </View>
         ) : null}
+
+        {/* Attachments */}
+        <View style={styles.section}>
+          <MediaSection
+            entity="invoice"
+            entityId={invoice.id}
+            files={invoice.mediaFiles ?? []}
+            onRefresh={loadInvoice}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

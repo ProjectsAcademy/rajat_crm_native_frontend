@@ -1,10 +1,13 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { inventoryApi, InventoryDetail, StockMovement } from '../../../services/api';
+import { inventoryApi, stockApi, InventoryDetail, StockMovement } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import MediaSection from '../../../components/MediaSection';
+import InventoryFormSheet from '../../../components/InventoryFormSheet';
+import StockMovementSheet from '../../../components/StockMovementSheet';
 
 const TX_COLORS: Record<string, { bg: string; text: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
   in:         { bg: Colors.successLight, text: Colors.success, icon: 'arrow-down-circle-outline' },
@@ -23,7 +26,7 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function StockRow({ s, unit }: { s: StockMovement; unit: string }) {
+function StockRow({ s, unit, onDelete }: { s: StockMovement; unit: string; onDelete: () => void }) {
   const tc = TX_COLORS[s.transactionType] ?? TX_COLORS.adjustment;
   return (
     <View style={styles.txRow}>
@@ -38,22 +41,114 @@ function StockRow({ s, unit }: { s: StockMovement; unit: string }) {
         {s.reference ? <Text style={styles.txRef} numberOfLines={1}>{s.reference}</Text> : null}
         <Text style={styles.txDate}>{fmtDate(s.createdAt)}</Text>
       </View>
+      <TouchableOpacity
+        onPress={onDelete}
+        style={styles.txDeleteBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="trash-outline" size={14} color={Colors.textMuted} />
+      </TouchableOpacity>
     </View>
   );
 }
 
 export default function InventoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [item, setItem] = useState<InventoryDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [item, setItem]           = useState<InventoryDetail | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+  const [showEdit, setShowEdit]   = useState(false);
+  const [showStock, setShowStock] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+  const [deleting, setDeleting]   = useState(false);
 
-  useEffect(() => {
+  const loadItem = useCallback(() => {
     inventoryApi.detail(parseInt(id!))
       .then(({ data }) => setItem(data.item))
       .catch(() => setError('Could not load item.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { loadItem(); }, [loadItem]);
+
+  // ── Deactivate (soft — sets isActive=false) ───────────────────────────────
+  const handleDeactivate = () => {
+    const doIt = async () => {
+      setDeactivating(true);
+      try {
+        await inventoryApi.deactivate(parseInt(id!));
+        loadItem();
+      } catch (e: any) {
+        const msg = e?.response?.data?.error ?? 'Could not deactivate item.';
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert('Cannot Deactivate', msg);
+      } finally { setDeactivating(false); }
+    };
+
+    const name = item?.name ?? 'this item';
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Deactivate "${name}"? It will be hidden from pickers but stock records remain.`)) doIt();
+      return;
+    }
+    Alert.alert('Deactivate Item', `Deactivate "${name}"? It will be hidden from order pickers but stock records remain.`,
+      [{ text: 'Cancel', style: 'cancel' }, { text: 'Deactivate', style: 'destructive', onPress: doIt }]);
+  };
+
+  const handleReactivate = async () => {
+    setDeactivating(true);
+    try {
+      await inventoryApi.update(parseInt(id!), { isActive: true });
+      loadItem();
+    } catch { Alert.alert('Error', 'Could not reactivate item.'); }
+    finally { setDeactivating(false); }
+  };
+
+  // ── Permanent delete ──────────────────────────────────────────────────
+  const handlePermanentDelete = () => {
+    const doIt = async () => {
+      setDeleting(true);
+      try {
+        await inventoryApi.permanentDelete(parseInt(id!));
+        router.back();
+      } catch (e: any) {
+        const msg = e?.response?.data?.error ?? 'Could not delete item.';
+        setDeleting(false);
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert('Cannot Delete', msg);
+      }
+    };
+    const name = item?.name ?? 'this item';
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Permanently delete "${name}"?\n\nThis cannot be undone. Item must have no stock movements or order references.`)) doIt();
+      return;
+    }
+    Alert.alert(
+      'Delete Item',
+      `Permanently delete "${name}"?\n\nThis cannot be undone. Item must have no stock movements or order references.`,
+      [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: doIt }],
+    );
+  };
+
+  // ── Delete a single stock movement ────────────────────────────────────────
+  const handleDeleteMovement = (movementId: number) => {
+    const doIt = async () => {
+      try {
+        const { data } = await stockApi.remove(movementId);
+        // Update item with new stock value (reload full detail)
+        loadItem();
+      } catch (e: any) {
+        const msg = e?.response?.data?.error ?? 'Could not delete movement.';
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert('Cannot Delete', msg);
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm('Delete this stock movement? Stock levels will be recalculated.')) doIt();
+      return;
+    }
+    Alert.alert('Delete Movement', 'Remove this stock movement? Stock levels will be recalculated.',
+      [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: doIt }]);
+  };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !item) {
@@ -91,6 +186,42 @@ export default function InventoryDetailScreen() {
           <Text style={styles.itemName}>{item.name}</Text>
           {item.category ? <Text style={styles.category}>{item.category}</Text> : null}
           {item.description ? <Text style={styles.desc}>{item.description}</Text> : null}
+
+          {/* Action buttons */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+              <Ionicons name="create-outline" size={15} color={Colors.accent} />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.stockBtn} onPress={() => setShowStock(true)}>
+              <Ionicons name="add-circle-outline" size={15} color={Colors.info} />
+              <Text style={styles.stockBtnText}>Add Stock</Text>
+            </TouchableOpacity>
+            {item.isActive ? (
+              <TouchableOpacity
+                style={[styles.deactivateBtn, deactivating && { opacity: 0.6 }]}
+                onPress={handleDeactivate} disabled={deactivating}
+              >
+                {deactivating ? <ActivityIndicator size="small" color={Colors.error} /> : <Ionicons name="ban-outline" size={15} color={Colors.error} />}
+                <Text style={styles.deactivateBtnText}>Deactivate</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.reactivateBtn, deactivating && { opacity: 0.6 }]}
+                onPress={handleReactivate} disabled={deactivating}
+              >
+                {deactivating ? <ActivityIndicator size="small" color={Colors.success} /> : <Ionicons name="checkmark-circle-outline" size={15} color={Colors.success} />}
+                <Text style={styles.reactivateBtnText}>Reactivate</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
+              onPress={handlePermanentDelete} disabled={deleting}
+            >
+              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
+              <Text style={styles.deleteBtnText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Stats row */}
@@ -126,13 +257,42 @@ export default function InventoryDetailScreen() {
             <Text style={styles.sectionTitle}>Recent Stock Movements</Text>
             <View style={styles.card}>
               {item.recentStocks.map((s) => (
-                <StockRow key={s.id} s={s} unit={item.unit} />
+                <StockRow key={s.id} s={s} unit={item.unit} onDelete={() => handleDeleteMovement(s.id)} />
               ))}
             </View>
           </View>
         )}
 
+        {/* Attachments */}
+        <View style={styles.section}>
+          <MediaSection
+            entity="inventory"
+            entityId={item.id}
+            files={item.mediaFiles ?? []}
+            onRefresh={loadItem}
+          />
+        </View>
+
       </ScrollView>
+
+      {/* Edit form */}
+      <InventoryFormSheet
+        visible={showEdit}
+        item={item}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => { setShowEdit(false); loadItem(); }}
+      />
+
+      {/* Add stock movement */}
+      <StockMovementSheet
+        visible={showStock}
+        inventoryId={item.id}
+        inventoryName={item.name}
+        currentStock={item.currentStock}
+        unit={item.unit}
+        onClose={() => setShowStock(false)}
+        onSaved={() => { setShowStock(false); loadItem(); }}
+      />
     </SafeAreaView>
   );
 }
@@ -191,4 +351,36 @@ const styles = StyleSheet.create({
   txQty: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
   txRef: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   txDate: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  txDeleteBtn: { padding: 4 },
+
+  headerActions: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,153,0,0.15)', paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,153,0,0.4)',
+  },
+  editBtnText: { fontSize: 12, fontWeight: '700', color: Colors.accent },
+  stockBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.infoLight, paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 6, borderWidth: 1, borderColor: Colors.info,
+  },
+  stockBtnText: { fontSize: 12, fontWeight: '700', color: Colors.info },
+  deactivateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(209,50,18,0.1)', paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 6, borderWidth: 1, borderColor: 'rgba(209,50,18,0.3)',
+  },
+  deactivateBtnText: { fontSize: 12, fontWeight: '700', color: Colors.error },
+  reactivateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(6,125,98,0.1)', paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 6, borderWidth: 1, borderColor: 'rgba(6,125,98,0.3)',
+  },
+  reactivateBtnText: { fontSize: 12, fontWeight: '700', color: Colors.success },
+  deleteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.error, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 6,
+  },
+  deleteBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 });

@@ -1,10 +1,11 @@
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ordersApi, OrderSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import OrderFormSheet from '../../../components/OrderFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: '#FFF8E1', text: '#F57F17' },
@@ -30,11 +31,12 @@ function fmtDate(d: string) {
 }
 
 export default function OrdersScreen() {
-  const [items, setItems]       = useState<OrderSummary[]>([]);
-  const [search, setSearch]     = useState('');
-  const [loading, setLoading]   = useState(true);
+  const [items, setItems]         = useState<OrderSummary[]>([]);
+  const [search, setSearch]       = useState('');
+  const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [total, setTotal]       = useState(0);
+  const [total, setTotal]         = useState(0);
+  const [showForm, setShowForm]   = useState(false);
 
   const fetchItems = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -47,6 +49,9 @@ export default function OrdersScreen() {
   }, [search]);
 
   useEffect(() => { const t = setTimeout(() => fetchItems(), 350); return () => clearTimeout(t); }, [fetchItems]);
+
+  // Silent refresh whenever this screen regains focus (e.g. after deleting an order in detail view)
+  useFocusEffect(useCallback(() => { fetchItems(true); }, [fetchItems]));
 
   const renderItem = ({ item }: { item: OrderSummary }) => {
     const sc = STATUS_COLORS[item.status] ?? STATUS_COLORS.pending;
@@ -79,11 +84,13 @@ export default function OrdersScreen() {
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
           <TextInput style={styles.searchInput} placeholder="Search orders, customers..." placeholderTextColor={Colors.textMuted}
-            value={search} onChangeText={setSearch} autoCorrect={false} autoCapitalize="none" />
+            value={search} onChangeText={setSearch} autoCorrect={false} autoCapitalize="none"
+            autoComplete="new-password" textContentType="none" importantForAutofill="no" />
           {search ? <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={16} color={Colors.textMuted} /></TouchableOpacity> : null}
         </View>
         <Text style={styles.totalText}>{total} orders</Text>
       </View>
+
       {loading ? <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View> : (
         <FlatList data={items} keyExtractor={i => String(i.id)} renderItem={renderItem}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchItems(true); }} tintColor={Colors.accent} />}
@@ -91,6 +98,23 @@ export default function OrdersScreen() {
           ListEmptyComponent={<View style={styles.center}><Ionicons name="receipt-outline" size={48} color={Colors.textMuted} /><Text style={styles.emptyText}>No orders found</Text></View>}
         />
       )}
+
+      {/* FAB */}
+      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+        <Ionicons name="add" size={26} color="#111" />
+      </TouchableOpacity>
+
+      <OrderFormSheet
+        visible={showForm}
+        onClose={() => setShowForm(false)}
+        onSaved={(newId) => {
+          if (newId) {
+            router.push(`/(app)/orders/${newId}` as any);
+          } else {
+            fetchItems(true);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -99,7 +123,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   searchRow: { padding: 12, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.background, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, height: 40 },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   totalText: { fontSize: 12, color: Colors.textMuted },
   list: { padding: 12 },
   card: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -116,4 +140,15 @@ const styles = StyleSheet.create({
   date: { fontSize: 11, color: Colors.textMuted, marginLeft: 'auto' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 10 },
   emptyText: { color: Colors.textSecondary, fontSize: 14 },
+  fab: {
+    position: 'absolute', bottom: 24, right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.accent,
+    justifyContent: 'center', alignItems: 'center',
+    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 8px rgba(0,0,0,0.25)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8 },
+    }),
+  },
 });
