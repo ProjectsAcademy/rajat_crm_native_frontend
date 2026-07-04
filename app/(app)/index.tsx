@@ -8,15 +8,17 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, userHasFeature } from '../../store/auth';
+import { useRecentsStore } from '../../store/recents';
 import { dashboardApi, DashboardResponse } from '../../services/api';
 import { Colors } from '../../constants/colors';
 
-const COLS = Platform.OS === 'web' ? 3 : 2;
+const isWeb = Platform.OS === 'web';
+const COLS = 2; // mobile grid columns; web uses a wrapping flex grid instead
 
 // One card per RBAC feature — the grid shows whatever the user has access to.
 // `key` is the feature key; `kpiKey` is the matching field in DashboardResponse.
@@ -97,52 +99,125 @@ export default function DashboardScreen() {
   const kpis = data?.kpis;
   const visibleKpis = KPI_CONFIG.filter((k) => userHasFeature(user, k.key));
 
+  // Split into "recently visited" (device-local history) and the rest
+  const recents = useRecentsStore((s) => s.recents);
+  const recentsLoaded = useRecentsStore((s) => s.loaded);
+  useEffect(() => {
+    if (!recentsLoaded) useRecentsStore.getState().load();
+  }, [recentsLoaded]);
+  const recentKpis = recents
+    .map((k) => visibleKpis.find((c) => c.key === k))
+    .filter((c): c is (typeof KPI_CONFIG)[number] => !!c);
+  const remainingKpis = visibleKpis.filter((c) => !recents.includes(c.key));
+
+  const renderCards = (cards: typeof KPI_CONFIG) => {
+    const card = ({ key, kpiKey, label, icon, color, bg, route }: (typeof KPI_CONFIG)[number]) => {
+      const item = kpis?.[kpiKey as keyof typeof kpis] as
+        | { total: number; label: string; phase: number }
+        | undefined;
+      const isMigrated = (data?.migratedPhase ?? 0) >= (item?.phase ?? 99);
+      if (isWeb) {
+        return (
+          <TouchableOpacity key={key} style={styles.statCard} activeOpacity={0.75} onPress={() => router.push(route as any)}>
+            <View style={[styles.statIconBox, { backgroundColor: bg }]}>
+              <Ionicons name={icon as any} size={18} color={color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statCount}>{isMigrated ? (item?.total ?? 0) : '—'}</Text>
+              <Text style={styles.statLabel}>{label}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color={Colors.border} />
+          </TouchableOpacity>
+        );
+      }
+      return (
+        <TouchableOpacity key={key} style={styles.kpiCard} activeOpacity={0.75} onPress={() => router.push(route as any)}>
+          <View style={[styles.kpiIconBox, { backgroundColor: bg }]}>
+            <Ionicons name={icon as any} size={20} color={color} />
+          </View>
+          <Text style={styles.kpiCount}>{isMigrated ? (item?.total ?? 0) : '—'}</Text>
+          <Text style={styles.kpiLabel}>{label}</Text>
+          {!isMigrated ? (
+            <View style={[styles.statusChip, { backgroundColor: '#FFF3CD' }]}>
+              <Text style={[styles.statusChipText, { color: '#7A5400' }]}>Phase {item?.phase}</Text>
+            </View>
+          ) : (
+            <View style={[styles.statusChip, { backgroundColor: Colors.successLight }]}>
+              <Text style={[styles.statusChipText, { color: Colors.success }]}>Active</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      );
+    };
+
+    if (isWeb) return <View style={styles.gridWeb}>{cards.map(card)}</View>;
+    // Mobile: explicit rows so flex:1 always gives 2 columns
+    return (
+      <View style={styles.grid}>
+        {Array.from({ length: Math.ceil(cards.length / COLS) }, (_, ri) => (
+          <View key={ri} style={styles.gridRow}>
+            {cards.slice(ri * COLS, ri * COLS + COLS).map(card)}
+            {/* pad the last row so a lone card doesn't stretch full width */}
+            {ri === Math.ceil(cards.length / COLS) - 1 && cards.length % COLS !== 0 &&
+              Array.from({ length: COLS - (cards.length % COLS) }, (_, i) => (
+                <View key={`pad-${i}`} style={{ flex: 1 }} />
+              ))}
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.safe}>
 
-      {/* Top Nav Bar */}
-      <View style={[styles.navbar, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.navLeft}>
-          <View style={styles.navLogo}>
-            <Ionicons name="flash" size={16} color={Colors.accent} />
+      {/* Top Nav Bar — native only; web has the global WebTopNav */}
+      {!isWeb && (
+        <View style={[styles.navbar, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.navLeft}>
+            <View style={styles.navLogo}>
+              <Ionicons name="flash" size={16} color={Colors.accent} />
+            </View>
+            <Text style={styles.navTitle}>Rajat Electricals</Text>
           </View>
-          <Text style={styles.navTitle}>Rajat Electricals</Text>
-        </View>
-        <View style={styles.navRight}>
-          {user?.isSuperuser && (
-            <TouchableOpacity
-              onPress={() => router.push('/(app)/admin' as any)}
-              style={styles.navLogout}
-            >
-              <Ionicons name="settings-outline" size={18} color="rgba(255,255,255,0.75)" />
-              <Text style={styles.navLogoutText}>Admin</Text>
+          <View style={styles.navRight}>
+            {user?.isSuperuser && (
+              <TouchableOpacity
+                onPress={() => router.push('/(app)/admin' as any)}
+                style={styles.navLogout}
+              >
+                <Ionicons name="settings-outline" size={18} color="rgba(255,255,255,0.75)" />
+                <Text style={styles.navLogoutText}>Admin</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleLogout} style={styles.navLogout}>
+              <Ionicons name="log-out-outline" size={18} color="rgba(255,255,255,0.75)" />
+              <Text style={styles.navLogoutText}>Sign out</Text>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={handleLogout} style={styles.navLogout}>
-            <Ionicons name="log-out-outline" size={18} color="rgba(255,255,255,0.75)" />
-            <Text style={styles.navLogoutText}>Sign out</Text>
-          </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, isWeb && styles.contentWeb]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />
         }
         showsVerticalScrollIndicator={false}
       >
         {/* Greeting row */}
-        <View style={styles.greetRow}>
+        <View style={[styles.greetRow, isWeb && styles.greetRowWeb]}>
           <View>
-            <Text style={styles.greetText}>{getGreeting()}, {displayName}</Text>
+            <Text style={[styles.greetText, isWeb && styles.greetTextWeb]}>{getGreeting()}, {displayName}</Text>
             <Text style={styles.greetSub}>Here's your business overview</Text>
           </View>
-          <View style={styles.phasePill}>
-            <Ionicons name="checkmark-circle" size={12} color={Colors.success} />
-            <Text style={styles.phasePillText}>Phase 1</Text>
-          </View>
+          {!isWeb && (
+            <View style={styles.phasePill}>
+              <Ionicons name="checkmark-circle" size={12} color={Colors.success} />
+              <Text style={styles.phasePillText}>Phase 1</Text>
+            </View>
+          )}
         </View>
 
         {loading ? (
@@ -161,58 +236,54 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <>
-            {/* Section header */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Business Modules</Text>
-              <Text style={styles.sectionSub}>Pull down to refresh</Text>
-            </View>
+            {/* Recently visited */}
+            {recentKpis.length > 0 && (
+              <>
+                <View style={[styles.sectionHeader, isWeb && styles.sectionHeaderWeb]}>
+                  <Text style={styles.sectionTitle}>Recently Visited</Text>
+                  {isWeb ? (
+                    <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchDashboard(true)} activeOpacity={0.7}>
+                      <Ionicons name="refresh-outline" size={13} color={Colors.textSecondary} />
+                      <Text style={styles.refreshText}>Refresh</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.sectionSub}>Pull down to refresh</Text>
+                  )}
+                </View>
+                {renderCards(recentKpis)}
+              </>
+            )}
 
-            {/* KPI grid — explicit rows so flex:1 always gives 2 columns */}
-            <View style={styles.grid}>
-              {Array.from({ length: Math.ceil(visibleKpis.length / COLS) }, (_, ri) => (
-                <View key={ri} style={styles.gridRow}>
-                  {visibleKpis.slice(ri * COLS, ri * COLS + COLS).map(({ key, kpiKey, label, icon, color, bg, route }) => {
-                    const item = kpis?.[kpiKey as keyof typeof kpis] as
-                      | { total: number; label: string; phase: number }
-                      | undefined;
-                    const isMigrated = (data?.migratedPhase ?? 0) >= (item?.phase ?? 99);
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={styles.kpiCard}
-                        activeOpacity={0.75}
-                        onPress={() => router.push(route as any)}
-                      >
-                        <View style={[styles.kpiIconBox, { backgroundColor: bg }]}>
-                          <Ionicons name={icon as any} size={20} color={color} />
-                        </View>
-                        <Text style={styles.kpiCount}>
-                          {isMigrated ? (item?.total ?? 0) : '—'}
-                        </Text>
-                        <Text style={styles.kpiLabel}>{label}</Text>
-                        {!isMigrated ? (
-                          <View style={[styles.statusChip, { backgroundColor: '#FFF3CD' }]}>
-                            <Text style={[styles.statusChipText, { color: '#7A5400' }]}>Phase {item?.phase}</Text>
-                          </View>
-                        ) : (
-                          <View style={[styles.statusChip, { backgroundColor: Colors.successLight }]}>
-                            <Text style={[styles.statusChipText, { color: Colors.success }]}>Active</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ))}
-              {visibleKpis.length === 0 && (
-                <View style={styles.centerBox}>
-                  <Ionicons name="lock-closed-outline" size={36} color={Colors.textMuted} />
-                  <Text style={styles.centerText}>
-                    No modules are assigned to your account yet. Ask your administrator for access.
+            {/* Remaining modules */}
+            {remainingKpis.length > 0 && (
+              <>
+                <View style={[styles.sectionHeader, isWeb && styles.sectionHeaderWeb]}>
+                  <Text style={styles.sectionTitle}>
+                    {recentKpis.length > 0 ? 'All Modules' : 'Business Modules'}
                   </Text>
+                  {recentKpis.length === 0 && (
+                    isWeb ? (
+                      <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchDashboard(true)} activeOpacity={0.7}>
+                        <Ionicons name="refresh-outline" size={13} color={Colors.textSecondary} />
+                        <Text style={styles.refreshText}>Refresh</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={styles.sectionSub}>Pull down to refresh</Text>
+                    )
+                  )}
                 </View>
-              )}
-            </View>
+                {renderCards(remainingKpis)}
+              </>
+            )}
+
+            {visibleKpis.length === 0 && (
+              <View style={styles.centerBox}>
+                <Ionicons name="lock-closed-outline" size={36} color={Colors.textMuted} />
+                <Text style={styles.centerText}>
+                  No modules are assigned to your account yet. Ask your administrator for access.
+                </Text>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -249,6 +320,8 @@ const styles = StyleSheet.create({
 
   scroll: { flex: 1, backgroundColor: Colors.background },
   content: { paddingBottom: 40 },
+  // Web: center the page in a fixed-width column like a desktop app
+  contentWeb: { alignSelf: 'center', width: '100%', maxWidth: 1240, paddingHorizontal: 32, paddingTop: 6 },
 
   greetRow: {
     flexDirection: 'row',
@@ -260,7 +333,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  greetRowWeb: { backgroundColor: 'transparent', borderBottomWidth: 0, paddingHorizontal: 0, paddingVertical: 20 },
   greetText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  greetTextWeb: { fontSize: 20 },
   greetSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   phasePill: {
     flexDirection: 'row',
@@ -336,6 +411,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.6 },
   sectionSub: { fontSize: 11, color: Colors.textMuted },
+  sectionHeaderWeb: { paddingHorizontal: 0, marginTop: 4 },
+  refreshBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 6, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  refreshText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
 
   grid: {
     paddingHorizontal: 12,
@@ -345,6 +428,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+
+  // Web: compact horizontal stat cards, wrapping to fill the row
+  gridWeb: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  statCard: {
+    flexGrow: 1, flexBasis: 210, maxWidth: 292,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 8, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 13,
+    ...Platform.select({ web: { boxShadow: '0 1px 2px rgba(0,0,0,0.04)' } }),
+  },
+  statIconBox: {
+    width: 38, height: 38, borderRadius: 8,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  statCount: { fontSize: 19, fontWeight: '800', color: Colors.textPrimary, lineHeight: 23 },
+  statLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500', marginTop: 1 },
   kpiCard: {
     flex: 1,
     backgroundColor: Colors.surface,

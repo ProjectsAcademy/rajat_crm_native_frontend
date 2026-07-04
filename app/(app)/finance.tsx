@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Platform } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dashboardApi } from '../../services/api';
 import { useAuthStore, userHasFeature } from '../../store/auth';
 import { Colors } from '../../constants/colors';
+import WebHubPage, { HubCard } from '../../components/WebHubPage';
 
 const CARDS = [
   { key: 'orders',    label: 'Orders',    icon: 'receipt-outline'       as const, route: '/(app)/orders',           color: '#1565C0', feature: 'orders' },
@@ -32,6 +33,31 @@ export default function FinanceScreen() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  if (Platform.OS === 'web') {
+    const webCards: HubCard[] = visibleCards.map((c) => {
+      const kpi = kpis[c.key];
+      return {
+        key: c.feature,
+        label: c.label,
+        sub: kpi?.active != null ? `${kpi.active} active` : undefined,
+        icon: c.icon,
+        color: c.color,
+        bg: c.color + '18',
+        route: c.route,
+        count: kpi?.total ?? null,
+      };
+    });
+    return (
+      <WebHubPage
+        title="Finance"
+        subtitle="Orders · Invoices · Purchases"
+        loading={loading}
+        cards={webCards}
+        emptyMessage="No finance modules assigned to your account."
+      />
+    );
+  }
 
   return (
     <View style={styles.safe}>

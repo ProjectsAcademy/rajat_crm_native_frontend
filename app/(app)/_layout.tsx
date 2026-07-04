@@ -1,23 +1,32 @@
 import { Tabs } from 'expo-router';
+import { Platform, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore, userHasFeature } from '../../store/auth';
 import { Colors } from '../../constants/colors';
+import WebTopNav from '../../components/WebTopNav';
+
+const isWeb = Platform.OS === 'web';
 
 export default function AppLayout() {
   const user = useAuthStore((s) => s.user);
   const canInventory = userHasFeature(user, 'inventory') || userHasFeature(user, 'stock');
   return (
+    <View style={{ flex: 1 }}>
+      {/* Desktop web gets a top nav bar; the bottom tab bar is native-only */}
+      {isWeb && <WebTopNav />}
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarStyle: {
-          backgroundColor: Colors.surface,
-          borderTopColor: Colors.border,
-          height: 80,
-          paddingBottom: 20,
-          paddingTop: 6,
-        },
+        tabBarStyle: isWeb
+          ? { display: 'none' }
+          : {
+              backgroundColor: Colors.surface,
+              borderTopColor: Colors.border,
+              height: 80,
+              paddingBottom: 20,
+              paddingTop: 6,
+            },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600', lineHeight: 16 },
         headerStyle: { backgroundColor: Colors.primary },
         headerTintColor: '#fff',
@@ -82,5 +91,6 @@ export default function AppLayout() {
       <Tabs.Screen name="maintenance" options={{ href: null }} />
       <Tabs.Screen name="admin"       options={{ href: null }} />
     </Tabs>
+    </View>
   );
 }

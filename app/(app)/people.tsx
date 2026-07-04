@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { dashboardApi, DashboardResponse } from '../../services/api';
 import { useAuthStore, userHasFeature } from '../../store/auth';
 import { Colors } from '../../constants/colors';
+import WebHubPage, { HubCard } from '../../components/WebHubPage';
 
 type CardDef = {
   title: string;
@@ -66,6 +67,28 @@ export default function PeopleScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  if (Platform.OS === 'web') {
+    const webCards: HubCard[] = visibleCards.map((c) => ({
+      key: c.feature,
+      label: c.title,
+      sub: c.sub,
+      icon: c.icon,
+      color: Colors.accent,
+      bg: Colors.accentLight,
+      route: c.route,
+      count: kpis ? c.count(kpis) : null,
+    }));
+    return (
+      <WebHubPage
+        title="People"
+        subtitle="Customers, Vendors & Employees"
+        loading={loading}
+        cards={webCards}
+        emptyMessage="No people modules assigned to your account."
+      />
+    );
+  }
 
   return (
     <View style={styles.safe}>

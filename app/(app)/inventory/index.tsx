@@ -10,6 +10,8 @@ import { inventoryApi, InventoryItem, api } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import InventoryFormSheet from '../../../components/InventoryFormSheet';
 
+const isWeb = Platform.OS === 'web';
+
 function stockStatus(current: number, reorder: string) {
   const ro = parseFloat(reorder || '0');
   if (current <= 0) return { label: 'Out of Stock', bg: Colors.errorLight,   text: Colors.error };
@@ -130,14 +132,34 @@ export default function InventoryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <TouchableOpacity style={styles.ledgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.8}>
-        <Ionicons name="git-branch-outline" size={14} color={Colors.info} />
-        <Text style={styles.ledgerBtnText}>Stock Ledger — all movements</Text>
-        <Ionicons name="chevron-forward" size={13} color={Colors.info} style={{ marginLeft: 'auto' } as any} />
-      </TouchableOpacity>
+    <View style={isWeb ? styles.webWrap : styles.flex1}>
+      {isWeb ? (
+        /* Desktop: page header row with actions instead of banner + FAB */
+        <View style={styles.webHeader}>
+          <View>
+            <Text style={styles.webTitle}>Inventory</Text>
+            <Text style={styles.webSubtitle}>Item catalog & stock levels</Text>
+          </View>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity style={styles.webLedgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.75}>
+            <Ionicons name="git-branch-outline" size={14} color={Colors.info} />
+            <Text style={styles.webLedgerText}>Stock Ledger</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.webAddBtn} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+            <Ionicons name="add" size={16} color="#111" />
+            <Text style={styles.webAddText}>Add Item</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity style={styles.ledgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.8}>
+          <Ionicons name="git-branch-outline" size={14} color={Colors.info} />
+          <Text style={styles.ledgerBtnText}>Stock Ledger — all movements</Text>
+          <Ionicons name="chevron-forward" size={13} color={Colors.info} style={{ marginLeft: 'auto' } as any} />
+        </TouchableOpacity>
+      )}
 
-      <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
+      <View style={[styles.searchRow, isWeb && styles.searchRowWeb]}>
+        <View style={[styles.searchBox, isWeb && styles.searchBoxWeb]}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
@@ -166,7 +188,7 @@ export default function InventoryScreen() {
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, isWeb && styles.listContentWeb]}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           ListEmptyComponent={
             <View style={styles.center}>
@@ -177,10 +199,12 @@ export default function InventoryScreen() {
         />
       )}
 
-      {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {/* FAB — mobile only; web has the header Add Item button */}
+      {!isWeb && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       <InventoryFormSheet
         visible={showForm}
@@ -191,12 +215,35 @@ export default function InventoryScreen() {
           else fetchItems(true);
         }}
       />
+    </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
+  flex1: { flex: 1 },
+
+  // ── Desktop web layout ──
+  webWrap:     { flex: 1, width: '100%', maxWidth: 1240, alignSelf: 'center', paddingHorizontal: 32 },
+  webHeader:   { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 26, paddingBottom: 4 },
+  webTitle:    { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
+  webSubtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  webLedgerBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6,
+    borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface,
+  },
+  webLedgerText: { fontSize: 12, fontWeight: '600', color: Colors.info },
+  webAddBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6,
+    backgroundColor: Colors.accent,
+  },
+  webAddText: { fontSize: 13, fontWeight: '700', color: '#111' },
+  searchRowWeb:   { backgroundColor: 'transparent', borderBottomWidth: 0, paddingHorizontal: 0, paddingVertical: 14 },
+  searchBoxWeb:   { maxWidth: 480, backgroundColor: Colors.surface },
+  listContentWeb: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 40 },
 
   ledgerBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
