@@ -11,9 +11,19 @@ interface AuthState {
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
+  hasFeature: (key: string) => boolean;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+// RBAC feature check. `permissions === undefined` means the backend predates
+// RBAC (or data is missing) — never block the UI in that case.
+export function userHasFeature(user: AuthUser | null, key: string): boolean {
+  if (!user) return false;
+  if (user.isSuperuser) return true;
+  if (user.permissions === undefined) return true;
+  return user.permissions.includes(key);
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   isLoading: false,
@@ -53,4 +63,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     await storage.delete('auth_token');
     set({ user: null, token: null });
   },
+
+  hasFeature: (key) => userHasFeature(get().user, key),
 }));

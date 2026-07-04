@@ -12,19 +12,30 @@ import { useState, useCallback, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthStore } from '../../store/auth';
+import { useAuthStore, userHasFeature } from '../../store/auth';
 import { dashboardApi, DashboardResponse } from '../../services/api';
 import { Colors } from '../../constants/colors';
 
 const COLS = Platform.OS === 'web' ? 3 : 2;
 
+// One card per RBAC feature — the grid shows whatever the user has access to.
+// `key` is the feature key; `kpiKey` is the matching field in DashboardResponse.
 const KPI_CONFIG = [
-  { key: 'tenders',   label: 'Tenders',   icon: 'document-text-outline', color: Colors.kpi1, bg: Colors.infoLight,    route: '/(app)/tenders'   },
-  { key: 'projects',  label: 'Projects',  icon: 'construct-outline',      color: Colors.kpi2, bg: Colors.successLight, route: '/(app)/projects'  },
-  { key: 'customers', label: 'Customers', icon: 'people-outline',          color: Colors.kpi3, bg: Colors.warningLight, route: '/(app)/customers' },
-  { key: 'employees', label: 'Employees', icon: 'person-outline',           color: Colors.kpi4, bg: '#EDE9FE',           route: '/(app)/employees' },
-  { key: 'inventory', label: 'Inventory', icon: 'cube-outline',             color: Colors.kpi5, bg: Colors.errorLight,   route: '/(app)/inventory' },
-  { key: 'orders',    label: 'Orders',    icon: 'cart-outline',             color: Colors.kpi6, bg: '#CFFAFE',           route: '/(app)/orders'    },
+  { key: 'tenders',     kpiKey: 'tenders',            label: 'Tenders',     icon: 'document-text-outline',    color: Colors.kpi1, bg: Colors.infoLight,    route: '/(app)/tenders'         },
+  { key: 'projects',    kpiKey: 'projects',           label: 'Projects',    icon: 'construct-outline',        color: Colors.kpi2, bg: Colors.successLight, route: '/(app)/projects'        },
+  { key: 'customers',   kpiKey: 'customers',          label: 'Customers',   icon: 'people-outline',           color: Colors.kpi3, bg: Colors.warningLight, route: '/(app)/customers'       },
+  { key: 'employees',   kpiKey: 'employees',          label: 'Employees',   icon: 'person-outline',           color: Colors.kpi4, bg: '#EDE9FE',           route: '/(app)/employees'       },
+  { key: 'inventory',   kpiKey: 'inventory',          label: 'Inventory',   icon: 'cube-outline',             color: Colors.kpi5, bg: Colors.errorLight,   route: '/(app)/inventory'       },
+  { key: 'orders',      kpiKey: 'orders',             label: 'Orders',      icon: 'cart-outline',             color: Colors.kpi6, bg: '#CFFAFE',           route: '/(app)/orders'          },
+  { key: 'invoices',    kpiKey: 'invoices',           label: 'Invoices',    icon: 'document-text-outline',    color: Colors.kpi4, bg: '#EDE9FE',           route: '/(app)/invoices'        },
+  { key: 'purchases',   kpiKey: 'purchases',          label: 'Purchases',   icon: 'bag-handle-outline',       color: Colors.kpi2, bg: Colors.successLight, route: '/(app)/purchases'       },
+  { key: 'estimates',   kpiKey: 'estimates',          label: 'Estimates',   icon: 'document-outline',         color: Colors.kpi3, bg: Colors.warningLight, route: '/(app)/estimates'       },
+  { key: 'gst',         kpiKey: 'gstRecords',         label: 'GST',         icon: 'shield-half-outline',      color: Colors.kpi1, bg: Colors.infoLight,    route: '/(app)/gst'             },
+  { key: 'hr',          kpiKey: 'attendance',         label: 'HR & Payroll',icon: 'briefcase-outline',        color: Colors.kpi6, bg: '#CFFAFE',           route: '/(app)/hr'              },
+  { key: 'stock',       kpiKey: 'stockMovements',     label: 'Stock',       icon: 'layers-outline',           color: Colors.kpi5, bg: Colors.errorLight,   route: '/(app)/inventory/stock' },
+  { key: 'vendors',     kpiKey: 'vendors',            label: 'Vendors',     icon: 'storefront-outline',       color: Colors.kpi2, bg: Colors.successLight, route: '/(app)/vendors'         },
+  { key: 'vehicles',    kpiKey: 'vehicles',           label: 'Vehicles',    icon: 'car-outline',              color: Colors.kpi1, bg: Colors.infoLight,    route: '/(app)/vehicles'        },
+  { key: 'maintenance', kpiKey: 'maintenancePeriods', label: 'Maintenance', icon: 'shield-checkmark-outline', color: Colors.kpi3, bg: Colors.warningLight, route: '/(app)/maintenance'     },
 ];
 
 function getGreeting() {
@@ -84,6 +95,7 @@ export default function DashboardScreen() {
     : 'User';
 
   const kpis = data?.kpis;
+  const visibleKpis = KPI_CONFIG.filter((k) => userHasFeature(user, k.key));
 
   return (
     <View style={styles.safe}>
@@ -96,10 +108,21 @@ export default function DashboardScreen() {
           </View>
           <Text style={styles.navTitle}>Rajat Electricals</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.navLogout}>
-          <Ionicons name="log-out-outline" size={18} color="rgba(255,255,255,0.75)" />
-          <Text style={styles.navLogoutText}>Sign out</Text>
-        </TouchableOpacity>
+        <View style={styles.navRight}>
+          {user?.isSuperuser && (
+            <TouchableOpacity
+              onPress={() => router.push('/(app)/admin' as any)}
+              style={styles.navLogout}
+            >
+              <Ionicons name="settings-outline" size={18} color="rgba(255,255,255,0.75)" />
+              <Text style={styles.navLogoutText}>Admin</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={handleLogout} style={styles.navLogout}>
+            <Ionicons name="log-out-outline" size={18} color="rgba(255,255,255,0.75)" />
+            <Text style={styles.navLogoutText}>Sign out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -146,10 +169,10 @@ export default function DashboardScreen() {
 
             {/* KPI grid — explicit rows so flex:1 always gives 2 columns */}
             <View style={styles.grid}>
-              {Array.from({ length: Math.ceil(KPI_CONFIG.length / COLS) }, (_, ri) => (
+              {Array.from({ length: Math.ceil(visibleKpis.length / COLS) }, (_, ri) => (
                 <View key={ri} style={styles.gridRow}>
-                  {KPI_CONFIG.slice(ri * COLS, ri * COLS + COLS).map(({ key, label, icon, color, bg, route }) => {
-                    const item = kpis?.[key as keyof typeof kpis] as
+                  {visibleKpis.slice(ri * COLS, ri * COLS + COLS).map(({ key, kpiKey, label, icon, color, bg, route }) => {
+                    const item = kpis?.[kpiKey as keyof typeof kpis] as
                       | { total: number; label: string; phase: number }
                       | undefined;
                     const isMigrated = (data?.migratedPhase ?? 0) >= (item?.phase ?? 99);
@@ -166,7 +189,7 @@ export default function DashboardScreen() {
                         <Text style={styles.kpiCount}>
                           {isMigrated ? (item?.total ?? 0) : '—'}
                         </Text>
-                        <Text style={styles.kpiLabel}>{item?.label ?? label}</Text>
+                        <Text style={styles.kpiLabel}>{label}</Text>
                         {!isMigrated ? (
                           <View style={[styles.statusChip, { backgroundColor: '#FFF3CD' }]}>
                             <Text style={[styles.statusChipText, { color: '#7A5400' }]}>Phase {item?.phase}</Text>
@@ -181,14 +204,14 @@ export default function DashboardScreen() {
                   })}
                 </View>
               ))}
-            </View>
-
-            {/* Coming soon banner */}
-            <View style={styles.comingSoon}>
-              <Ionicons name="time-outline" size={18} color={Colors.textMuted} />
-              <Text style={styles.comingSoonText}>
-                More modules will unlock as each phase is migrated
-              </Text>
+              {visibleKpis.length === 0 && (
+                <View style={styles.centerBox}>
+                  <Ionicons name="lock-closed-outline" size={36} color={Colors.textMuted} />
+                  <Text style={styles.centerText}>
+                    No modules are assigned to your account yet. Ask your administrator for access.
+                  </Text>
+                </View>
+              )}
             </View>
           </>
         )}
@@ -220,6 +243,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navTitle: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
+  navRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   navLogout: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   navLogoutText: { color: 'rgba(255,255,255,0.75)', fontSize: 13 },
 
@@ -352,23 +376,4 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   statusChipText: { fontSize: 10, fontWeight: '700' },
-
-  comingSoon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 14,
-    marginTop: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 14,
-  },
-  comingSoonText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
 });

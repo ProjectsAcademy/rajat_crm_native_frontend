@@ -4,10 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { dashboardApi, DashboardResponse } from '../../services/api';
+import { useAuthStore, userHasFeature } from '../../store/auth';
 import { Colors } from '../../constants/colors';
 
 export default function WorkScreen() {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
   const [kpis, setKpis] = useState<DashboardResponse['kpis'] | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,6 +33,7 @@ export default function WorkScreen() {
         <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+          {userHasFeature(user, 'tenders') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/tenders' as any)}
@@ -46,7 +49,9 @@ export default function WorkScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
+          )}
 
+          {userHasFeature(user, 'projects') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/projects' as any)}
@@ -62,7 +67,9 @@ export default function WorkScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
+          )}
 
+          {userHasFeature(user, 'vehicles') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/vehicles' as any)}
@@ -78,7 +85,9 @@ export default function WorkScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
+          )}
 
+          {userHasFeature(user, 'maintenance') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/maintenance' as any)}
@@ -94,6 +103,14 @@ export default function WorkScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
+          )}
+
+          {!['tenders', 'projects', 'vehicles', 'maintenance'].some((k) => userHasFeature(user, k)) && (
+            <View style={styles.emptyBox}>
+              <Ionicons name="lock-closed-outline" size={32} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No work modules assigned to your account.</Text>
+            </View>
+          )}
         </ScrollView>
       )}
     </View>
@@ -125,4 +142,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   cardCount: { fontSize: 28, fontWeight: '800', color: Colors.accent, marginTop: 2 },
   cardSub: { fontSize: 12, color: Colors.textMuted },
+  emptyBox: { alignItems: 'center', paddingVertical: 48, gap: 10 },
+  emptyText: { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
 });

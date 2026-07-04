@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { dashboardApi, DashboardResponse } from '../../services/api';
+import { useAuthStore, userHasFeature } from '../../store/auth';
 import { Colors } from '../../constants/colors';
 
 type CardDef = {
@@ -11,6 +12,7 @@ type CardDef = {
   sub: string;
   icon: React.ComponentProps<typeof Ionicons>['name'];
   route: string;
+  feature: string;
   count: (kpis: DashboardResponse['kpis']) => number;
 };
 
@@ -20,6 +22,7 @@ const CARDS: CardDef[] = [
     sub: 'active customers',
     icon: 'people-outline',
     route: '/(app)/customers',
+    feature: 'customers',
     count: (k) => k.customers?.total ?? 0,
   },
   {
@@ -27,6 +30,7 @@ const CARDS: CardDef[] = [
     sub: 'active vendors',
     icon: 'storefront-outline',
     route: '/(app)/vendors',
+    feature: 'vendors',
     count: (k) => k.vendors?.total ?? 0,
   },
   {
@@ -34,6 +38,7 @@ const CARDS: CardDef[] = [
     sub: 'active employees',
     icon: 'person-outline',
     route: '/(app)/employees',
+    feature: 'employees',
     count: (k) => k.employees?.total ?? 0,
   },
   {
@@ -41,12 +46,15 @@ const CARDS: CardDef[] = [
     sub: 'attendance · salary · EPF',
     icon: 'briefcase-outline',
     route: '/(app)/hr',
+    feature: 'hr',
     count: (k) => k.attendance?.total ?? 0,
   },
 ];
 
 export default function PeopleScreen() {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
+  const visibleCards = CARDS.filter((c) => userHasFeature(user, c.feature));
   const [kpis, setKpis] = useState<DashboardResponse['kpis'] | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +78,15 @@ export default function PeopleScreen() {
         <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-          {CARDS.map((card) => (
+          {visibleCards.length === 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 48, gap: 10 }}>
+              <Ionicons name="lock-closed-outline" size={32} color={Colors.textMuted} />
+              <Text style={{ fontSize: 13, color: Colors.textMuted, textAlign: 'center' }}>
+                No people modules assigned to your account.
+              </Text>
+            </View>
+          )}
+          {visibleCards.map((card) => (
             <TouchableOpacity
               key={card.title}
               style={styles.card}

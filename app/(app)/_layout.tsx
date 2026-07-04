@@ -1,8 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore, userHasFeature } from '../../store/auth';
 import { Colors } from '../../constants/colors';
 
 export default function AppLayout() {
+  const user = useAuthStore((s) => s.user);
+  const canInventory = userHasFeature(user, 'inventory') || userHasFeature(user, 'stock');
   return (
     <Tabs
       screenOptions={{
@@ -51,6 +54,7 @@ export default function AppLayout() {
         options={{
           title: 'Inventory',
           tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" size={size} color={color} />,
+          ...(canInventory ? {} : { href: null }),
         }}
       />
 
@@ -76,6 +80,7 @@ export default function AppLayout() {
       <Tabs.Screen name="hr"          options={{ href: null }} />
       <Tabs.Screen name="vehicles"    options={{ href: null }} />
       <Tabs.Screen name="maintenance" options={{ href: null }} />
+      <Tabs.Screen name="admin"       options={{ href: null }} />
     </Tabs>
   );
 }

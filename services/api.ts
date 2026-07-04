@@ -31,6 +31,30 @@ export const authApi = {
   logout: () => api.post('/api/auth/logout'),
 };
 
+// ─── Admin (RBAC — super admin only) ─────────────────────────────────────────
+
+export const adminApi = {
+  features: () => api.get<{ features: FeatureDef[] }>('/api/admin/features'),
+  users: {
+    list: () => api.get<{ users: AdminUser[]; total: number }>('/api/admin/users'),
+    create: (data: AdminUserPayload) => api.post<{ user: AdminUser }>('/api/admin/users', data),
+    update: (id: number, data: Partial<AdminUserPayload>) =>
+      api.put<{ user: AdminUser }>(`/api/admin/users/${id}`, data),
+    setGroups: (id: number, groupIds: number[]) =>
+      api.put<{ user: AdminUser }>(`/api/admin/users/${id}/groups`, { groupIds }),
+  },
+  groups: {
+    list: () => api.get<{ groups: AdminGroup[]; total: number }>('/api/admin/groups'),
+    create: (data: AdminGroupPayload) => api.post<{ group: AdminGroup }>('/api/admin/groups', data),
+    update: (id: number, data: Partial<AdminGroupPayload>) =>
+      api.put<{ group: AdminGroup }>(`/api/admin/groups/${id}`, data),
+    remove: (id: number, force = false) =>
+      api.delete<{ message: string }>(`/api/admin/groups/${id}${force ? '?force=true' : ''}`),
+    setPermissions: (id: number, features: string[]) =>
+      api.put<{ group: AdminGroup }>(`/api/admin/groups/${id}/permissions`, { features }),
+  },
+};
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export const dashboardApi = {
@@ -288,9 +312,34 @@ export interface MediaFile {
 export interface AuthUser {
   id: number; username: string; email: string;
   firstName: string; lastName: string; isStaff: boolean; isSuperuser: boolean;
+  // RBAC fields — absent when talking to a pre-RBAC backend (treat as full access)
+  groups?: { id: number; name: string }[];
+  permissions?: string[];
 }
 export interface LoginResponse { token: string; user: AuthUser; }
 export interface MeResponse { user: AuthUser; }
+
+export interface FeatureDef { key: string; label: string; hub: string; }
+export interface AdminUser {
+  id: number; username: string; email: string;
+  firstName: string; lastName: string;
+  isActive: boolean; isStaff: boolean; isSuperuser: boolean;
+  lastLogin: string | null; dateJoined: string;
+  groups: { id: number; name: string }[];
+}
+export interface AdminUserPayload {
+  username?: string; password?: string; email?: string;
+  firstName?: string; lastName?: string; isActive?: boolean;
+  groupIds?: number[];
+}
+export interface AdminGroup {
+  id: number; name: string; description: string; isActive: boolean;
+  createdAt: string; updatedAt: string;
+  features: string[]; memberCount: number;
+}
+export interface AdminGroupPayload {
+  name?: string; description?: string; isActive?: boolean; features?: string[];
+}
 
 export interface KpiItem { total: number; label: string; phase: number; active?: number; }
 export interface DashboardResponse {
