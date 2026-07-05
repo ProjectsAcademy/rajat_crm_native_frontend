@@ -259,6 +259,16 @@ export const hrApi = {
     list: (params?: { employeeId?: number; projectId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
       api.get<AttendanceListResponse>('/api/hr/attendance', { params }),
     detail: (id: number) => api.get<AttendanceDetailResponse>(`/api/hr/attendance/${id}`),
+    day: (date: string) => api.get<AttendanceDayResponse>('/api/hr/attendance/day', { params: { date } }),
+    bulkMark: (payload: AttendanceBulkPayload) =>
+      api.post<{ date: string; records: AttendanceRecord[] }>('/api/hr/attendance/bulk', payload),
+    update: (id: number, data: AttendanceUpdatePayload) =>
+      api.put<AttendanceDetailResponse>(`/api/hr/attendance/${id}`, data),
+    remove: (id: number) => api.delete<{ success: boolean }>(`/api/hr/attendance/${id}`),
+    monthSummary: (month: string) =>
+      api.get<AttendanceMonthSummaryResponse>('/api/hr/attendance/summary/month', { params: { month } }),
+    yearSummary: (employeeId: number, year: number) =>
+      api.get<AttendanceYearSummaryResponse>('/api/hr/attendance/summary/year', { params: { employeeId, year } }),
   },
   salaryComponents: {
     list: (params?: { employeeId?: number; active?: boolean; page?: number; limit?: number }) =>
@@ -319,7 +329,7 @@ export interface AuthUser {
 export interface LoginResponse { token: string; user: AuthUser; }
 export interface MeResponse { user: AuthUser; }
 
-export interface FeatureDef { key: string; label: string; hub: string; }
+export interface FeatureDef { key: string; label: string; hub: string; parent?: string; }
 export interface AdminUser {
   id: number; username: string; email: string;
   firstName: string; lastName: string;
@@ -584,6 +594,45 @@ export interface AttendanceRecord {
 }
 export interface AttendanceListResponse { records: AttendanceRecord[]; total: number; page: number; limit: number; }
 export interface AttendanceDetailResponse { record: AttendanceRecord; }
+
+// Day roster record — raw row without the employee/project joins
+export interface AttendanceDayRecord {
+  id: number; date: string; hoursWorked: string; overtimeHours: string;
+  isPresent: boolean; attendanceStatus: string; notes: string; createdAt: string;
+}
+export interface AttendanceDayEmployee {
+  id: number; name: string; employeeCode: string; skillType: string;
+  record: AttendanceDayRecord | null;
+}
+export interface AttendanceDayResponse { date: string; employees: AttendanceDayEmployee[]; }
+export interface AttendanceBulkPayload {
+  date: string; // YYYY-MM-DD
+  records: {
+    employeeId: number;
+    attendanceStatus: string; // P | A | H | L
+    hoursWorked?: number;
+    overtimeHours?: number;
+    notes?: string;
+  }[];
+}
+export interface AttendanceUpdatePayload {
+  attendanceStatus?: string; hoursWorked?: number; overtimeHours?: number; notes?: string;
+}
+export interface AttendanceStatusCounts { P: number; A: number; H: number; L: number; }
+export interface AttendanceMonthSummaryRow {
+  employee: { id: number; name: string; employeeCode: string; skillType: string };
+  counts: AttendanceStatusCounts;
+  totalHours: number; totalOvertime: number; markedDays: number;
+}
+export interface AttendanceMonthSummaryResponse { month: string; rows: AttendanceMonthSummaryRow[]; }
+export interface AttendanceYearMonthBucket {
+  month: number; counts: AttendanceStatusCounts; totalHours: number; totalOvertime: number;
+}
+export interface AttendanceYearSummaryResponse {
+  year: number;
+  employee: { id: number; name: string; employeeCode: string; skillType: string };
+  months: AttendanceYearMonthBucket[];
+}
 
 export interface SalaryComponent {
   id: number; componentType: string; name: string; amount: string;

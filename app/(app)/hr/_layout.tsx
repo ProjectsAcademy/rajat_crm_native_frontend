@@ -10,6 +10,7 @@ export default function HRLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="attendance" options={{ title: 'Attendance' }} />
+      <Stack.Screen name="employee-attendance" options={{ title: 'Employee Attendance' }} />
       <Stack.Screen name="salary-payments" options={{ title: 'Salary Payments' }} />
       <Stack.Screen name="salary-components" options={{ title: 'Salary Components' }} />
       <Stack.Screen name="incentives" options={{ title: 'Incentives' }} />
