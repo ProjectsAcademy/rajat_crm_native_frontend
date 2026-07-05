@@ -1,3 +1,4 @@
+import { useFeatureGuard } from '../../../hooks/useFeatureGuard';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
@@ -24,6 +25,7 @@ function formatAmount(v: string) {
 }
 
 export default function IncentivesScreen() {
+  useFeatureGuard('hr.incentives');
   const [incentives, setIncentives] = useState<SalaryIncentive[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

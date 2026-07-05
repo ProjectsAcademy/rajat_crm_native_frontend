@@ -47,9 +47,11 @@ export default function GroupFormSheet({ visible, onClose, onSaved, group }: Pro
   }, [visible, group]);
 
   const toggleFeature = (key: string) => {
-    setSelectedFeatures((prev) =>
-      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key]
-    );
+    setSelectedFeatures((prev) => {
+      if (prev.includes(key)) return prev.filter((f) => f !== key);
+      // Selecting a parent covers all its children — drop redundant child grants
+      return [...prev.filter((f) => !f.startsWith(key + '.')), key];
+    });
   };
 
   const handleSave = async () => {
@@ -85,23 +87,45 @@ export default function GroupFormSheet({ visible, onClose, onSaved, group }: Pro
     if (loadingFeatures) {
       return <ActivityIndicator size="small" color={Colors.accent} style={{ alignSelf: 'flex-start', marginVertical: 8 }} />;
     }
-    const hubs = Array.from(new Set(features.map((f) => f.hub)));
+    const parents = features.filter((f) => !f.parent);
+    const childrenOf = (key: string) => features.filter((f) => f.parent === key);
+    const hubs = Array.from(new Set(parents.map((f) => f.hub)));
+
+    const renderRow = (f: (typeof features)[number], parentChecked: boolean) => {
+      const checked = selectedFeatures.includes(f.key);
+      const covered = parentChecked && !!f.parent; // implied by the parent grant
+      return (
+        <TouchableOpacity
+          key={f.key}
+          style={[st.checkRow, !!f.parent && st.checkRowChild, covered && { opacity: 0.55 }]}
+          onPress={() => toggleFeature(f.key)}
+          disabled={covered}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={checked || covered ? 'checkbox' : 'square-outline'}
+            size={20}
+            color={checked || covered ? Colors.accent : Colors.textMuted}
+          />
+          <Text style={st.checkLabel}>{f.label}</Text>
+          {covered && <Text style={st.coveredHint}>included</Text>}
+        </TouchableOpacity>
+      );
+    };
+
     return (
       <View style={{ marginBottom: 12 }}>
         {hubs.map((hub) => (
           <View key={hub}>
             <Text style={st.hubLabel}>{HUB_LABELS[hub] ?? hub}</Text>
-            {features.filter((f) => f.hub === hub).map((f) => {
-              const checked = selectedFeatures.includes(f.key);
+            {parents.filter((f) => f.hub === hub).map((parent) => {
+              const kids = childrenOf(parent.key);
+              const parentChecked = selectedFeatures.includes(parent.key);
               return (
-                <TouchableOpacity key={f.key} style={st.checkRow} onPress={() => toggleFeature(f.key)} activeOpacity={0.7}>
-                  <Ionicons
-                    name={checked ? 'checkbox' : 'square-outline'}
-                    size={20}
-                    color={checked ? Colors.accent : Colors.textMuted}
-                  />
-                  <Text style={st.checkLabel}>{f.label}</Text>
-                </TouchableOpacity>
+                <View key={parent.key}>
+                  {renderRow(parent, false)}
+                  {kids.map((k) => renderRow(k, parentChecked))}
+                </View>
               );
             })}
           </View>
@@ -227,9 +251,11 @@ const w = StyleSheet.create({
 
   inputBox: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: Colors.textPrimary, marginBottom: 12, ...Platform.select({ web: { outlineStyle: 'none' } }) },
 
-  hubLabel:   { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 10, marginBottom: 6 },
-  checkRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 6 },
-  checkLabel: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  hubLabel:      { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 10, marginBottom: 6 },
+  checkRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 6 },
+  checkRowChild: { marginLeft: 26, paddingVertical: 7 },
+  checkLabel:    { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  coveredHint:   { fontSize: 11, color: Colors.textMuted, marginLeft: 'auto' },
 });
 
 // ── Mobile styles ─────────────────────────────────────────────────────────────
@@ -248,9 +274,11 @@ const s = StyleSheet.create({
 
   inputBox: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15, color: Colors.textPrimary, marginBottom: 14, ...Platform.select({ web: { outlineStyle: 'none' } }) },
 
-  hubLabel:   { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 10, marginBottom: 6 },
-  checkRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 6 },
-  checkLabel: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  hubLabel:      { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 10, marginBottom: 6 },
+  checkRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 6 },
+  checkRowChild: { marginLeft: 26, paddingVertical: 9 },
+  checkLabel:    { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  coveredHint:   { fontSize: 11, color: Colors.textMuted, marginLeft: 'auto' },
 
   actions:    { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelBtn:  { flex: 1, paddingVertical: 14, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },

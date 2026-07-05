@@ -18,7 +18,8 @@ export function useFeatureGuard(...features: string[]): boolean {
 
   useFocusEffect(
     useCallback(() => {
-      if (user && allowed && primary) useRecentsStore.getState().record(primary);
+      // Recents track top-level modules only — 'hr.attendance' records 'hr'
+      if (user && allowed && primary) useRecentsStore.getState().record(primary.split('.')[0]);
     }, [user, allowed, primary])
   );
 

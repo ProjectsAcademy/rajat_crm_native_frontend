@@ -1,3 +1,4 @@
+import { useFeatureGuard } from '../../../hooks/useFeatureGuard';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
@@ -23,6 +24,7 @@ function formatDate(d: string) {
 }
 
 export default function SalaryComponentsScreen() {
+  useFeatureGuard('hr.salary-components');
   const [components, setComponents] = useState<SalaryComponent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

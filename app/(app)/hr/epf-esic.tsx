@@ -1,3 +1,4 @@
+import { useFeatureGuard } from '../../../hooks/useFeatureGuard';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
@@ -17,6 +18,7 @@ function formatAmount(v: string) {
 }
 
 export default function EpfEsicScreen() {
+  useFeatureGuard('hr.epf-esic');
   const [records, setRecords] = useState<EpfEsicRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

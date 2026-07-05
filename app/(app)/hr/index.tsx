@@ -4,18 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dashboardApi, DashboardResponse } from '../../../services/api';
+import { useAuthStore, userHasFeature } from '../../../store/auth';
 import { Colors } from '../../../constants/colors';
 
 const MODULES = [
-  { key: 'attendance',       label: 'Attendance',      icon: 'calendar-outline'         as const, route: '/(app)/hr/attendance',        color: '#1565C0' },
-  { key: 'salaryPayments',   label: 'Salary Payments', icon: 'cash-outline'             as const, route: '/(app)/hr/salary-payments',   color: '#2E7D32' },
-  { key: 'incentives',       label: 'Incentives',      icon: 'ribbon-outline'           as const, route: '/(app)/hr/incentives',        color: '#6A1B9A' },
-  { key: 'salaryComponents', label: 'Salary Structure',icon: 'list-outline'             as const, route: '/(app)/hr/salary-components', color: '#E65100' },
-  { key: 'epfEsic',          label: 'EPF / ESIC',      icon: 'shield-checkmark-outline' as const, route: '/(app)/hr/epf-esic',          color: '#006064' },
+  { key: 'attendance',       feature: 'hr.attendance',        label: 'Attendance',      icon: 'calendar-outline'         as const, route: '/(app)/hr/attendance',        color: '#1565C0' },
+  { key: 'salaryPayments',   feature: 'hr.salary-payments',   label: 'Salary Payments', icon: 'cash-outline'             as const, route: '/(app)/hr/salary-payments',   color: '#2E7D32' },
+  { key: 'incentives',       feature: 'hr.incentives',        label: 'Incentives',      icon: 'ribbon-outline'           as const, route: '/(app)/hr/incentives',        color: '#6A1B9A' },
+  { key: 'salaryComponents', feature: 'hr.salary-components', label: 'Salary Structure',icon: 'list-outline'             as const, route: '/(app)/hr/salary-components', color: '#E65100' },
+  { key: 'epfEsic',          feature: 'hr.epf-esic',          label: 'EPF / ESIC',      icon: 'shield-checkmark-outline' as const, route: '/(app)/hr/epf-esic',          color: '#006064' },
 ];
 
 export default function HRIndexScreen() {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
+  const visibleModules = MODULES.filter((m) => userHasFeature(user, m.feature));
   const [kpis, setKpis] = useState<DashboardResponse['kpis'] | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,7 +42,15 @@ export default function HRIndexScreen() {
         <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>
       ) : (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {MODULES.map((m) => {
+          {visibleModules.length === 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 48, gap: 10 }}>
+              <Ionicons name="lock-closed-outline" size={32} color={Colors.textMuted} />
+              <Text style={{ fontSize: 13, color: Colors.textMuted, textAlign: 'center' }}>
+                No HR areas assigned to your account.
+              </Text>
+            </View>
+          )}
+          {visibleModules.map((m) => {
             const kpi = kpis?.[m.key as keyof typeof kpis] as { total: number } | undefined;
             return (
               <TouchableOpacity
