@@ -273,11 +273,20 @@ export const hrApi = {
   salaryComponents: {
     list: (params?: { employeeId?: number; active?: boolean; page?: number; limit?: number }) =>
       api.get<SalaryComponentListResponse>('/api/hr/salary-components', { params }),
+    create: (data: SalaryComponentPayload) =>
+      api.post<{ component: SalaryComponent }>('/api/hr/salary-components', data),
+    update: (id: number, data: Partial<SalaryComponentPayload>) =>
+      api.put<{ component: SalaryComponent }>(`/api/hr/salary-components/${id}`, data),
+    remove: (id: number) => api.delete<{ success: boolean }>(`/api/hr/salary-components/${id}`),
+    payroll: (month: string) =>
+      api.get<PayrollResponse>('/api/hr/salary-components/payroll', { params: { month } }),
   },
   salaryPayments: {
     list: (params?: { employeeId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
       api.get<SalaryPaymentListResponse>('/api/hr/salary-payments', { params }),
     detail: (id: number) => api.get<SalaryPaymentDetailResponse>(`/api/hr/salary-payments/${id}`),
+    create: (data: SalaryPaymentPayload) =>
+      api.post<{ payment: SalaryPayment }>('/api/hr/salary-payments', data),
   },
   incentives: {
     list: (params?: { employeeId?: number; projectId?: number; incentiveType?: string; page?: number; limit?: number }) =>
@@ -641,6 +650,43 @@ export interface SalaryComponent {
   employee: { id: number; name: string; employeeCode: string };
 }
 export interface SalaryComponentListResponse { components: SalaryComponent[]; total: number; page: number; limit: number; }
+export interface SalaryComponentPayload {
+  employeeId?: number;
+  componentType?: string;   // 'allowance' | 'deduction'
+  name?: string;
+  amount?: number;
+  isActive?: boolean;
+  effectiveFrom?: string;   // YYYY-MM-DD
+  effectiveTo?: string | null;
+  notes?: string;
+}
+
+// Payroll — computed monthly salary per employee (attendance-driven)
+export interface PayrollRow {
+  employee: { id: number; name: string; employeeCode: string; dailyWage: string };
+  counts: AttendanceStatusCounts;
+  otHours: number;
+  payableDays: number;
+  earned: number;
+  allowances: number;
+  deductions: number;
+  components: { id: number; name: string; componentType: string; amount: string }[];
+  net: number;
+  payment: {
+    id: number; employeeId: number; amount: string;
+    paymentDate: string; paymentMethod: string; referenceNumber: string;
+  } | null;
+}
+export interface PayrollResponse { month: string; rows: PayrollRow[]; }
+export interface SalaryPaymentPayload {
+  employeeId: number;
+  paymentMonth: string;   // YYYY-MM-01
+  paymentDate: string;    // YYYY-MM-DD
+  amount: number;
+  paymentMethod?: string;
+  referenceNumber?: string;
+  notes?: string;
+}
 
 export interface SalaryPayment {
   id: number; paymentMonth: string; paymentDate: string; amount: string;
