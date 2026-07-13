@@ -10,6 +10,8 @@ import { hrApi, SalaryComponent, PayrollRow } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import SalaryComponentFormSheet from '../../../components/SalaryComponentFormSheet';
 import SalaryPaymentSheet from '../../../components/SalaryPaymentSheet';
+import MonthYearPickerModal from '../../../components/MonthYearPickerModal';
+import { usePayrollMonth, currentMonth } from '../../../store/payrollMonth';
 
 const isWeb = Platform.OS === 'web';
 
@@ -27,10 +29,6 @@ function fmtMoney(v: number | string) {
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-function currentMonth(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
 function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split('-').map(Number);
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
@@ -45,8 +43,12 @@ export default function SalaryComponentsScreen() {
   useFeatureGuard('hr.salary-components');
   const [segment, setSegment] = useState<'payroll' | 'components'>('payroll');
 
-  // ── Payroll state ──
-  const [month, setMonth] = useState(currentMonth());
+  // ── Payroll state ── (month is shared with the Salary Payments page)
+  const month = usePayrollMonth((s) => s.month);
+  const setMonth = usePayrollMonth((s) => s.setMonth);
+  const isCurrentMonth = month === currentMonth();
+  const isPastMonth = month < currentMonth();
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [rows, setRows] = useState<PayrollRow[]>([]);
   const [payrollLoading, setPayrollLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -81,8 +83,18 @@ export default function SalaryComponentsScreen() {
 
   useEffect(() => { if (segment === 'components') loadComponents(); }, [segment, loadComponents]);
 
-  const monthTotal = rows.reduce((acc, r) => acc + (r.payment ? parseFloat(r.payment.amount) : r.net), 0);
-  const paidCount = rows.filter((r) => r.payment).length;
+  // Past months: hide employees without any data instead of "₹0 of ₹0 · Unpaid"
+  const visibleRows = isPastMonth
+    ? rows.filter((r) => r.net > 0 || r.paidTotal > 0 || r.payableDays > 0)
+    : rows;
+  const monthNet = visibleRows.reduce((acc, r) => acc + r.net, 0);
+  const monthCollected = visibleRows.reduce((acc, r) => acc + r.paidTotal, 0);
+  const fullyPaid = visibleRows.filter((r) => r.status === 'paid').length;
+  const partiallyPaid = visibleRows.filter((r) => r.status === 'partial').length;
+  const hasMonthData = monthNet > 0 || monthCollected > 0;
+  const summaryLine = hasMonthData
+    ? `${fullyPaid} fully paid · ${partiallyPaid} partially paid · ${fmtMoney(monthCollected)} of ${fmtMoney(monthNet)} collected`
+    : 'No data';
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -115,15 +127,28 @@ export default function SalaryComponentsScreen() {
   );
 
   const renderStatus = (r: PayrollRow) => {
-    if (r.payment) {
+    if (r.status === 'paid') {
       return (
         <View style={styles.paidBadge}>
           <Ionicons name="checkmark-circle" size={13} color={Colors.success} />
-          <Text style={styles.paidText}>Paid {fmtMoney(r.payment.amount)}</Text>
+          <Text style={styles.paidText}>Fully Paid {fmtMoney(r.paidTotal)}</Text>
         </View>
       );
     }
-    if (parseFloat(r.employee.dailyWage) === 0) {
+    if (r.status === 'partial') {
+      return (
+        <View style={styles.statusCol}>
+          <View style={styles.partialBadge}>
+            <Ionicons name="time-outline" size={12} color="#7A5400" />
+            <Text style={styles.partialText}>Paid {fmtMoney(r.paidTotal)} of {fmtMoney(r.net)}</Text>
+          </View>
+          <TouchableOpacity style={styles.payBtn} onPress={() => setPayRow(r)} activeOpacity={0.8}>
+            <Text style={styles.payBtnText}>Pay {fmtMoney(r.remaining)}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    if (parseFloat(r.employee.dailyWage) === 0 && r.net === 0) {
       return <Text style={styles.noWage}>no wage set</Text>;
     }
     return (
@@ -148,11 +173,15 @@ export default function SalaryComponentsScreen() {
           </Text>
         ))
       )}
-      {r.payment && (
-        <Text style={styles.breakdownLine}>
-          Paid on {fmtDate(r.payment.paymentDate)} via {r.payment.paymentMethod.replace('_', ' ')}
-          {r.payment.referenceNumber ? ` · ref ${r.payment.referenceNumber}` : ''}
+      {r.payments.map((p) => (
+        <Text key={p.id} style={styles.breakdownLine}>
+          ✓ {fmtMoney(p.amount)} on {fmtDate(p.paymentDate)} via {p.paymentMethod.replace('_', ' ')}
+          {p.referenceNumber ? ` · ref ${p.referenceNumber}` : ''}
+          {p.notes ? ` · ${p.notes}` : ''}
         </Text>
+      ))}
+      {r.paidTotal > 0 && r.remaining > 0 && (
+        <Text style={[styles.breakdownLine, { fontWeight: '700' }]}>Remaining: {fmtMoney(r.remaining)}</Text>
       )}
     </View>
   );
@@ -164,18 +193,29 @@ export default function SalaryComponentsScreen() {
           <TouchableOpacity style={styles.navBtn} onPress={() => setMonth(shiftMonth(month, -1))} hitSlop={8}>
             <Ionicons name="chevron-back" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
-          <Text style={styles.navText}>{fmtMonthLabel(month)}</Text>
-          <TouchableOpacity style={styles.navBtn} onPress={() => setMonth(shiftMonth(month, 1))} hitSlop={8}>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+          <TouchableOpacity style={styles.monthLabelBtn} onPress={() => setShowMonthPicker(true)} activeOpacity={0.7}>
+            <Text style={styles.navText}>{fmtMonthLabel(month)}</Text>
+            <Ionicons name="caret-down" size={11} color={Colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.navBtn, isCurrentMonth && styles.navBtnDisabled]}
+            onPress={() => setMonth(shiftMonth(month, 1))}
+            disabled={isCurrentMonth}
+            hitSlop={8}
+          >
+            <Ionicons name="chevron-forward" size={16} color={isCurrentMonth ? Colors.border : Colors.textSecondary} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.headerCount}>
-          {paidCount}/{rows.length} paid · month total {fmtMoney(monthTotal)}
-        </Text>
+        <Text style={styles.headerCount}>{summaryLine}</Text>
       </View>
 
       {payrollLoading ? (
         <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>
+      ) : isPastMonth && visibleRows.length === 0 ? (
+        <View style={styles.center}>
+          <Ionicons name="folder-open-outline" size={48} color={Colors.textMuted} />
+          <Text style={styles.emptyText}>No payroll data for {fmtMonthLabel(month)}</Text>
+        </View>
       ) : isWeb ? (
         <View style={styles.table}>
           <View style={[styles.tr, styles.thRow]}>
@@ -187,7 +227,7 @@ export default function SalaryComponentsScreen() {
             <Text style={styles.th}>Net</Text>
             <Text style={[styles.th, { flex: 1.6 }]}>Status</Text>
           </View>
-          {rows.map((r) => (
+          {visibleRows.map((r) => (
             <View key={r.employee.id}>
               <TouchableOpacity
                 style={styles.tr}
@@ -210,11 +250,11 @@ export default function SalaryComponentsScreen() {
               )}
             </View>
           ))}
-          {rows.length === 0 && <Text style={styles.emptyText}>No active employees</Text>}
+          {visibleRows.length === 0 && <Text style={styles.emptyText}>No active employees</Text>}
         </View>
       ) : (
         <View style={{ gap: 8 }}>
-          {rows.map((r) => (
+          {visibleRows.map((r) => (
             <TouchableOpacity
               key={r.employee.id}
               style={styles.card}
@@ -237,7 +277,7 @@ export default function SalaryComponentsScreen() {
               <View style={{ marginTop: 8, alignSelf: 'flex-start' }}>{renderStatus(r)}</View>
             </TouchableOpacity>
           ))}
-          {rows.length === 0 && !payrollLoading && (
+          {visibleRows.length === 0 && !payrollLoading && (
             <View style={styles.center}><Text style={styles.emptyText}>No active employees</Text></View>
           )}
         </View>
@@ -320,6 +360,13 @@ export default function SalaryComponentsScreen() {
         month={month}
         row={payRow}
       />
+      <MonthYearPickerModal
+        visible={showMonthPicker}
+        value={month}
+        maxMonth={currentMonth()}
+        onSelect={(m) => { setMonth(m); setShowMonthPicker(false); }}
+        onClose={() => setShowMonthPicker(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -355,6 +402,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center',
   },
   navText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, minWidth: 130, textAlign: 'center' },
+  navBtnDisabled: { opacity: 0.5 },
+  monthLabelBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 4 },
   headerCount: { fontSize: 12, color: Colors.textMuted },
 
   listContent: { paddingHorizontal: isWeb ? 0 : 12, paddingBottom: 32, paddingTop: isWeb ? 0 : 8 },
@@ -381,6 +430,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.successLight, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 5,
   },
   paidText: { fontSize: 11, fontWeight: '700', color: Colors.success },
+  statusCol: { gap: 5, alignItems: 'flex-start' },
+  partialBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.warningLight, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 5,
+  },
+  partialText: { fontSize: 11, fontWeight: '700', color: '#7A5400' },
   payBtn: {
     backgroundColor: Colors.accent, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 6,
   },

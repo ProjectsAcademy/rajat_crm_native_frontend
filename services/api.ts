@@ -287,6 +287,11 @@ export const hrApi = {
     detail: (id: number) => api.get<SalaryPaymentDetailResponse>(`/api/hr/salary-payments/${id}`),
     create: (data: SalaryPaymentPayload) =>
       api.post<{ payment: SalaryPayment }>('/api/hr/salary-payments', data),
+    update: (id: number, data: Partial<Omit<SalaryPaymentPayload, 'employeeId' | 'paymentMonth'>>) =>
+      api.put<{ payment: SalaryPayment }>(`/api/hr/salary-payments/${id}`, data),
+    remove: (id: number) => api.delete<{ success: boolean }>(`/api/hr/salary-payments/${id}`),
+    byEmployee: (month: string) =>
+      api.get<PayrollResponse>('/api/hr/salary-payments/by-employee', { params: { month } }),
   },
   incentives: {
     list: (params?: { employeeId?: number; projectId?: number; incentiveType?: string; page?: number; limit?: number }) =>
@@ -661,7 +666,12 @@ export interface SalaryComponentPayload {
   notes?: string;
 }
 
-// Payroll — computed monthly salary per employee (attendance-driven)
+// Payroll — computed monthly salary per employee (attendance-driven).
+// Payments are a ledger: multiple installments per employee per month.
+export interface PayrollPayment {
+  id: number; employeeId: number; amount: string;
+  paymentDate: string; paymentMethod: string; referenceNumber: string; notes: string;
+}
 export interface PayrollRow {
   employee: { id: number; name: string; employeeCode: string; dailyWage: string };
   counts: AttendanceStatusCounts;
@@ -672,10 +682,10 @@ export interface PayrollRow {
   deductions: number;
   components: { id: number; name: string; componentType: string; amount: string }[];
   net: number;
-  payment: {
-    id: number; employeeId: number; amount: string;
-    paymentDate: string; paymentMethod: string; referenceNumber: string;
-  } | null;
+  payments: PayrollPayment[];
+  paidTotal: number;
+  remaining: number;
+  status: 'unpaid' | 'partial' | 'paid';
 }
 export interface PayrollResponse { month: string; rows: PayrollRow[]; }
 export interface SalaryPaymentPayload {

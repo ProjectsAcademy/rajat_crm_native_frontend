@@ -1,23 +1,26 @@
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Modal,
   ActivityIndicator, KeyboardAvoidingView, Platform,
-  ScrollView, Dimensions,
+  ScrollView, Dimensions, Alert,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { hrApi, PayrollRow } from '../services/api';
+import { hrApi, PayrollRow, PayrollPayment } from '../services/api';
 import { Colors } from '../constants/colors';
+import DatePickerModal from './DatePickerModal';
 
-// Records a salary payment for one employee for one month, showing the
-// attendance-computed breakdown. Amount defaults to the computed net but
-// stays editable (partial/advance adjustments).
+// Records or edits one salary installment for an employee's month. Multiple
+// installments are allowed; the server rejects anything beyond the remaining
+// balance. Amount defaults to the remaining balance (create) and stays
+// editable for partial payments.
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   onSaved: () => void;
-  month: string;            // YYYY-MM
+  month: string;                    // YYYY-MM
   row?: PayrollRow | null;
+  payment?: PayrollPayment | null;  // set = edit an existing installment
 }
 
 const METHODS = [
@@ -31,56 +34,113 @@ function isoToday(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+function isoToDisplay(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+}
 function fmtMonth(month: string): string {
   const [y, m] = month.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
-function fmtMoney(n: number): string {
-  return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+function fmtMoney(n: number | string): string {
+  return `₹${parseFloat(String(n)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
 
-export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, row }: Props) {
+export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, row, payment }: Props) {
   const isWeb = Platform.OS === 'web';
+  const isEdit = !!payment;
 
   const [amount, setAmount] = useState('');
+  const [dateIso, setDateIso] = useState(isoToday());
   const [method, setMethod] = useState('bank_transfer');
   const [reference, setReference] = useState('');
   const [notes, setNotes] = useState('');
+  const [showCal, setShowCal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
+  // Max this installment may be: remaining balance, plus (when editing) the
+  // installment's own current amount, since it's part of paidTotal already.
+  const maxAmount = row ? (isEdit && payment ? row.remaining + parseFloat(payment.amount) : row.remaining) : 0;
+
   useEffect(() => {
     if (!visible || !row) return;
-    setAmount(String(row.net));
-    setMethod('bank_transfer');
-    setReference('');
-    setNotes('');
+    if (payment) {
+      setAmount(String(parseFloat(payment.amount)));
+      setDateIso(payment.paymentDate.slice(0, 10));
+      setMethod(payment.paymentMethod);
+      setReference(payment.referenceNumber ?? '');
+      setNotes(payment.notes ?? '');
+    } else {
+      setAmount(String(row.remaining));
+      setDateIso(isoToday());
+      setMethod('bank_transfer');
+      setReference('');
+      setNotes('');
+    }
     setSaveError('');
-  }, [visible, row]);
+  }, [visible, row, payment]);
 
   const handleSave = async () => {
     setSaveError('');
     if (!row) return;
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) { setSaveError('Amount must be a number greater than 0.'); return; }
+    if (amt > maxAmount + 0.005) {
+      setSaveError(`Amount exceeds remaining balance. Maximum: ${fmtMoney(maxAmount)}.`);
+      return;
+    }
 
     setSaving(true);
     try {
-      await hrApi.salaryPayments.create({
-        employeeId: row.employee.id,
-        paymentMonth: `${month}-01`,
-        paymentDate: isoToday(),
-        amount: amt,
-        paymentMethod: method,
-        referenceNumber: reference.trim(),
-        notes,
-      });
+      if (isEdit && payment) {
+        await hrApi.salaryPayments.update(payment.id, {
+          amount: amt, paymentDate: dateIso, paymentMethod: method,
+          referenceNumber: reference.trim(), notes,
+        });
+      } else {
+        await hrApi.salaryPayments.create({
+          employeeId: row.employee.id,
+          paymentMonth: `${month}-01`,
+          paymentDate: dateIso,
+          amount: amt,
+          paymentMethod: method,
+          referenceNumber: reference.trim(),
+          notes,
+        });
+      }
       onSaved();
       onClose();
     } catch (e: any) {
-      setSaveError(e?.response?.data?.error ?? 'Failed to record payment.');
+      setSaveError(e?.response?.data?.error ?? 'Failed to save payment.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const doDelete = async () => {
+    if (!payment) return;
+    setSaving(true);
+    try {
+      await hrApi.salaryPayments.remove(payment.id);
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      setSaveError(e?.response?.data?.error ?? 'Failed to delete payment.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = () => {
+    const msg = 'Delete this payment entry? The employee\'s totals will recalculate.';
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) doDelete();
+    } else {
+      Alert.alert('Delete Payment', msg, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: doDelete },
+      ]);
     }
   };
 
@@ -106,9 +166,19 @@ export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, r
           <Text style={[st.bValue, { color: Colors.error }]}>−{fmtMoney(row.deductions)}</Text>
         </View>
       )}
+      <View style={st.bRow}>
+        <Text style={st.bLabel}>Net payable</Text>
+        <Text style={st.bValue}>{fmtMoney(row.net)}</Text>
+      </View>
+      {row.paidTotal > 0 && (
+        <View style={st.bRow}>
+          <Text style={st.bLabel}>Paid so far ({row.payments.length} payment{row.payments.length === 1 ? '' : 's'})</Text>
+          <Text style={[st.bValue, { color: Colors.success }]}>{fmtMoney(row.paidTotal)}</Text>
+        </View>
+      )}
       <View style={[st.bRow, st.bNetRow]}>
-        <Text style={st.bNetLabel}>Net payable</Text>
-        <Text style={st.bNetValue}>{fmtMoney(row.net)}</Text>
+        <Text style={st.bNetLabel}>Remaining</Text>
+        <Text style={st.bNetValue}>{fmtMoney(row.remaining)}</Text>
       </View>
     </View>
   );
@@ -132,6 +202,13 @@ export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, r
           keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.textMuted}
         />
       </View>
+
+      <Text style={st.label}>Payment Date</Text>
+      <TouchableOpacity style={st.inputRow} onPress={() => setShowCal(true)} activeOpacity={0.7}>
+        <Ionicons name="calendar-outline" size={15} color={Colors.accentDark} />
+        <Text style={[st.input, { flex: 1 }]}>{isoToDisplay(dateIso)}</Text>
+        <Ionicons name="chevron-down" size={14} color={Colors.textMuted} />
+      </TouchableOpacity>
 
       <Text style={st.label}>Payment Method</Text>
       <View style={st.chipRow}>
@@ -163,10 +240,29 @@ export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, r
         placeholder="Add a note..." placeholderTextColor={Colors.textMuted}
         autoComplete="off" textContentType="none" importantForAutofill="no"
       />
+
+      {isEdit && (
+        <TouchableOpacity style={st.deleteBtn} onPress={handleDelete} disabled={saving} activeOpacity={0.7}>
+          <Ionicons name="trash-outline" size={15} color={Colors.error} />
+          <Text style={st.deleteText}>Delete payment entry</Text>
+        </TouchableOpacity>
+      )}
     </>
   );
 
+  const cal = (
+    <DatePickerModal
+      visible={showCal}
+      title="Payment Date"
+      value={dateIso}
+      onSelect={(iso) => { if (iso) setDateIso(iso); setShowCal(false); }}
+      onClose={() => setShowCal(false)}
+    />
+  );
+
   const title = row ? `${row.employee.name} — ${fmtMonth(month)}` : '';
+  const heading = isEdit ? 'Edit Payment' : 'Record Payment';
+  const saveLabel = isEdit ? 'Save Changes' : 'Record Payment';
 
   // ── Web dialog ──────────────────────────────────────────────────────────────
   if (isWeb) {
@@ -178,7 +274,7 @@ export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, r
             <View style={w.header}>
               <View style={w.headerLeft}>
                 <Ionicons name="wallet-outline" size={18} color={Colors.accent} />
-                <Text style={w.headerTitle}>Record Payment</Text>
+                <Text style={w.headerTitle}>{heading}</Text>
                 <Text style={w.headerSub}>{title}</Text>
               </View>
               <View style={w.headerActions}>
@@ -187,7 +283,7 @@ export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, r
                 </TouchableOpacity>
                 <TouchableOpacity style={[w.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
                   {saving ? <ActivityIndicator size="small" color="#111" /> : (
-                    <><Ionicons name="checkmark" size={15} color="#111" /><Text style={w.saveText}>Record Payment</Text></>
+                    <><Ionicons name="checkmark" size={15} color="#111" /><Text style={w.saveText}>{saveLabel}</Text></>
                   )}
                 </TouchableOpacity>
               </View>
@@ -196,6 +292,7 @@ export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, r
               {formFields(w)}
             </ScrollView>
           </View>
+          {cal}
         </View>
       </Modal>
     );
@@ -207,7 +304,7 @@ export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, r
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.header}>
           <View style={{ flex: 1 }}>
-            <Text style={s.title}>Record Payment</Text>
+            <Text style={s.title}>{heading}</Text>
             {!!title && <Text style={s.titleSub}>{title}</Text>}
           </View>
           <TouchableOpacity onPress={onClose} style={s.closeBtn}>
@@ -221,10 +318,11 @@ export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, r
               <Text style={s.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-              {saving ? <ActivityIndicator size="small" color="#111" /> : <Text style={s.saveText}>Record Payment</Text>}
+              {saving ? <ActivityIndicator size="small" color="#111" /> : <Text style={s.saveText}>{saveLabel}</Text>}
             </TouchableOpacity>
           </View>
         </ScrollView>
+        {cal}
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -276,6 +374,9 @@ const w = StyleSheet.create({
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 10, marginBottom: 12 },
   input:    { fontSize: 14, color: Colors.textPrimary, paddingVertical: 9, ...Platform.select({ web: { outlineStyle: 'none' } }) },
   rupeePrefix: { fontSize: 13, color: Colors.textMuted, fontWeight: '600', flexShrink: 0 },
+
+  deleteBtn:  { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: Colors.error + '40', backgroundColor: Colors.errorLight, marginTop: 4 },
+  deleteText: { fontSize: 12, fontWeight: '700', color: Colors.error },
 });
 
 // ── Mobile styles ─────────────────────────────────────────────────────────────
@@ -305,6 +406,9 @@ const s = StyleSheet.create({
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, marginBottom: 14 },
   input:    { fontSize: 15, color: Colors.textPrimary, paddingVertical: 11 },
   rupeePrefix: { fontSize: 13, color: Colors.textMuted, fontWeight: '600', flexShrink: 0 },
+
+  deleteBtn:  { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: Colors.error + '40', backgroundColor: Colors.errorLight, marginTop: 4 },
+  deleteText: { fontSize: 13, fontWeight: '700', color: Colors.error },
 
   actions:    { flexDirection: 'row', gap: 12, marginTop: 16 },
   cancelBtn:  { flex: 1, paddingVertical: 14, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
