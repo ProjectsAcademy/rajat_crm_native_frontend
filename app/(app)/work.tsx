@@ -1,13 +1,16 @@
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { dashboardApi, DashboardResponse } from '../../services/api';
+import { useAuthStore, userHasFeature } from '../../store/auth';
 import { Colors } from '../../constants/colors';
+import WebHubPage, { HubCard } from '../../components/WebHubPage';
 
 export default function WorkScreen() {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
   const [kpis, setKpis] = useState<DashboardResponse['kpis'] | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +23,24 @@ export default function WorkScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  if (Platform.OS === 'web') {
+    const cards: HubCard[] = [
+      { key: 'tenders',     label: 'Tenders',              sub: 'total tenders',       icon: 'document-text-outline',    color: Colors.accent, bg: Colors.accentLight,  route: '/(app)/tenders',     count: kpis?.tenders?.total ?? null },
+      { key: 'projects',    label: 'Projects',             sub: 'total projects',      icon: 'construct-outline',        color: Colors.accent, bg: Colors.accentLight,  route: '/(app)/projects',    count: kpis?.projects?.total ?? null },
+      { key: 'vehicles',    label: 'Vehicles',             sub: 'active vehicles',     icon: 'car-outline',              color: Colors.info,   bg: Colors.infoLight,    route: '/(app)/vehicles',    count: kpis?.vehicles?.total ?? null },
+      { key: 'maintenance', label: 'Maintenance & FD',     sub: 'maintenance periods', icon: 'shield-checkmark-outline', color: '#7A5400',     bg: Colors.warningLight, route: '/(app)/maintenance', count: kpis?.maintenancePeriods?.total ?? null },
+    ].filter((c) => userHasFeature(user, c.key)) as HubCard[];
+    return (
+      <WebHubPage
+        title="Work"
+        subtitle="Tenders, Projects & Vehicles"
+        loading={loading}
+        cards={cards}
+        emptyMessage="No work modules assigned to your account."
+      />
+    );
+  }
+
   return (
     <View style={styles.safe}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
@@ -31,6 +52,7 @@ export default function WorkScreen() {
         <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+          {userHasFeature(user, 'tenders') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/tenders' as any)}
@@ -46,7 +68,9 @@ export default function WorkScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
+          )}
 
+          {userHasFeature(user, 'projects') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/projects' as any)}
@@ -62,7 +86,9 @@ export default function WorkScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
+          )}
 
+          {userHasFeature(user, 'vehicles') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/vehicles' as any)}
@@ -78,7 +104,9 @@ export default function WorkScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
+          )}
 
+          {userHasFeature(user, 'maintenance') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/maintenance' as any)}
@@ -94,6 +122,14 @@ export default function WorkScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
+          )}
+
+          {!['tenders', 'projects', 'vehicles', 'maintenance'].some((k) => userHasFeature(user, k)) && (
+            <View style={styles.emptyBox}>
+              <Ionicons name="lock-closed-outline" size={32} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No work modules assigned to your account.</Text>
+            </View>
+          )}
         </ScrollView>
       )}
     </View>
@@ -125,4 +161,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   cardCount: { fontSize: 28, fontWeight: '800', color: Colors.accent, marginTop: 2 },
   cardSub: { fontSize: 12, color: Colors.textMuted },
+  emptyBox: { alignItems: 'center', paddingVertical: 48, gap: 10 },
+  emptyText: { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
 });

@@ -79,7 +79,7 @@ export default function TenderFormSheet({ visible, onClose, onSaved, tender }: P
       setTenderDate(isoToDisplay(tender.tenderDate));
       setClosingDate(isoToDisplay(tender.closingDate));
       setTenderAmount(tender.tenderAmount ? parseFloat(tender.tenderAmount).toString() : '');
-      setBiddingPct(parseFloat(tender.biddingPercentage) > 0 ? parseFloat(tender.biddingPercentage).toString() : '');
+      setBiddingPct(parseFloat(tender.biddingPercentage) !== 0 ? parseFloat(tender.biddingPercentage).toString() : '');
       setWorkOrderNo(tender.workOrderNo ?? '');
       setMaintPeriod(tender.maintenancePeriod != null ? String(tender.maintenancePeriod) : '');
       setTenderRemark(tender.tenderRemark ?? '');
@@ -112,7 +112,7 @@ export default function TenderFormSheet({ visible, onClose, onSaved, tender }: P
     }
     if (biddingPct.trim() !== '') {
       const pct = parseFloat(biddingPct);
-      if (isNaN(pct) || pct < 0 || pct >= 100) { setSaveError('Bidding % must be between 0 and 99.999'); return; }
+      if (isNaN(pct) || pct <= -100 || pct >= 100) { setSaveError('Bidding % must be between -99.999 and 99.999'); return; }
     }
     if (maintPeriod.trim() !== '') {
       const mp = parseInt(maintPeriod);
@@ -190,7 +190,8 @@ export default function TenderFormSheet({ visible, onClose, onSaved, tender }: P
       <View style={{ flex: 1 }}>
         <Text style={st.label}>Bidding % <Text style={st.opt}>(opt)</Text></Text>
         <View style={st.inputRow}>
-          <TextInput style={[st.input, { flex: 1 }]} value={biddingPct} onChangeText={setBiddingPct} keyboardType="decimal-pad" placeholder="0.000" placeholderTextColor={Colors.textMuted} />
+          {/* numbers-and-punctuation: decimal-pad has no minus key (falls back to default on Android) */}
+          <TextInput style={[st.input, { flex: 1 }]} value={biddingPct} onChangeText={setBiddingPct} keyboardType="numbers-and-punctuation" placeholder="0.000" placeholderTextColor={Colors.textMuted} />
           <Text style={st.rupeePrefix}>%</Text>
         </View>
       </View>

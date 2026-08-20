@@ -8,23 +8,36 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthStore } from '../../store/auth';
+import { useAuthStore, userHasFeature } from '../../store/auth';
+import { useRecentsStore } from '../../store/recents';
 import { dashboardApi, DashboardResponse } from '../../services/api';
 import { Colors } from '../../constants/colors';
 
-const COLS = Platform.OS === 'web' ? 3 : 2;
+const isWeb = Platform.OS === 'web';
+const COLS = 2; // mobile grid columns; web uses a wrapping flex grid instead
 
+// One card per RBAC feature — the grid shows whatever the user has access to.
+// `key` is the feature key; `kpiKey` is the matching field in DashboardResponse.
 const KPI_CONFIG = [
-  { key: 'tenders',   label: 'Tenders',   icon: 'document-text-outline', color: Colors.kpi1, bg: Colors.infoLight,    route: '/(app)/tenders'   },
-  { key: 'projects',  label: 'Projects',  icon: 'construct-outline',      color: Colors.kpi2, bg: Colors.successLight, route: '/(app)/projects'  },
-  { key: 'customers', label: 'Customers', icon: 'people-outline',          color: Colors.kpi3, bg: Colors.warningLight, route: '/(app)/customers' },
-  { key: 'employees', label: 'Employees', icon: 'person-outline',           color: Colors.kpi4, bg: '#EDE9FE',           route: '/(app)/employees' },
-  { key: 'inventory', label: 'Inventory', icon: 'cube-outline',             color: Colors.kpi5, bg: Colors.errorLight,   route: '/(app)/inventory' },
-  { key: 'orders',    label: 'Orders',    icon: 'cart-outline',             color: Colors.kpi6, bg: '#CFFAFE',           route: '/(app)/orders'    },
+  { key: 'tenders',     kpiKey: 'tenders',            label: 'Tenders',     icon: 'document-text-outline',    color: Colors.kpi1, bg: Colors.infoLight,    route: '/(app)/tenders'         },
+  { key: 'projects',    kpiKey: 'projects',           label: 'Projects',    icon: 'construct-outline',        color: Colors.kpi2, bg: Colors.successLight, route: '/(app)/projects'        },
+  { key: 'customers',   kpiKey: 'customers',          label: 'Customers',   icon: 'people-outline',           color: Colors.kpi3, bg: Colors.warningLight, route: '/(app)/customers'       },
+  { key: 'employees',   kpiKey: 'employees',          label: 'Employees',   icon: 'person-outline',           color: Colors.kpi4, bg: '#EDE9FE',           route: '/(app)/employees'       },
+  { key: 'inventory',   kpiKey: 'inventory',          label: 'Inventory',   icon: 'cube-outline',             color: Colors.kpi5, bg: Colors.errorLight,   route: '/(app)/inventory'       },
+  { key: 'orders',      kpiKey: 'orders',             label: 'Orders',      icon: 'cart-outline',             color: Colors.kpi6, bg: '#CFFAFE',           route: '/(app)/orders'          },
+  { key: 'invoices',    kpiKey: 'invoices',           label: 'Invoices',    icon: 'document-text-outline',    color: Colors.kpi4, bg: '#EDE9FE',           route: '/(app)/invoices'        },
+  { key: 'purchases',   kpiKey: 'purchases',          label: 'Purchases',   icon: 'bag-handle-outline',       color: Colors.kpi2, bg: Colors.successLight, route: '/(app)/purchases'       },
+  { key: 'estimates',   kpiKey: 'estimates',          label: 'Estimates',   icon: 'document-outline',         color: Colors.kpi3, bg: Colors.warningLight, route: '/(app)/estimates'       },
+  { key: 'gst',         kpiKey: 'gstRecords',         label: 'GST',         icon: 'shield-half-outline',      color: Colors.kpi1, bg: Colors.infoLight,    route: '/(app)/gst'             },
+  { key: 'hr',          kpiKey: 'attendance',         label: 'HR & Payroll',icon: 'briefcase-outline',        color: Colors.kpi6, bg: '#CFFAFE',           route: '/(app)/hr'              },
+  { key: 'stock',       kpiKey: 'stockMovements',     label: 'Stock',       icon: 'layers-outline',           color: Colors.kpi5, bg: Colors.errorLight,   route: '/(app)/inventory/stock' },
+  { key: 'vendors',     kpiKey: 'vendors',            label: 'Vendors',     icon: 'storefront-outline',       color: Colors.kpi2, bg: Colors.successLight, route: '/(app)/vendors'         },
+  { key: 'vehicles',    kpiKey: 'vehicles',           label: 'Vehicles',    icon: 'car-outline',              color: Colors.kpi1, bg: Colors.infoLight,    route: '/(app)/vehicles'        },
+  { key: 'maintenance', kpiKey: 'maintenancePeriods', label: 'Maintenance', icon: 'shield-checkmark-outline', color: Colors.kpi3, bg: Colors.warningLight, route: '/(app)/maintenance'     },
 ];
 
 function getGreeting() {
@@ -84,42 +97,127 @@ export default function DashboardScreen() {
     : 'User';
 
   const kpis = data?.kpis;
+  const visibleKpis = KPI_CONFIG.filter((k) => userHasFeature(user, k.key));
+
+  // Split into "recently visited" (device-local history) and the rest
+  const recents = useRecentsStore((s) => s.recents);
+  const recentsLoaded = useRecentsStore((s) => s.loaded);
+  useEffect(() => {
+    if (!recentsLoaded) useRecentsStore.getState().load();
+  }, [recentsLoaded]);
+  const recentKpis = recents
+    .map((k) => visibleKpis.find((c) => c.key === k))
+    .filter((c): c is (typeof KPI_CONFIG)[number] => !!c);
+  const remainingKpis = visibleKpis.filter((c) => !recents.includes(c.key));
+
+  const renderCards = (cards: typeof KPI_CONFIG) => {
+    const card = ({ key, kpiKey, label, icon, color, bg, route }: (typeof KPI_CONFIG)[number]) => {
+      const item = kpis?.[kpiKey as keyof typeof kpis] as
+        | { total: number; label: string; phase: number }
+        | undefined;
+      const isMigrated = (data?.migratedPhase ?? 0) >= (item?.phase ?? 99);
+      if (isWeb) {
+        return (
+          <TouchableOpacity key={key} style={styles.statCard} activeOpacity={0.75} onPress={() => router.push(route as any)}>
+            <View style={[styles.statIconBox, { backgroundColor: bg }]}>
+              <Ionicons name={icon as any} size={18} color={color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statCount}>{isMigrated ? (item?.total ?? 0) : '—'}</Text>
+              <Text style={styles.statLabel}>{label}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color={Colors.border} />
+          </TouchableOpacity>
+        );
+      }
+      return (
+        <TouchableOpacity key={key} style={styles.kpiCard} activeOpacity={0.75} onPress={() => router.push(route as any)}>
+          <View style={[styles.kpiIconBox, { backgroundColor: bg }]}>
+            <Ionicons name={icon as any} size={20} color={color} />
+          </View>
+          <Text style={styles.kpiCount}>{isMigrated ? (item?.total ?? 0) : '—'}</Text>
+          <Text style={styles.kpiLabel}>{label}</Text>
+          {!isMigrated ? (
+            <View style={[styles.statusChip, { backgroundColor: '#FFF3CD' }]}>
+              <Text style={[styles.statusChipText, { color: '#7A5400' }]}>Phase {item?.phase}</Text>
+            </View>
+          ) : (
+            <View style={[styles.statusChip, { backgroundColor: Colors.successLight }]}>
+              <Text style={[styles.statusChipText, { color: Colors.success }]}>Active</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      );
+    };
+
+    if (isWeb) return <View style={styles.gridWeb}>{cards.map(card)}</View>;
+    // Mobile: explicit rows so flex:1 always gives 2 columns
+    return (
+      <View style={styles.grid}>
+        {Array.from({ length: Math.ceil(cards.length / COLS) }, (_, ri) => (
+          <View key={ri} style={styles.gridRow}>
+            {cards.slice(ri * COLS, ri * COLS + COLS).map(card)}
+            {/* pad the last row so a lone card doesn't stretch full width */}
+            {ri === Math.ceil(cards.length / COLS) - 1 && cards.length % COLS !== 0 &&
+              Array.from({ length: COLS - (cards.length % COLS) }, (_, i) => (
+                <View key={`pad-${i}`} style={{ flex: 1 }} />
+              ))}
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.safe}>
 
-      {/* Top Nav Bar */}
-      <View style={[styles.navbar, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.navLeft}>
-          <View style={styles.navLogo}>
-            <Ionicons name="flash" size={16} color={Colors.accent} />
+      {/* Top Nav Bar — native only; web has the global WebTopNav */}
+      {!isWeb && (
+        <View style={[styles.navbar, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.navLeft}>
+            <View style={styles.navLogo}>
+              <Ionicons name="flash" size={16} color={Colors.accent} />
+            </View>
+            <Text style={styles.navTitle}>Rajat Electricals</Text>
           </View>
-          <Text style={styles.navTitle}>Rajat Electricals</Text>
+          <View style={styles.navRight}>
+            {user?.isSuperuser && (
+              <TouchableOpacity
+                onPress={() => router.push('/(app)/admin' as any)}
+                style={styles.navLogout}
+              >
+                <Ionicons name="settings-outline" size={18} color="rgba(255,255,255,0.75)" />
+                <Text style={styles.navLogoutText}>Admin</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleLogout} style={styles.navLogout}>
+              <Ionicons name="log-out-outline" size={18} color="rgba(255,255,255,0.75)" />
+              <Text style={styles.navLogoutText}>Sign out</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.navLogout}>
-          <Ionicons name="log-out-outline" size={18} color="rgba(255,255,255,0.75)" />
-          <Text style={styles.navLogoutText}>Sign out</Text>
-        </TouchableOpacity>
-      </View>
+      )}
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, isWeb && styles.contentWeb]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />
         }
         showsVerticalScrollIndicator={false}
       >
         {/* Greeting row */}
-        <View style={styles.greetRow}>
+        <View style={[styles.greetRow, isWeb && styles.greetRowWeb]}>
           <View>
-            <Text style={styles.greetText}>{getGreeting()}, {displayName}</Text>
+            <Text style={[styles.greetText, isWeb && styles.greetTextWeb]}>{getGreeting()}, {displayName}</Text>
             <Text style={styles.greetSub}>Here's your business overview</Text>
           </View>
-          <View style={styles.phasePill}>
-            <Ionicons name="checkmark-circle" size={12} color={Colors.success} />
-            <Text style={styles.phasePillText}>Phase 1</Text>
-          </View>
+          {!isWeb && (
+            <View style={styles.phasePill}>
+              <Ionicons name="checkmark-circle" size={12} color={Colors.success} />
+              <Text style={styles.phasePillText}>Phase 1</Text>
+            </View>
+          )}
         </View>
 
         {loading ? (
@@ -138,58 +236,54 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <>
-            {/* Section header */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Business Modules</Text>
-              <Text style={styles.sectionSub}>Pull down to refresh</Text>
-            </View>
-
-            {/* KPI grid — explicit rows so flex:1 always gives 2 columns */}
-            <View style={styles.grid}>
-              {Array.from({ length: Math.ceil(KPI_CONFIG.length / COLS) }, (_, ri) => (
-                <View key={ri} style={styles.gridRow}>
-                  {KPI_CONFIG.slice(ri * COLS, ri * COLS + COLS).map(({ key, label, icon, color, bg, route }) => {
-                    const item = kpis?.[key as keyof typeof kpis] as
-                      | { total: number; label: string; phase: number }
-                      | undefined;
-                    const isMigrated = (data?.migratedPhase ?? 0) >= (item?.phase ?? 99);
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={styles.kpiCard}
-                        activeOpacity={0.75}
-                        onPress={() => router.push(route as any)}
-                      >
-                        <View style={[styles.kpiIconBox, { backgroundColor: bg }]}>
-                          <Ionicons name={icon as any} size={20} color={color} />
-                        </View>
-                        <Text style={styles.kpiCount}>
-                          {isMigrated ? (item?.total ?? 0) : '—'}
-                        </Text>
-                        <Text style={styles.kpiLabel}>{item?.label ?? label}</Text>
-                        {!isMigrated ? (
-                          <View style={[styles.statusChip, { backgroundColor: '#FFF3CD' }]}>
-                            <Text style={[styles.statusChipText, { color: '#7A5400' }]}>Phase {item?.phase}</Text>
-                          </View>
-                        ) : (
-                          <View style={[styles.statusChip, { backgroundColor: Colors.successLight }]}>
-                            <Text style={[styles.statusChipText, { color: Colors.success }]}>Active</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
+            {/* Recently visited */}
+            {recentKpis.length > 0 && (
+              <>
+                <View style={[styles.sectionHeader, isWeb && styles.sectionHeaderWeb]}>
+                  <Text style={styles.sectionTitle}>Recently Visited</Text>
+                  {isWeb ? (
+                    <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchDashboard(true)} activeOpacity={0.7}>
+                      <Ionicons name="refresh-outline" size={13} color={Colors.textSecondary} />
+                      <Text style={styles.refreshText}>Refresh</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.sectionSub}>Pull down to refresh</Text>
+                  )}
                 </View>
-              ))}
-            </View>
+                {renderCards(recentKpis)}
+              </>
+            )}
 
-            {/* Coming soon banner */}
-            <View style={styles.comingSoon}>
-              <Ionicons name="time-outline" size={18} color={Colors.textMuted} />
-              <Text style={styles.comingSoonText}>
-                More modules will unlock as each phase is migrated
-              </Text>
-            </View>
+            {/* Remaining modules */}
+            {remainingKpis.length > 0 && (
+              <>
+                <View style={[styles.sectionHeader, isWeb && styles.sectionHeaderWeb]}>
+                  <Text style={styles.sectionTitle}>
+                    {recentKpis.length > 0 ? 'All Modules' : 'Business Modules'}
+                  </Text>
+                  {recentKpis.length === 0 && (
+                    isWeb ? (
+                      <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchDashboard(true)} activeOpacity={0.7}>
+                        <Ionicons name="refresh-outline" size={13} color={Colors.textSecondary} />
+                        <Text style={styles.refreshText}>Refresh</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={styles.sectionSub}>Pull down to refresh</Text>
+                    )
+                  )}
+                </View>
+                {renderCards(remainingKpis)}
+              </>
+            )}
+
+            {visibleKpis.length === 0 && (
+              <View style={styles.centerBox}>
+                <Ionicons name="lock-closed-outline" size={36} color={Colors.textMuted} />
+                <Text style={styles.centerText}>
+                  No modules are assigned to your account yet. Ask your administrator for access.
+                </Text>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -220,11 +314,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navTitle: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
+  navRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   navLogout: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   navLogoutText: { color: 'rgba(255,255,255,0.75)', fontSize: 13 },
 
   scroll: { flex: 1, backgroundColor: Colors.background },
   content: { paddingBottom: 40 },
+  // Web: center the page in a fixed-width column like a desktop app
+  contentWeb: { alignSelf: 'center', width: '100%', maxWidth: 1240, paddingHorizontal: 32, paddingTop: 6 },
 
   greetRow: {
     flexDirection: 'row',
@@ -236,7 +333,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  greetRowWeb: { backgroundColor: 'transparent', borderBottomWidth: 0, paddingHorizontal: 0, paddingVertical: 20 },
   greetText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  greetTextWeb: { fontSize: 20 },
   greetSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   phasePill: {
     flexDirection: 'row',
@@ -312,6 +411,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.6 },
   sectionSub: { fontSize: 11, color: Colors.textMuted },
+  sectionHeaderWeb: { paddingHorizontal: 0, marginTop: 4 },
+  refreshBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 6, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  refreshText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
 
   grid: {
     paddingHorizontal: 12,
@@ -321,6 +428,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+
+  // Web: compact horizontal stat cards, wrapping to fill the row
+  gridWeb: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  statCard: {
+    flexGrow: 1, flexBasis: 210, maxWidth: 292,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 8, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 13,
+    ...Platform.select({ web: { boxShadow: '0 1px 2px rgba(0,0,0,0.04)' } }),
+  },
+  statIconBox: {
+    width: 38, height: 38, borderRadius: 8,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  statCount: { fontSize: 19, fontWeight: '800', color: Colors.textPrimary, lineHeight: 23 },
+  statLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500', marginTop: 1 },
   kpiCard: {
     flex: 1,
     backgroundColor: Colors.surface,
@@ -352,23 +476,4 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   statusChipText: { fontSize: 10, fontWeight: '700' },
-
-  comingSoon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 14,
-    marginTop: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 14,
-  },
-  comingSoonText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
 });

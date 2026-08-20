@@ -31,6 +31,30 @@ export const authApi = {
   logout: () => api.post('/api/auth/logout'),
 };
 
+// ─── Admin (RBAC — super admin only) ─────────────────────────────────────────
+
+export const adminApi = {
+  features: () => api.get<{ features: FeatureDef[] }>('/api/admin/features'),
+  users: {
+    list: () => api.get<{ users: AdminUser[]; total: number }>('/api/admin/users'),
+    create: (data: AdminUserPayload) => api.post<{ user: AdminUser }>('/api/admin/users', data),
+    update: (id: number, data: Partial<AdminUserPayload>) =>
+      api.put<{ user: AdminUser }>(`/api/admin/users/${id}`, data),
+    setGroups: (id: number, groupIds: number[]) =>
+      api.put<{ user: AdminUser }>(`/api/admin/users/${id}/groups`, { groupIds }),
+  },
+  groups: {
+    list: () => api.get<{ groups: AdminGroup[]; total: number }>('/api/admin/groups'),
+    create: (data: AdminGroupPayload) => api.post<{ group: AdminGroup }>('/api/admin/groups', data),
+    update: (id: number, data: Partial<AdminGroupPayload>) =>
+      api.put<{ group: AdminGroup }>(`/api/admin/groups/${id}`, data),
+    remove: (id: number, force = false) =>
+      api.delete<{ message: string }>(`/api/admin/groups/${id}${force ? '?force=true' : ''}`),
+    setPermissions: (id: number, features: string[]) =>
+      api.put<{ group: AdminGroup }>(`/api/admin/groups/${id}/permissions`, { features }),
+  },
+};
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export const dashboardApi = {
@@ -235,15 +259,39 @@ export const hrApi = {
     list: (params?: { employeeId?: number; projectId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
       api.get<AttendanceListResponse>('/api/hr/attendance', { params }),
     detail: (id: number) => api.get<AttendanceDetailResponse>(`/api/hr/attendance/${id}`),
+    day: (date: string) => api.get<AttendanceDayResponse>('/api/hr/attendance/day', { params: { date } }),
+    bulkMark: (payload: AttendanceBulkPayload) =>
+      api.post<{ date: string; records: AttendanceRecord[] }>('/api/hr/attendance/bulk', payload),
+    update: (id: number, data: AttendanceUpdatePayload) =>
+      api.put<AttendanceDetailResponse>(`/api/hr/attendance/${id}`, data),
+    remove: (id: number) => api.delete<{ success: boolean }>(`/api/hr/attendance/${id}`),
+    monthSummary: (month: string) =>
+      api.get<AttendanceMonthSummaryResponse>('/api/hr/attendance/summary/month', { params: { month } }),
+    yearSummary: (employeeId: number, year: number) =>
+      api.get<AttendanceYearSummaryResponse>('/api/hr/attendance/summary/year', { params: { employeeId, year } }),
   },
   salaryComponents: {
     list: (params?: { employeeId?: number; active?: boolean; page?: number; limit?: number }) =>
       api.get<SalaryComponentListResponse>('/api/hr/salary-components', { params }),
+    create: (data: SalaryComponentPayload) =>
+      api.post<{ component: SalaryComponent }>('/api/hr/salary-components', data),
+    update: (id: number, data: Partial<SalaryComponentPayload>) =>
+      api.put<{ component: SalaryComponent }>(`/api/hr/salary-components/${id}`, data),
+    remove: (id: number) => api.delete<{ success: boolean }>(`/api/hr/salary-components/${id}`),
+    payroll: (month: string) =>
+      api.get<PayrollResponse>('/api/hr/salary-components/payroll', { params: { month } }),
   },
   salaryPayments: {
     list: (params?: { employeeId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
       api.get<SalaryPaymentListResponse>('/api/hr/salary-payments', { params }),
     detail: (id: number) => api.get<SalaryPaymentDetailResponse>(`/api/hr/salary-payments/${id}`),
+    create: (data: SalaryPaymentPayload) =>
+      api.post<{ payment: SalaryPayment }>('/api/hr/salary-payments', data),
+    update: (id: number, data: Partial<Omit<SalaryPaymentPayload, 'employeeId' | 'paymentMonth'>>) =>
+      api.put<{ payment: SalaryPayment }>(`/api/hr/salary-payments/${id}`, data),
+    remove: (id: number) => api.delete<{ success: boolean }>(`/api/hr/salary-payments/${id}`),
+    byEmployee: (month: string) =>
+      api.get<PayrollResponse>('/api/hr/salary-payments/by-employee', { params: { month } }),
   },
   incentives: {
     list: (params?: { employeeId?: number; projectId?: number; incentiveType?: string; page?: number; limit?: number }) =>
@@ -288,9 +336,34 @@ export interface MediaFile {
 export interface AuthUser {
   id: number; username: string; email: string;
   firstName: string; lastName: string; isStaff: boolean; isSuperuser: boolean;
+  // RBAC fields — absent when talking to a pre-RBAC backend (treat as full access)
+  groups?: { id: number; name: string }[];
+  permissions?: string[];
 }
 export interface LoginResponse { token: string; user: AuthUser; }
 export interface MeResponse { user: AuthUser; }
+
+export interface FeatureDef { key: string; label: string; hub: string; parent?: string; }
+export interface AdminUser {
+  id: number; username: string; email: string;
+  firstName: string; lastName: string;
+  isActive: boolean; isStaff: boolean; isSuperuser: boolean;
+  lastLogin: string | null; dateJoined: string;
+  groups: { id: number; name: string }[];
+}
+export interface AdminUserPayload {
+  username?: string; password?: string; email?: string;
+  firstName?: string; lastName?: string; isActive?: boolean;
+  groupIds?: number[];
+}
+export interface AdminGroup {
+  id: number; name: string; description: string; isActive: boolean;
+  createdAt: string; updatedAt: string;
+  features: string[]; memberCount: number;
+}
+export interface AdminGroupPayload {
+  name?: string; description?: string; isActive?: boolean; features?: string[];
+}
 
 export interface KpiItem { total: number; label: string; phase: number; active?: number; }
 export interface DashboardResponse {
@@ -536,6 +609,45 @@ export interface AttendanceRecord {
 export interface AttendanceListResponse { records: AttendanceRecord[]; total: number; page: number; limit: number; }
 export interface AttendanceDetailResponse { record: AttendanceRecord; }
 
+// Day roster record — raw row without the employee/project joins
+export interface AttendanceDayRecord {
+  id: number; date: string; hoursWorked: string; overtimeHours: string;
+  isPresent: boolean; attendanceStatus: string; notes: string; createdAt: string;
+}
+export interface AttendanceDayEmployee {
+  id: number; name: string; employeeCode: string; skillType: string;
+  record: AttendanceDayRecord | null;
+}
+export interface AttendanceDayResponse { date: string; employees: AttendanceDayEmployee[]; }
+export interface AttendanceBulkPayload {
+  date: string; // YYYY-MM-DD
+  records: {
+    employeeId: number;
+    attendanceStatus: string; // P | A | H | L
+    hoursWorked?: number;
+    overtimeHours?: number;
+    notes?: string;
+  }[];
+}
+export interface AttendanceUpdatePayload {
+  attendanceStatus?: string; hoursWorked?: number; overtimeHours?: number; notes?: string;
+}
+export interface AttendanceStatusCounts { P: number; A: number; H: number; L: number; }
+export interface AttendanceMonthSummaryRow {
+  employee: { id: number; name: string; employeeCode: string; skillType: string };
+  counts: AttendanceStatusCounts;
+  totalHours: number; totalOvertime: number; markedDays: number;
+}
+export interface AttendanceMonthSummaryResponse { month: string; rows: AttendanceMonthSummaryRow[]; }
+export interface AttendanceYearMonthBucket {
+  month: number; counts: AttendanceStatusCounts; totalHours: number; totalOvertime: number;
+}
+export interface AttendanceYearSummaryResponse {
+  year: number;
+  employee: { id: number; name: string; employeeCode: string; skillType: string };
+  months: AttendanceYearMonthBucket[];
+}
+
 export interface SalaryComponent {
   id: number; componentType: string; name: string; amount: string;
   isActive: boolean; effectiveFrom: string; effectiveTo: string | null; notes: string;
@@ -543,6 +655,48 @@ export interface SalaryComponent {
   employee: { id: number; name: string; employeeCode: string };
 }
 export interface SalaryComponentListResponse { components: SalaryComponent[]; total: number; page: number; limit: number; }
+export interface SalaryComponentPayload {
+  employeeId?: number;
+  componentType?: string;   // 'allowance' | 'deduction'
+  name?: string;
+  amount?: number;
+  isActive?: boolean;
+  effectiveFrom?: string;   // YYYY-MM-DD
+  effectiveTo?: string | null;
+  notes?: string;
+}
+
+// Payroll — computed monthly salary per employee (attendance-driven).
+// Payments are a ledger: multiple installments per employee per month.
+export interface PayrollPayment {
+  id: number; employeeId: number; amount: string;
+  paymentDate: string; paymentMethod: string; referenceNumber: string; notes: string;
+}
+export interface PayrollRow {
+  employee: { id: number; name: string; employeeCode: string; dailyWage: string };
+  counts: AttendanceStatusCounts;
+  otHours: number;
+  payableDays: number;
+  earned: number;
+  allowances: number;
+  deductions: number;
+  components: { id: number; name: string; componentType: string; amount: string }[];
+  net: number;
+  payments: PayrollPayment[];
+  paidTotal: number;
+  remaining: number;
+  status: 'unpaid' | 'partial' | 'paid';
+}
+export interface PayrollResponse { month: string; rows: PayrollRow[]; }
+export interface SalaryPaymentPayload {
+  employeeId: number;
+  paymentMonth: string;   // YYYY-MM-01
+  paymentDate: string;    // YYYY-MM-DD
+  amount: number;
+  paymentMethod?: string;
+  referenceNumber?: string;
+  notes?: string;
+}
 
 export interface SalaryPayment {
   id: number; paymentMonth: string; paymentDate: string; amount: string;

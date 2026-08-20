@@ -1,22 +1,26 @@
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Platform } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dashboardApi } from '../../services/api';
+import { useAuthStore, userHasFeature } from '../../store/auth';
 import { Colors } from '../../constants/colors';
+import WebHubPage, { HubCard } from '../../components/WebHubPage';
 
 const CARDS = [
-  { key: 'orders',    label: 'Orders',    icon: 'receipt-outline'       as const, route: '/(app)/orders',           color: '#1565C0' },
-  { key: 'invoices',  label: 'Invoices',  icon: 'document-text-outline' as const, route: '/(app)/invoices',         color: '#6A1B9A' },
-  { key: 'purchases', label: 'Purchases', icon: 'cart-outline'          as const, route: '/(app)/purchases',        color: '#2E7D32' },
-  { key: 'estimates', label: 'Estimates', icon: 'document-outline'      as const, route: '/(app)/estimates',        color: '#E65100' },
-  { key: 'gstRecords',label: 'GST',       icon: 'shield-half-outline'   as const, route: '/(app)/gst',              color: '#006064' },
-  { key: 'stockMovements', label: 'Stock', icon: 'layers-outline'        as const, route: '/(app)/inventory/stock',  color: '#00695C' },
+  { key: 'orders',    label: 'Orders',    icon: 'receipt-outline'       as const, route: '/(app)/orders',           color: '#1565C0', feature: 'orders' },
+  { key: 'invoices',  label: 'Invoices',  icon: 'document-text-outline' as const, route: '/(app)/invoices',         color: '#6A1B9A', feature: 'invoices' },
+  { key: 'purchases', label: 'Purchases', icon: 'cart-outline'          as const, route: '/(app)/purchases',        color: '#2E7D32', feature: 'purchases' },
+  { key: 'estimates', label: 'Estimates', icon: 'document-outline'      as const, route: '/(app)/estimates',        color: '#E65100', feature: 'estimates' },
+  { key: 'gstRecords',label: 'GST',       icon: 'shield-half-outline'   as const, route: '/(app)/gst',              color: '#006064', feature: 'gst' },
+  { key: 'stockMovements', label: 'Stock', icon: 'layers-outline'        as const, route: '/(app)/inventory/stock',  color: '#00695C', feature: 'stock' },
 ];
 
 export default function FinanceScreen() {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
+  const visibleCards = CARDS.filter((c) => userHasFeature(user, c.feature));
   const [kpis, setKpis] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
@@ -30,6 +34,31 @@ export default function FinanceScreen() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  if (Platform.OS === 'web') {
+    const webCards: HubCard[] = visibleCards.map((c) => {
+      const kpi = kpis[c.key];
+      return {
+        key: c.feature,
+        label: c.label,
+        sub: kpi?.active != null ? `${kpi.active} active` : undefined,
+        icon: c.icon,
+        color: c.color,
+        bg: c.color + '18',
+        route: c.route,
+        count: kpi?.total ?? null,
+      };
+    });
+    return (
+      <WebHubPage
+        title="Finance"
+        subtitle="Orders · Invoices · Purchases"
+        loading={loading}
+        cards={webCards}
+        emptyMessage="No finance modules assigned to your account."
+      />
+    );
+  }
+
   return (
     <View style={styles.safe}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
@@ -40,8 +69,15 @@ export default function FinanceScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
           <ActivityIndicator color={Colors.accent} size="large" style={{ marginTop: 60 }} />
+        ) : visibleCards.length === 0 ? (
+          <View style={{ alignItems: 'center', paddingVertical: 48, gap: 10 }}>
+            <Ionicons name="lock-closed-outline" size={32} color={Colors.textMuted} />
+            <Text style={{ fontSize: 13, color: Colors.textMuted, textAlign: 'center' }}>
+              No finance modules assigned to your account.
+            </Text>
+          </View>
         ) : (
-          CARDS.map((c) => {
+          visibleCards.map((c) => {
             const kpi = kpis[c.key];
             const total  = kpi?.total  ?? 0;
             const active = kpi?.active ?? null;

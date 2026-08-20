@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
 import { STACK_SCREEN_OPTIONS } from '../../../constants/stackOptions';
+import { useFeatureGuard } from '../../../hooks/useFeatureGuard';
 
 export default function GstLayout() {
+  useFeatureGuard('gst');
   return (
     <Stack
       screenOptions={STACK_SCREEN_OPTIONS}
