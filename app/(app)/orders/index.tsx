@@ -1,11 +1,12 @@
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ordersApi, OrderSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import OrderFormSheet from '../../../components/OrderFormSheet';
+import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: '#FFF8E1', text: '#F57F17' },
@@ -31,6 +32,7 @@ function fmtDate(d: string) {
 }
 
 export default function OrdersScreen() {
+  const { customerId, customerName } = useLocalSearchParams<{ customerId?: string; customerName?: string }>();
   const [items, setItems]         = useState<OrderSummary[]>([]);
   const [search, setSearch]       = useState('');
   const [loading, setLoading]     = useState(true);
@@ -41,12 +43,16 @@ export default function OrdersScreen() {
   const fetchItems = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const { data } = await ordersApi.list({ search: search.trim() || undefined, limit: 100 });
+      const { data } = await ordersApi.list({
+        search: search.trim() || undefined,
+        customerId: customerId ? parseInt(customerId) : undefined,
+        limit: 100,
+      });
       setItems(data.orders);
       setTotal(data.total);
     } catch { setItems([]); }
     finally { setLoading(false); setRefreshing(false); }
-  }, [search]);
+  }, [search, customerId]);
 
   useEffect(() => { const t = setTimeout(() => fetchItems(), 350); return () => clearTimeout(t); }, [fetchItems]);
 
@@ -80,6 +86,12 @@ export default function OrdersScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {customerId && customerName ? (
+        <CustomerFilterBanner
+          name={customerName}
+          onClear={() => router.setParams({ customerId: undefined, customerName: undefined })}
+        />
+      ) : null}
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />

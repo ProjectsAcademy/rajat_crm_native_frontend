@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { invoicesApi, InvoiceDetail } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
+import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,       text: Colors.textMuted },
@@ -23,6 +24,8 @@ export default function InvoiceDetailScreen() {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
+  const [showEdit, setShowEdit] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadInvoice = useCallback(() => {
     invoicesApi.detail(parseInt(id!))
@@ -32,6 +35,29 @@ export default function InvoiceDetailScreen() {
   }, [id]);
 
   useEffect(() => { loadInvoice(); }, [loadInvoice]);
+
+  const handleDelete = () => {
+    const doIt = async () => {
+      setDeleting(true);
+      try {
+        await invoicesApi.remove(parseInt(id!));
+        router.back();
+      } catch (e: any) {
+        const msg = e?.response?.data?.error ?? 'Could not delete invoice.';
+        setDeleting(false);
+        if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Cannot Delete', msg);
+      }
+    };
+    const label = invoice?.invoiceNo ?? 'this invoice';
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Permanently delete "${label}"? This cannot be undone.`)) doIt();
+      return;
+    }
+    Alert.alert('Delete Invoice', `Permanently delete "${label}"? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: doIt },
+    ]);
+  };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !invoice) return (
@@ -69,6 +95,23 @@ export default function InvoiceDetailScreen() {
             <Text style={styles.dateItem}>Invoice: {fmtDate(invoice.invoiceDate)}</Text>
             <Text style={[styles.dateItem, isOverdue && { color: Colors.error }]}>Due: {fmtDate(invoice.dueDate)}</Text>
             {invoice.gstDate && <Text style={styles.dateItem}>GST: {fmtDate(invoice.gstDate)}</Text>}
+          </View>
+          {invoice.order && (
+            <TouchableOpacity style={styles.orderLink} onPress={() => router.push(`/(app)/orders/${invoice.order!.id}` as any)}>
+              <Ionicons name="receipt-outline" size={13} color={Colors.accent} />
+              <Text style={styles.orderLinkText}>Created from order {invoice.order.orderNo}</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+              <Ionicons name="create-outline" size={15} color={Colors.accent} />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.6 }]} onPress={handleDelete} disabled={deleting}>
+              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
+              <Text style={styles.deleteBtnText}>Delete</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -142,6 +185,13 @@ export default function InvoiceDetailScreen() {
           />
         </View>
       </ScrollView>
+
+      <InvoiceFormSheet
+        visible={showEdit}
+        invoice={invoice}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => { setShowEdit(false); loadInvoice(); }}
+      />
     </SafeAreaView>
   );
 }
@@ -167,6 +217,23 @@ const styles = StyleSheet.create({
   projectName: { fontSize: 12, color: Colors.accent, marginTop: 2, fontWeight: '600' },
   dates: { flexDirection: 'row', gap: 14, marginTop: 8, flexWrap: 'wrap' },
   dateItem: { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
+  orderLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  orderLinkText: { fontSize: 12, color: Colors.accent, fontWeight: '600' },
+
+  headerActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(255,153,0,0.15)', paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6, borderWidth: 1,
+    borderColor: 'rgba(255,153,0,0.4)',
+  },
+  editBtnText: { fontSize: 13, fontWeight: '700', color: Colors.accent },
+  deleteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.error, paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6,
+  },
+  deleteBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   statsRow: { flexDirection: 'row', backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
   statBox:  { flex: 1, padding: 14, alignItems: 'center' },

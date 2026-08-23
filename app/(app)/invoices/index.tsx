@@ -1,10 +1,12 @@
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { invoicesApi, InvoiceSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
+import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,        text: Colors.textMuted  },
@@ -24,24 +26,30 @@ function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-IN',{day
 const FILTERS = ['All', 'Sales', 'Purchase'];
 
 export default function InvoicesScreen() {
+  const { customerId, customerName } = useLocalSearchParams<{ customerId?: string; customerName?: string }>();
   const [items, setItems]     = useState<InvoiceSummary[]>([]);
   const [search, setSearch]   = useState('');
   const [filter, setFilter]   = useState('All');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [total, setTotal]     = useState(0);
+  const [showForm, setShowForm] = useState(false);
 
   const fetchItems = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const params: any = { search: search.trim() || undefined, limit: 100 };
+      const params: any = {
+        search: search.trim() || undefined,
+        customerId: customerId ? parseInt(customerId) : undefined,
+        limit: 100,
+      };
       if (filter !== 'All') params.invoiceType = filter.toLowerCase();
       const { data } = await invoicesApi.list(params);
       setItems(data.invoices);
       setTotal(data.total);
     } catch { setItems([]); }
     finally { setLoading(false); setRefreshing(false); }
-  }, [search, filter]);
+  }, [search, filter, customerId]);
 
   useEffect(() => { const t = setTimeout(() => fetchItems(), 350); return () => clearTimeout(t); }, [fetchItems]);
 
@@ -73,6 +81,12 @@ export default function InvoicesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {customerId && customerName ? (
+        <CustomerFilterBanner
+          name={customerName}
+          onClear={() => router.setParams({ customerId: undefined, customerName: undefined })}
+        />
+      ) : null}
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
@@ -97,6 +111,22 @@ export default function InvoicesScreen() {
           ListEmptyComponent={<View style={styles.center}><Ionicons name="document-text-outline" size={48} color={Colors.textMuted} /><Text style={styles.emptyText}>No invoices found</Text></View>}
         />
       )}
+
+      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+        <Ionicons name="add" size={26} color="#111" />
+      </TouchableOpacity>
+
+      <InvoiceFormSheet
+        visible={showForm}
+        onClose={() => setShowForm(false)}
+        onSaved={(newId) => {
+          if (newId) {
+            router.push(`/(app)/invoices/${newId}` as any);
+          } else {
+            fetchItems(true);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -113,6 +143,16 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   pillTextActive: { color: '#111' },
   list: { padding: 12 },
+  fab: {
+    position: 'absolute', right: 20, bottom: 24,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.accent, justifyContent: 'center', alignItems: 'center',
+    elevation: 6,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 12px rgba(0,0,0,0.25)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12 },
+    }),
+  },
   card: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardMain: { flex: 1 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },

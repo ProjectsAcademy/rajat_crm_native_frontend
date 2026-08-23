@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore, userHasFeature } from '../store/auth';
@@ -36,15 +36,21 @@ export default function WebTopNav() {
     router.replace('/(auth)/login');
   };
 
+  const initials = (user?.username ?? '?').slice(0, 2).toUpperCase();
+  const role = user?.isSuperuser ? 'Administrator' : 'User';
+
   return (
     <View style={styles.bar}>
       <View style={styles.inner}>
         {/* Brand */}
         <TouchableOpacity style={styles.brand} onPress={() => router.push('/(app)' as any)} activeOpacity={0.8}>
           <View style={styles.logo}>
-            <Ionicons name="flash" size={15} color={Colors.accent} />
+            <Ionicons name="flash" size={17} color={Colors.primary} />
           </View>
-          <Text style={styles.brandText}>Rajat Electricals</Text>
+          <View>
+            <Text style={styles.brandText}>RAJAT ELECTRICALS</Text>
+            <Text style={styles.brandSub}>BUSINESS SUITE</Text>
+          </View>
         </TouchableOpacity>
 
         {/* Primary links */}
@@ -79,8 +85,14 @@ export default function WebTopNav() {
           </TouchableOpacity>
         )}
         <View style={styles.divider} />
-        <Text style={styles.userText}>{user?.username ?? ''}</Text>
-        <TouchableOpacity style={styles.link} onPress={handleLogout} activeOpacity={0.7}>
+        <View style={styles.userChip}>
+          <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View>
+          <View>
+            <Text style={styles.userText}>{user?.username ?? ''}</Text>
+            <Text style={styles.userRole}>{role}</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={[styles.link, { marginLeft: 6 }]} onPress={handleLogout} activeOpacity={0.7}>
           <Ionicons name="log-out-outline" size={15} color="rgba(255,255,255,0.7)" />
           <Text style={styles.linkText}>Sign out</Text>
         </TouchableOpacity>
@@ -92,34 +104,45 @@ export default function WebTopNav() {
 const styles = StyleSheet.create({
   bar: {
     backgroundColor: Colors.primary,
-    borderBottomWidth: 2,
+    borderBottomWidth: 3,
     borderBottomColor: Colors.accent,
     zIndex: 10,
   },
   inner: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 52,
-    paddingHorizontal: 24,
-    gap: 4,
+    height: 58,
+    paddingHorizontal: 28,
+    gap: 2,
     width: '100%',
-    maxWidth: 1400,
+    maxWidth: 1440,
     alignSelf: 'center',
   },
 
-  brand:     { flexDirection: 'row', alignItems: 'center', gap: 9, marginRight: 28 },
-  logo:      { width: 26, height: 26, borderRadius: 6, backgroundColor: 'rgba(255,153,0,0.15)', justifyContent: 'center', alignItems: 'center' },
-  brandText: { color: '#fff', fontSize: 14, fontWeight: '700', letterSpacing: 0.2 },
+  brand:     { flexDirection: 'row', alignItems: 'center', gap: 11, marginRight: 38 },
+  logo:      { width: 30, height: 30, backgroundColor: Colors.accent, justifyContent: 'center', alignItems: 'center' },
+  brandText: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: -0.1 },
+  brandSub:  { color: 'rgba(255,255,255,0.45)', fontSize: 9, fontWeight: '700', letterSpacing: 1.6, marginTop: 2 },
 
-  links: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  links: { flexDirection: 'row', alignItems: 'stretch', gap: 2 },
   link: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 6,
+    paddingHorizontal: 15,
   },
-  linkActive:     { backgroundColor: 'rgba(255,153,0,0.12)' },
+  linkActive: {
+    backgroundColor: 'rgba(255,153,0,0.14)',
+    ...Platform.select({
+      web: { boxShadow: `inset 0 -3px 0 0 ${Colors.accent}` },
+      default: { borderBottomWidth: 3, borderBottomColor: Colors.accent },
+    }),
+  },
   linkText:       { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
-  linkTextActive: { color: Colors.accent },
+  linkTextActive: { color: '#fff', fontWeight: '800' },
 
-  divider:  { width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.15)', marginHorizontal: 10 },
-  userText: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginRight: 6 },
+  divider:  { width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.16)', marginHorizontal: 14 },
+  userChip: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar:     { width: 28, height: 28, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+  avatarText: { fontSize: 11, fontWeight: '800', color: Colors.accent, letterSpacing: 0.5 },
+  userText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  userRole: { fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 1 },
 });

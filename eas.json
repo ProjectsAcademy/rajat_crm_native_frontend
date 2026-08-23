@@ -18,9 +18,9 @@
       }
     },
     "production": {
-      "android": { "buildType": "app-bundle" },
+      "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://dev-api.urjaradiant.com"
+        "EXPO_PUBLIC_API_URL": "https://prod-api.urjaradiant.com"
       }
     }
   },

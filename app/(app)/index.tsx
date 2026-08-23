@@ -16,6 +16,8 @@ import { useAuthStore, userHasFeature } from '../../store/auth';
 import { useRecentsStore } from '../../store/recents';
 import { dashboardApi, DashboardResponse } from '../../services/api';
 import { Colors } from '../../constants/colors';
+import DashboardCalendar from '../../components/DashboardCalendar';
+import RevenueChart from '../../components/RevenueChart';
 
 const isWeb = Platform.OS === 'web';
 const COLS = 2; // mobile grid columns; web uses a wrapping flex grid instead
@@ -110,23 +112,50 @@ export default function DashboardScreen() {
     .filter((c): c is (typeof KPI_CONFIG)[number] => !!c);
   const remainingKpis = visibleKpis.filter((c) => !recents.includes(c.key));
 
-  const renderCards = (cards: typeof KPI_CONFIG) => {
+  // Web has two distinct tile styles: 'compact' (Recently Visited — a horizontal
+  // row) and 'full' (All Modules — a vertical card with a status chip). Mobile
+  // uses its own single kpiCard style regardless of variant.
+  const renderCards = (cards: typeof KPI_CONFIG, variant: 'compact' | 'full' = 'full') => {
     const card = ({ key, kpiKey, label, icon, color, bg, route }: (typeof KPI_CONFIG)[number]) => {
       const item = kpis?.[kpiKey as keyof typeof kpis] as
         | { total: number; label: string; phase: number }
         | undefined;
       const isMigrated = (data?.migratedPhase ?? 0) >= (item?.phase ?? 99);
-      if (isWeb) {
+      if (isWeb && variant === 'compact') {
         return (
-          <TouchableOpacity key={key} style={styles.statCard} activeOpacity={0.75} onPress={() => router.push(route as any)}>
-            <View style={[styles.statIconBox, { backgroundColor: bg }]}>
+          <TouchableOpacity key={key} style={styles.tileCompact} activeOpacity={0.85} onPress={() => router.push(route as any)}>
+            <View style={[styles.tileCompactIconBox, { backgroundColor: bg }]}>
               <Ionicons name={icon as any} size={18} color={color} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.statCount}>{isMigrated ? (item?.total ?? 0) : '—'}</Text>
-              <Text style={styles.statLabel}>{label}</Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.tileCompactCount}>{isMigrated ? (item?.total ?? 0) : '—'}</Text>
+              <Text style={styles.tileCompactLabel} numberOfLines={1}>{label}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={14} color={Colors.border} />
+            <Ionicons name="arrow-forward" size={15} color={Colors.textMuted} />
+          </TouchableOpacity>
+        );
+      }
+      if (isWeb) {
+        return (
+          <TouchableOpacity key={key} style={styles.tileFull} activeOpacity={0.85} onPress={() => router.push(route as any)}>
+            <View style={styles.tileFullTop}>
+              <View style={[styles.tileFullIconBox, { backgroundColor: bg }]}>
+                <Ionicons name={icon as any} size={19} color={color} />
+              </View>
+              {!isMigrated ? (
+                <View style={[styles.tileChip, { backgroundColor: '#FFF3CD' }]}>
+                  <Text style={[styles.tileChipText, { color: '#7A5400' }]}>PHASE {item?.phase}</Text>
+                </View>
+              ) : (
+                <View style={[styles.tileChip, { backgroundColor: Colors.successLight }]}>
+                  <Text style={[styles.tileChipText, { color: Colors.success }]}>ACTIVE</Text>
+                </View>
+              )}
+            </View>
+            <View style={{ flex: 1 }} />
+            <Text style={styles.tileFullCount}>{isMigrated ? (item?.total ?? 0) : '—'}</Text>
+            <View style={styles.tileFullDivider} />
+            <Text style={styles.tileFullLabel} numberOfLines={1}>{label}</Text>
           </TouchableOpacity>
         );
       }
@@ -150,7 +179,7 @@ export default function DashboardScreen() {
       );
     };
 
-    if (isWeb) return <View style={styles.gridWeb}>{cards.map(card)}</View>;
+    if (isWeb) return <View style={variant === 'compact' ? styles.gridWebCompact : styles.gridWebFull}>{cards.map(card)}</View>;
     // Mobile: explicit rows so flex:1 always gives 2 columns
     return (
       <View style={styles.grid}>
@@ -206,18 +235,47 @@ export default function DashboardScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Greeting row */}
-        <View style={[styles.greetRow, isWeb && styles.greetRowWeb]}>
-          <View>
-            <Text style={[styles.greetText, isWeb && styles.greetTextWeb]}>{getGreeting()}, {displayName}</Text>
-            <Text style={styles.greetSub}>Here's your business overview</Text>
+        {/* Masthead */}
+        {isWeb ? (
+          <View style={styles.masthead}>
+            <View>
+              <Text style={styles.eyebrow}>DASHBOARD / OVERVIEW</Text>
+              <Text style={styles.mastheadTitle}>{getGreeting()}, {displayName}</Text>
+              <Text style={styles.mastheadSub}>Here's your business overview</Text>
+            </View>
+            <View style={styles.mastheadActions}>
+              <View style={styles.livePill}>
+                <Ionicons name="checkmark-circle" size={13} color={Colors.success} />
+                <Text style={styles.livePillText}>PHASE 1 LIVE</Text>
+              </View>
+              <TouchableOpacity style={styles.hardBtn} onPress={() => fetchDashboard(true)} activeOpacity={0.85}>
+                <Ionicons name="refresh-outline" size={13} color={Colors.textPrimary} />
+                <Text style={styles.hardBtnText}>REFRESH</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          {!isWeb && (
+        ) : (
+          <View style={styles.greetRow}>
+            <View>
+              <Text style={styles.greetText}>{getGreeting()}, {displayName}</Text>
+              <Text style={styles.greetSub}>Here's your business overview</Text>
+            </View>
             <View style={styles.phasePill}>
               <Ionicons name="checkmark-circle" size={12} color={Colors.success} />
               <Text style={styles.phasePillText}>Phase 1</Text>
             </View>
-          )}
+          </View>
+        )}
+
+        {/* Calendar (left) / Revenue (right) — each RBAC-gated independently;
+            either can render null and the other still holds its 50% half. */}
+        <View style={styles.splitRow}>
+          <View style={styles.splitHalf}>
+            <DashboardCalendar user={user} />
+          </View>
+          <View style={styles.splitHalf}>
+            <RevenueChart user={user} />
+          </View>
         </View>
 
         {loading ? (
@@ -240,17 +298,15 @@ export default function DashboardScreen() {
             {recentKpis.length > 0 && (
               <>
                 <View style={[styles.sectionHeader, isWeb && styles.sectionHeaderWeb]}>
-                  <Text style={styles.sectionTitle}>Recently Visited</Text>
-                  {isWeb ? (
-                    <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchDashboard(true)} activeOpacity={0.7}>
-                      <Ionicons name="refresh-outline" size={13} color={Colors.textSecondary} />
-                      <Text style={styles.refreshText}>Refresh</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={styles.sectionSub}>Pull down to refresh</Text>
-                  )}
+                  <View style={isWeb ? styles.sectionTitleRowWeb : undefined}>
+                    <Text style={[styles.sectionTitle, isWeb && styles.sectionTitleWeb]}>
+                      {isWeb ? 'RECENTLY VISITED' : 'Recently Visited'}
+                    </Text>
+                    {isWeb && <Text style={styles.sectionCount}>{recentKpis.length} module{recentKpis.length !== 1 ? 's' : ''}</Text>}
+                  </View>
+                  {!isWeb && <Text style={styles.sectionSub}>Pull down to refresh</Text>}
                 </View>
-                {renderCards(recentKpis)}
+                {renderCards(recentKpis, 'compact')}
               </>
             )}
 
@@ -258,19 +314,13 @@ export default function DashboardScreen() {
             {remainingKpis.length > 0 && (
               <>
                 <View style={[styles.sectionHeader, isWeb && styles.sectionHeaderWeb]}>
-                  <Text style={styles.sectionTitle}>
-                    {recentKpis.length > 0 ? 'All Modules' : 'Business Modules'}
-                  </Text>
-                  {recentKpis.length === 0 && (
-                    isWeb ? (
-                      <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchDashboard(true)} activeOpacity={0.7}>
-                        <Ionicons name="refresh-outline" size={13} color={Colors.textSecondary} />
-                        <Text style={styles.refreshText}>Refresh</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={styles.sectionSub}>Pull down to refresh</Text>
-                    )
-                  )}
+                  <View style={isWeb ? styles.sectionTitleRowWeb : undefined}>
+                    <Text style={[styles.sectionTitle, isWeb && styles.sectionTitleWeb]}>
+                      {isWeb ? 'ALL MODULES' : (recentKpis.length > 0 ? 'All Modules' : 'Business Modules')}
+                    </Text>
+                    {isWeb && <Text style={styles.sectionCount}>{remainingKpis.length} module{remainingKpis.length !== 1 ? 's' : ''}</Text>}
+                  </View>
+                  {!isWeb && recentKpis.length === 0 && <Text style={styles.sectionSub}>Pull down to refresh</Text>}
                 </View>
                 {renderCards(remainingKpis)}
               </>
@@ -293,6 +343,9 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.primary },
+
+  splitRow: { flexDirection: 'row', gap: 12 },
+  splitHalf: { flex: 1, minWidth: 0 },
 
   navbar: {
     backgroundColor: Colors.primary,
@@ -333,9 +386,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  greetRowWeb: { backgroundColor: 'transparent', borderBottomWidth: 0, paddingHorizontal: 0, paddingVertical: 20 },
   greetText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  greetTextWeb: { fontSize: 20 },
   greetSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   phasePill: {
     flexDirection: 'row',
@@ -347,6 +398,29 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   phasePillText: { fontSize: 11, fontWeight: '700', color: Colors.success },
+
+  // Web masthead — hard-rule divider, eyebrow label, big heading
+  masthead: {
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+    gap: 24, flexWrap: 'wrap',
+    paddingTop: 34, paddingBottom: 18,
+    borderBottomWidth: 2, borderBottomColor: Colors.textPrimary,
+  },
+  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 2, color: Colors.textMuted, marginBottom: 8 },
+  mastheadTitle: { fontSize: 34, fontWeight: '800', letterSpacing: -1, color: Colors.textPrimary, lineHeight: 39 },
+  mastheadSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 6 },
+  mastheadActions: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  livePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: Colors.successLight, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  livePillText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, color: Colors.success },
+  hardBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.textPrimary,
+    paddingHorizontal: 14, paddingVertical: 9, minHeight: 40,
+  },
+  hardBtnText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.4, color: Colors.textPrimary },
 
   centerBox: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32, gap: 10 },
   centerText: { color: Colors.textSecondary, fontSize: 13, textAlign: 'center' },
@@ -411,14 +485,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.6 },
   sectionSub: { fontSize: 11, color: Colors.textMuted },
-  sectionHeaderWeb: { paddingHorizontal: 0, marginTop: 4 },
-  refreshBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: 6, borderWidth: 1, borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+  sectionHeaderWeb: {
+    paddingHorizontal: 0, marginTop: 44, marginBottom: 0, alignItems: 'baseline',
+    paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: Colors.textPrimary,
   },
-  refreshText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  sectionTitleRowWeb: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
+  sectionTitleWeb: { fontSize: 13, fontWeight: '800', letterSpacing: 1.6 },
+  sectionCount: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
 
   grid: {
     paddingHorizontal: 12,
@@ -429,22 +502,32 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  // Web: compact horizontal stat cards, wrapping to fill the row
-  gridWeb: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  statCard: {
-    flexGrow: 1, flexBasis: 210, maxWidth: 292,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: Colors.surface,
-    borderRadius: 8, borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 13,
-    ...Platform.select({ web: { boxShadow: '0 1px 2px rgba(0,0,0,0.04)' } }),
+  // Web — "Recently Visited": compact horizontal tiles
+  gridWebCompact: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 16 },
+  tileCompact: {
+    flexGrow: 1, flexBasis: 240, maxWidth: '100%',
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 16, paddingVertical: 14, minHeight: 64,
   },
-  statIconBox: {
-    width: 38, height: 38, borderRadius: 8,
-    justifyContent: 'center', alignItems: 'center',
+  tileCompactIconBox: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+  tileCompactCount: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, lineHeight: 24 },
+  tileCompactLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600', marginTop: 2, letterSpacing: 0.2 },
+
+  // Web — "All Modules": full vertical tiles with a status chip
+  gridWebFull: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 16 },
+  tileFull: {
+    flexGrow: 1, flexBasis: 212, maxWidth: 280, minHeight: 148,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+    padding: 16,
   },
-  statCount: { fontSize: 19, fontWeight: '800', color: Colors.textPrimary, lineHeight: 23 },
-  statLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500', marginTop: 1 },
+  tileFullTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  tileFullIconBox: { width: 38, height: 38, justifyContent: 'center', alignItems: 'center' },
+  tileChip: { paddingHorizontal: 6, paddingVertical: 3 },
+  tileChipText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.9 },
+  tileFullCount: { fontSize: 30, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.8, marginTop: 16, lineHeight: 34 },
+  tileFullDivider: { height: 2, backgroundColor: Colors.textPrimary, width: 24, marginTop: 8, marginBottom: 7 },
+  tileFullLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600', letterSpacing: 0.3 },
   kpiCard: {
     flex: 1,
     backgroundColor: Colors.surface,

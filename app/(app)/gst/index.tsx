@@ -1,10 +1,12 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { gstApi, GstRecord } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
+import GstFormSheet from '../../../components/GstFormSheet';
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   sales:    { bg: '#E8F5E9', text: '#2E7D32' },
@@ -25,17 +27,19 @@ function fmtDate(d: string) {
 const FILTERS = ['All', 'Sales', 'Purchase', 'Unfiled'];
 
 export default function GstScreen() {
+  const { customerId, customerName } = useLocalSearchParams<{ customerId?: string; customerName?: string }>();
   const [records, setRecords] = useState<GstRecord[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [filter, setFilter]   = useState('All');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [total, setTotal]     = useState(0);
+  const [showForm, setShowForm] = useState(false);
 
   const fetchItems = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const params: any = { limit: 100 };
+      const params: any = { limit: 100, customerId: customerId ? parseInt(customerId) : undefined };
       if (filter === 'Unfiled') params.isFiled = false;
       else if (filter !== 'All') params.transactionType = filter.toLowerCase();
       const { data } = await gstApi.list(params);
@@ -44,7 +48,7 @@ export default function GstScreen() {
       setSummary(data.summary);
     } catch { setRecords([]); }
     finally { setLoading(false); setRefreshing(false); }
-  }, [filter]);
+  }, [filter, customerId]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -86,6 +90,12 @@ export default function GstScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {customerId && customerName ? (
+        <CustomerFilterBanner
+          name={customerName}
+          onClear={() => router.setParams({ customerId: undefined, customerName: undefined })}
+        />
+      ) : null}
       {/* Summary bar */}
       {summary && !loading && (
         <View style={styles.summaryBar}>
@@ -128,6 +138,22 @@ export default function GstScreen() {
           }
         />
       )}
+
+      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+        <Ionicons name="add" size={26} color="#111" />
+      </TouchableOpacity>
+
+      <GstFormSheet
+        visible={showForm}
+        onClose={() => setShowForm(false)}
+        onSaved={(newId) => {
+          if (newId) {
+            router.push(`/(app)/gst/${newId}` as any);
+          } else {
+            fetchItems(true);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -145,6 +171,16 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
   pillTextActive: { color: '#111' },
   list: { padding: 12 },
+  fab: {
+    position: 'absolute', right: 20, bottom: 24,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.accent, justifyContent: 'center', alignItems: 'center',
+    elevation: 6,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 12px rgba(0,0,0,0.25)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12 },
+    }),
+  },
   card: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardMain: { flex: 1 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },

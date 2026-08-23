@@ -1,10 +1,11 @@
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { estimatesApi, EstimateSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:    { bg: Colors.border,       text: Colors.textMuted },
@@ -26,6 +27,7 @@ function fmtDate(d: string) {
 const FILTERS = ['All', 'Draft', 'Sent', 'Accepted', 'Rejected'];
 
 export default function EstimatesScreen() {
+  const { customerId, customerName } = useLocalSearchParams<{ customerId?: string; customerName?: string }>();
   const [items, setItems]     = useState<EstimateSummary[]>([]);
   const [search, setSearch]   = useState('');
   const [filter, setFilter]   = useState('All');
@@ -36,14 +38,18 @@ export default function EstimatesScreen() {
   const fetchItems = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const params: any = { search: search.trim() || undefined, limit: 100 };
+      const params: any = {
+        search: search.trim() || undefined,
+        customerId: customerId ? parseInt(customerId) : undefined,
+        limit: 100,
+      };
       if (filter !== 'All') params.status = filter.toLowerCase();
       const { data } = await estimatesApi.list(params);
       setItems(data.estimates);
       setTotal(data.total);
     } catch { setItems([]); }
     finally { setLoading(false); setRefreshing(false); }
-  }, [search, filter]);
+  }, [search, filter, customerId]);
 
   useEffect(() => { const t = setTimeout(() => fetchItems(), 350); return () => clearTimeout(t); }, [fetchItems]);
 
@@ -77,6 +83,12 @@ export default function EstimatesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {customerId && customerName ? (
+        <CustomerFilterBanner
+          name={customerName}
+          onClear={() => router.setParams({ customerId: undefined, customerName: undefined })}
+        />
+      ) : null}
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
