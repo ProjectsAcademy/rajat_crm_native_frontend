@@ -5,8 +5,9 @@ import {
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { invoicesApi, customersApi, vendorsApi, projectsApi, InvoiceDetail } from '../services/api';
+import { invoicesApi, customersApi, vendorsApi, projectsApi, ordersApi, InvoiceDetail } from '../services/api';
 import { Colors } from '../constants/colors';
+import DatePickerModal from './DatePickerModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface LocalItem { key: string; description: string; quantity: string; unitPrice: string; taxRate: string }
@@ -43,25 +44,16 @@ const STATUSES = [
 ];
 
 // ── Date helpers ─────────────────────────────────────────────────────────────────
-function today(): string {
+// Invoice/due date are held as ISO (YYYY-MM-DD) and picked via DatePickerModal
+// (house dropdown policy: no native browser/OS pickers, no free-text date typing).
+function todayIso(): string {
   const d = new Date();
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function isoToDisplay(iso: string | null): string {
   if (!iso) return '';
   const [y, m, d] = iso.split('T')[0].split('-');
   return `${d}/${m}/${y}`;
-}
-function displayToIso(s: string): string | null {
-  const p = s.split('/');
-  if (p.length !== 3 || p[2].length !== 4) return null;
-  return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-}
-function autoDate(text: string): string {
-  const d = text.replace(/\D/g, '');
-  if (d.length <= 2) return d;
-  if (d.length <= 4) return `${d.slice(0,2)}/${d.slice(2)}`;
-  return `${d.slice(0,2)}/${d.slice(2,4)}/${d.slice(4,8)}`;
 }
 function fmtCurrency(n: number): string {
   return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -132,6 +124,11 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
   const [vendorName,    setVendorName]    = useState('');
   const [projectId,    setProjectId]    = useState<number | null>(null);
   const [projectName,  setProjectName]  = useState('');
+  // Linking an order is optional and sales-only: picking one copies the
+  // order's customer/project and items into this form (see onOrderSelected).
+  const [orderId,      setOrderId]      = useState<number | null>(null);
+  const [orderLabel,   setOrderLabel]   = useState('');
+  const [loadingOrder, setLoadingOrder] = useState(false);
   const [invoiceType,  setInvoiceType]  = useState('sales');
   const [status,       setStatus]       = useState('draft');
   const [invoiceDate,  setInvoiceDate]  = useState('');
@@ -146,12 +143,17 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
   const [customers,        setCustomers]        = useState<SearchItem[]>([]);
   const [vendors,          setVendors]          = useState<SearchItem[]>([]);
   const [projects,         setProjects]         = useState<SearchItem[]>([]);
+  const [orders,           setOrders]           = useState<SearchItem[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [loadingVendors,   setLoadingVendors]   = useState(false);
   const [loadingProjects,  setLoadingProjects]  = useState(false);
+  const [loadingOrders,    setLoadingOrders]    = useState(false);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [showVendorPicker,   setShowVendorPicker]   = useState(false);
   const [showProjectPicker,  setShowProjectPicker]  = useState(false);
+  const [showOrderPicker,    setShowOrderPicker]    = useState(false);
+  // Which date field the shared DatePickerModal is currently editing
+  const [activeDateField, setActiveDateField] = useState<'invoice' | 'due' | null>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -162,10 +164,12 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
       setVendorName(invoice.vendor?.name ?? '');
       setProjectId(invoice.project?.id ?? null);
       setProjectName(invoice.project ? `${invoice.project.projectNo} · ${invoice.project.name}` : '');
+      setOrderId(invoice.order?.id ?? null);
+      setOrderLabel(invoice.order?.orderNo ?? '');
       setInvoiceType(invoice.invoiceType);
       setStatus(invoice.status);
-      setInvoiceDate(isoToDisplay(invoice.invoiceDate));
-      setDueDate(isoToDisplay(invoice.dueDate));
+      setInvoiceDate(invoice.invoiceDate.slice(0, 10));
+      setDueDate(invoice.dueDate.slice(0, 10));
       setPaymentTerms((invoice as any).paymentTerms ?? '');
       setNotes(invoice.notes ?? '');
       setItems((invoice.items ?? []).map(it => ({
@@ -179,8 +183,9 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
       setCustomerId(null); setCustomerName('');
       setVendorId(null);   setVendorName('');
       setProjectId(null);  setProjectName('');
+      setOrderId(null);    setOrderLabel('');
       setInvoiceType('sales'); setStatus('draft');
-      setInvoiceDate(today()); setDueDate('');
+      setInvoiceDate(todayIso()); setDueDate('');
       setPaymentTerms(''); setNotes('');
       setItems([]);
     }
@@ -218,6 +223,70 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
     }
     setShowProjectPicker(true);
   };
+  const openOrderPicker = () => {
+    if (!orders.length) {
+      setLoadingOrders(true);
+      ordersApi.list({ limit: 500 })
+        .then(({ data }) => setOrders(data.orders.map(o => ({ id: o.id, label: o.orderNo, sub: o.customer?.customerName ?? '' }))))
+        .catch(() => {}).finally(() => setLoadingOrders(false));
+    }
+    setShowOrderPicker(true);
+  };
+
+  // Same confirm convention used by the invoice delete flow (app/(app)/invoices/[id].tsx):
+  // window.confirm on web (synchronous), Alert.alert with Cancel/destructive on native.
+  const confirmAsync = (title: string, message: string): Promise<boolean> => {
+    if (Platform.OS === 'web') return Promise.resolve(window.confirm(message));
+    return new Promise((resolve) => {
+      Alert.alert(title, message, [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Replace', style: 'destructive', onPress: () => resolve(true) },
+      ]);
+    });
+  };
+
+  // Picking an order copies its customer/project and items into this form —
+  // items are typed by hand otherwise, so this is the "fast path" for
+  // billing an order that's already been created. Order items carry no tax
+  // rate (Order/OrderItem has no tax concept), so each copied line defaults
+  // to '18' — same default `makeItem()` already uses for a blank line.
+  // Rental items' per-day unitPrice is flattened by rentalDays, mirroring
+  // OrderFormSheet's own order→invoice item conversion for consistency.
+  const onOrderSelected = async (item: SearchItem | null) => {
+    setShowOrderPicker(false);
+    if (!item) return;
+
+    if (items.length > 0) {
+      const ok = await confirmAsync(
+        'Replace invoice items?',
+        `Order ${item.label} has its own items. Replace the ${items.length} item${items.length === 1 ? '' : 's'} already on this invoice with them?`
+      );
+      if (!ok) { setOrderId(item.id); setOrderLabel(item.label); return; }
+    }
+
+    setLoadingOrder(true);
+    try {
+      const { data } = await ordersApi.detail(item.id);
+      const order = data.order;
+      setOrderId(order.id);
+      setOrderLabel(order.orderNo);
+      if (order.customer) { setCustomerId(order.customer.id); setCustomerName(order.customer.customerName); }
+      if (order.project)  { setProjectId(order.project.id);  setProjectName(`${order.project.projectNo} · ${order.project.name}`); }
+      setItems(order.items.map(it => {
+        const days = it.isRental ? (it.rentalDays || 1) : 1;
+        const unitPrice = (parseFloat(it.unitPrice || '0') || 0) * days;
+        return {
+          key: `order-${it.id}`,
+          description: it.description || (it.inventory ? `${it.inventory.itemCode} - ${it.inventory.name}` : ''),
+          quantity: it.quantity,
+          unitPrice: unitPrice ? String(unitPrice) : '',
+          taxRate: '18',
+        };
+      }));
+    } catch {
+      setSaveError('Could not load the selected order.');
+    } finally { setLoadingOrder(false); }
+  };
 
   const addItem = () => setItems(p => [...p, makeItem()]);
   const removeItem = (key: string) => setItems(p => p.filter(it => it.key !== key));
@@ -226,10 +295,8 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
 
   const handleSave = async () => {
     setSaveError('');
-    const isoInvoiceDate = displayToIso(invoiceDate);
-    if (!isoInvoiceDate) { setSaveError('Enter invoice date as DD/MM/YYYY'); return; }
-    const isoDueDate = displayToIso(dueDate);
-    if (!isoDueDate) { setSaveError('Enter due date as DD/MM/YYYY'); return; }
+    if (!invoiceDate) { setSaveError('Pick an invoice date'); return; }
+    if (!dueDate)      { setSaveError('Pick a due date'); return; }
 
     const itemPayload = items.map(it => ({
       description: it.description,
@@ -243,14 +310,15 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
       if (isEdit) {
         await invoicesApi.update(invoice!.id, {
           customerId: customerId ?? null, vendorId: vendorId ?? null, projectId: projectId ?? null,
-          invoiceType, status, invoiceDate: isoInvoiceDate, dueDate: isoDueDate,
+          invoiceType, status, invoiceDate, dueDate,
           paymentTerms, notes, items: itemPayload,
         });
         onSaved();
       } else {
         const { data } = await invoicesApi.create({
           customerId: customerId ?? undefined, vendorId: vendorId ?? undefined, projectId: projectId ?? undefined,
-          invoiceType, status, invoiceDate: isoInvoiceDate, dueDate: isoDueDate,
+          orderId: orderId ?? undefined,
+          invoiceType, status, invoiceDate, dueDate,
           paymentTerms, notes, items: itemPayload,
         });
         onSaved(data.invoice.id);
@@ -269,6 +337,18 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
         onSelect={item => { if (item) { setVendorId(item.id); setVendorName(item.label); } setShowVendorPicker(false); }} />
       <SearchPickerModal visible={showProjectPicker} title="Select Project" items={projects} loading={loadingProjects}
         onSelect={item => { if (item) { setProjectId(item.id); setProjectName(`${item.sub} · ${item.label}`); } setShowProjectPicker(false); }} />
+      <SearchPickerModal visible={showOrderPicker} title="Select Order" items={orders} loading={loadingOrders}
+        onSelect={onOrderSelected} />
+      <DatePickerModal
+        visible={activeDateField !== null}
+        title={activeDateField === 'invoice' ? 'Invoice Date' : 'Due Date'}
+        value={activeDateField === 'invoice' ? invoiceDate : dueDate}
+        onSelect={(iso) => {
+          if (iso) { if (activeDateField === 'invoice') setInvoiceDate(iso); else setDueDate(iso); }
+          setActiveDateField(null);
+        }}
+        onClose={() => setActiveDateField(null)}
+      />
     </>
   );
 
@@ -290,6 +370,27 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
           </TouchableOpacity>
         ))}
       </View>
+
+      {invoiceType === 'sales' && (
+        <>
+          <Text style={st.label}>
+            Order <Text style={st.opt}>(optional — copies its customer, project and items in)</Text>
+          </Text>
+          <TouchableOpacity style={st.pickerField} onPress={openOrderPicker} disabled={loadingOrder}>
+            <Text style={orderId ? st.pickerValue : st.pickerPlaceholder} numberOfLines={1}>
+              {loadingOrder ? 'Loading order...' : orderId ? orderLabel : 'Select order...'}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+              {loadingOrder ? <ActivityIndicator size="small" color={Colors.accent} /> : (
+                <>
+                  {orderId && <TouchableOpacity onPress={() => { setOrderId(null); setOrderLabel(''); }}><Ionicons name="close-circle" size={15} color={Colors.textMuted} /></TouchableOpacity>}
+                  <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
+                </>
+              )}
+            </View>
+          </TouchableOpacity>
+        </>
+      )}
 
       <Text style={st.label}>Customer <Text style={st.opt}>(optional)</Text></Text>
       <TouchableOpacity style={st.pickerField} onPress={openCustomerPicker}>
@@ -321,17 +422,23 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <View style={{ flex: 1 }}>
           <Text style={st.label}>Invoice Date <Text style={st.req}>*</Text></Text>
-          <View style={st.inputRow}>
+          <TouchableOpacity style={st.inputRow} onPress={() => setActiveDateField('invoice')} activeOpacity={0.7}>
             <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
-            <TextInput style={[st.input, { flex: 1 }]} value={invoiceDate} onChangeText={t => setInvoiceDate(autoDate(t))} placeholder="DD/MM/YYYY" placeholderTextColor={Colors.textMuted} keyboardType="numeric" maxLength={10} />
-          </View>
+            <Text style={[st.input, { flex: 1 }, !invoiceDate && { color: Colors.textMuted }]}>
+              {invoiceDate ? isoToDisplay(invoiceDate) : 'DD/MM/YYYY'}
+            </Text>
+            <Ionicons name="chevron-down" size={13} color={Colors.textMuted} />
+          </TouchableOpacity>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={st.label}>Due Date <Text style={st.req}>*</Text></Text>
-          <View style={st.inputRow}>
+          <TouchableOpacity style={st.inputRow} onPress={() => setActiveDateField('due')} activeOpacity={0.7}>
             <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
-            <TextInput style={[st.input, { flex: 1 }]} value={dueDate} onChangeText={t => setDueDate(autoDate(t))} placeholder="DD/MM/YYYY" placeholderTextColor={Colors.textMuted} keyboardType="numeric" maxLength={10} />
-          </View>
+            <Text style={[st.input, { flex: 1 }, !dueDate && { color: Colors.textMuted }]}>
+              {dueDate ? isoToDisplay(dueDate) : 'DD/MM/YYYY'}
+            </Text>
+            <Ionicons name="chevron-down" size={13} color={Colors.textMuted} />
+          </TouchableOpacity>
         </View>
       </View>
 

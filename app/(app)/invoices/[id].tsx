@@ -3,10 +3,13 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { invoicesApi, InvoiceDetail } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
 import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
+import { buildInvoiceHtml } from '../../../utils/invoiceHtml';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,       text: Colors.textMuted },
@@ -26,6 +29,7 @@ export default function InvoiceDetailScreen() {
   const [error, setError]     = useState('');
   const [showEdit, setShowEdit] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
   const loadInvoice = useCallback(() => {
     invoicesApi.detail(parseInt(id!))
@@ -57,6 +61,54 @@ export default function InvoiceDetailScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: doIt },
     ]);
+  };
+
+  const handlePrint = async () => {
+    if (!invoice) return;
+    setPrinting(true);
+    try {
+      const html = buildInvoiceHtml(invoice);
+      if (Platform.OS === 'web') {
+        // expo-print's web implementation ignores the `html` argument entirely
+        // (it's a stub that just calls window.print() on the current page —
+        // see node_modules/expo-print/src/ExponentPrint.web.ts) — using it here
+        // would print the live app UI, not the invoice.
+        //
+        // A hidden iframe (tried first) printed the right content, but
+        // Chrome's "Save as PDF" then named the file after the PARENT page's
+        // URL (e.g. "11.pdf" from /invoices/11), ignoring the iframe's own
+        // <title>. A real top-level document — reached via a blob: URL rather
+        // than a bare window.open('', '_blank') — keeps its own title for
+        // both the print header and the Save-as-PDF filename, and gives the
+        // print footer a real address instead of literally "about:blank".
+        const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        const w = window.open(blobUrl, '_blank');
+        if (!w) { URL.revokeObjectURL(blobUrl); throw new Error('Pop-up blocked — allow pop-ups for this site to print the invoice.'); }
+        const cleanup = () => URL.revokeObjectURL(blobUrl);
+        w.onafterprint = cleanup;
+        setTimeout(() => {
+          w.focus();
+          w.print();
+          // Some browsers (e.g. Safari) never fire onafterprint reliably — clean up regardless.
+          setTimeout(cleanup, 5000);
+        }, 300);
+      } else {
+        // Native: render to a PDF file and hand it to the share sheet (save to
+        // files, send via WhatsApp/email, etc.) — more useful on a phone than
+        // a print dialog when there's no printer nearby.
+        const { uri } = await Print.printToFileAsync({ html });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: invoice.invoiceNo });
+        } else {
+          await Print.printAsync({ html });
+        }
+      }
+    } catch (e: any) {
+      const msg = e?.message ?? 'Could not generate the invoice PDF.';
+      if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Print Failed', msg);
+    } finally {
+      setPrinting(false);
+    }
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
@@ -104,6 +156,10 @@ export default function InvoiceDetailScreen() {
           )}
 
           <View style={styles.headerActions}>
+            <TouchableOpacity style={[styles.printBtn, printing && { opacity: 0.6 }]} onPress={handlePrint} disabled={printing}>
+              {printing ? <ActivityIndicator size="small" color="#111" /> : <Ionicons name="print-outline" size={15} color="#111" />}
+              <Text style={styles.printBtnText}>{Platform.OS === 'web' ? 'Print' : 'Share PDF'}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
               <Ionicons name="create-outline" size={15} color={Colors.accent} />
               <Text style={styles.editBtnText}>Edit</Text>
@@ -221,6 +277,12 @@ const styles = StyleSheet.create({
   orderLinkText: { fontSize: 12, color: Colors.accent, fontWeight: '600' },
 
   headerActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  printBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.accent, paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6,
+  },
+  printBtnText: { fontSize: 13, fontWeight: '700', color: '#111' },
   editBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(255,153,0,0.15)', paddingHorizontal: 16,

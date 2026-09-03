@@ -587,8 +587,8 @@ export interface InvoiceSummary {
   id: number; invoiceNo: string; status: string; invoiceType: string;
   invoiceDate: string; dueDate: string; gstDate: string | null;
   subtotal: string; taxAmount: string; totalAmount: string;
-  customer: { id: number; customerName: string; phone: string; email: string } | null;
-  vendor: { id: number; name: string; phone: string; email: string; gstin: string } | null;
+  customer: { id: number; customerName: string; customerCode: string; phone: string; email: string; gstin: string; address: string } | null;
+  vendor: { id: number; name: string; vendorCode: string; phone: string; email: string; gstin: string; address: string } | null;
   project: { id: number; projectNo: string; name: string } | null;
 }
 export interface InvoiceItem {
@@ -605,13 +605,13 @@ export interface InvoiceListResponse { invoices: InvoiceSummary[]; total: number
 export interface InvoiceDetailResponse { invoice: InvoiceDetail; }
 export interface InvoiceItemInput { description?: string; quantity: string; unitPrice: string; taxRate?: string }
 export interface InvoiceCreateInput {
-  customerId?: number; vendorId?: number; projectId?: number;
+  customerId?: number; vendorId?: number; projectId?: number; orderId?: number;
   invoiceType?: string; invoiceDate: string; gstDate?: string; dueDate: string;
   paymentTerms?: string; notes?: string; status?: string;
   items?: InvoiceItemInput[];
 }
 export interface InvoiceUpdateInput {
-  customerId?: number | null; vendorId?: number | null; projectId?: number | null;
+  customerId?: number | null; vendorId?: number | null; projectId?: number | null; orderId?: number | null;
   invoiceType?: string; invoiceDate?: string; gstDate?: string | null; dueDate?: string;
   paymentTerms?: string; notes?: string; status?: string;
   items?: InvoiceItemInput[];
