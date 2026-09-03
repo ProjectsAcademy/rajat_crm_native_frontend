@@ -120,11 +120,15 @@ const styles = StyleSheet.create({
   },
 
   brand:     { flexDirection: 'row', alignItems: 'center', gap: 11, marginRight: 38 },
-  logo:      { width: 30, height: 30, backgroundColor: Colors.accent, justifyContent: 'center', alignItems: 'center' },
+  logo:      { width: 30, height: 30, borderRadius: 8, backgroundColor: Colors.accent, justifyContent: 'center', alignItems: 'center' },
   brandText: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: -0.1 },
   brandSub:  { color: 'rgba(255,255,255,0.45)', fontSize: 9, fontWeight: '700', letterSpacing: 1.6, marginTop: 2 },
 
-  links: { flexDirection: 'row', alignItems: 'stretch', gap: 2 },
+  // alignSelf: 'stretch' pulls this row to the bar's full 58px height (its
+  // parent `inner` centers everything else) so each `link`/`linkActive`
+  // below — itself stretched by this row's own alignItems — becomes a
+  // full-height block instead of shrink-wrapping to its text/icon.
+  links: { flexDirection: 'row', alignItems: 'stretch', alignSelf: 'stretch', gap: 2 },
   link: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 15,

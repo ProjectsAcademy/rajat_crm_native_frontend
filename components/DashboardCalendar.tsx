@@ -63,7 +63,11 @@ export default function DashboardCalendar({ user }: Props) {
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ date: new Date(cursor.getFullYear(), cursor.getMonth(), d), inMonth: true });
   }
-  while (cells.length % 7 !== 0 || cells.length < 42) {
+  // Pad only to finish the last partial week that shares days with this
+  // month — do NOT force a full 6th row (`< 42`) when the month only
+  // touches 5 rows (e.g. Sep 2026: 2 leading + 30 in-month = 32 → pads to
+  // 35, not 42).
+  while (cells.length % 7 !== 0) {
     const last = cells[cells.length - 1].date;
     cells.push({ date: new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1), inMonth: false });
   }

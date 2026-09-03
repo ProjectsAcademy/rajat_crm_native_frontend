@@ -373,8 +373,8 @@ const styles = StyleSheet.create({
 
   scroll: { flex: 1, backgroundColor: Colors.background },
   content: { paddingBottom: 40 },
-  // Web: center the page in a fixed-width column like a desktop app
-  contentWeb: { alignSelf: 'center', width: '100%', maxWidth: 1240, paddingHorizontal: 32, paddingTop: 6 },
+  // Web: edge-to-edge, not a centered fixed-width column — gutters only.
+  contentWeb: { width: '100%', paddingHorizontal: 48, paddingTop: 6 },
 
   greetRow: {
     flexDirection: 'row',

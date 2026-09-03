@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
-import Svg, { Rect, Line, Text as SvgText } from 'react-native-svg';
+import Svg, { G, Rect, Line, Text as SvgText } from 'react-native-svg';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { dashboardApi, RevenueMonth, RevenueSnapshot, AuthUser } from '../services/api';
@@ -13,7 +13,8 @@ const COLLECTED_COLOR   = '#067D62';
 const OUTSTANDING_COLOR = '#E65100';
 
 const CHART_H = 180;
-const BAR_CAP = 30;      // marks-and-anatomy: bars are capped, never fill the slot
+const TOP_PAD = 14;      // headroom above the tallest gridline so its label isn't clipped
+const BAR_CAP = 42;      // marks-and-anatomy: bars are capped, never fill the slot
 const SEGMENT_GAP = 2;   // surface gap between stacked segments
 
 function fmtCompact(n: number): string {
@@ -25,12 +26,15 @@ function fmtCompact(n: number): string {
 function fmtFull(n: number): string {
   return `₹${Math.round(n).toLocaleString('en-IN')}`;
 }
-// Round up to a "clean" axis max: 1/2/5 × a power of ten.
+// Round up to a "clean" axis max, on a finer step set than 1/2/5/10 so the
+// tallest bar doesn't leave a huge gap under the top tick (1/2/5 can nearly
+// double a value that's just over a step; this caps the worst case at ~20%).
 function niceMax(v: number): number {
   if (v <= 0) return 100;
   const pow = Math.pow(10, Math.floor(Math.log10(v)));
   const n = v / pow;
-  const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+  const steps = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  const step = steps.find((s) => n <= s) ?? 10;
   return step * pow;
 }
 
@@ -90,10 +94,10 @@ export default function RevenueChart({ user }: Props) {
   const selected = selectedIdx !== null ? monthly[selectedIdx] : null;
 
   // Bar geometry
-  const chartPadLeft = 40; // room for axis labels
+  const chartPadLeft = 52; // room for axis labels (₹XX.XXL can run wide)
   const plotWidth = Math.max(0, width - chartPadLeft - 8);
   const slotWidth = monthly.length > 0 ? plotWidth / monthly.length : 0;
-  const barWidth = Math.min(BAR_CAP, slotWidth * 0.55);
+  const barWidth = Math.min(BAR_CAP, slotWidth * 0.6);
 
   return (
     <View style={styles.card}>
@@ -126,50 +130,62 @@ export default function RevenueChart({ user }: Props) {
       {/* Chart */}
       <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={styles.chartWrap}>
         {width > 0 && (
-          <Svg width={width} height={CHART_H + 28}>
-            {gridSteps.slice(0, -1).map((s, i) => {
-              const y = CHART_H - CHART_H * s;
-              return <Line key={i} x1={chartPadLeft} y1={y} x2={width} y2={y} stroke="#EAEDED" strokeWidth={1} />;
-            })}
-            {gridSteps.map((s, i) => (
-              <SvgText key={`t-${i}`} x={chartPadLeft - 8} y={CHART_H - CHART_H * s + 4} fontSize={10} fontWeight="700" fill={Colors.textMuted} textAnchor="end">
-                {fmtCompact(max * s)}
-              </SvgText>
-            ))}
-            <Line x1={chartPadLeft} y1={CHART_H} x2={width} y2={CHART_H} stroke={Colors.textPrimary} strokeWidth={2} />
-            {monthly.map((m, i) => {
-              const x = chartPadLeft + i * slotWidth + (slotWidth - barWidth) / 2;
-              return (
-                <StackedBar
-                  key={i}
-                  x={x} width={barWidth}
-                  collected={m.paidAmount} outstanding={m.outstanding} max={max}
-                  selected={selectedIdx === i}
-                  onPress={() => setSelectedIdx(selectedIdx === i ? null : i)}
-                />
-              );
-            })}
-            {/* Direct label on the endpoint only (most recent month) — the rest
-                stay reachable via the axis scale and tap-to-inspect, not hidden. */}
-            {monthly.length > 0 && (() => {
-              const i = monthly.length - 1;
-              const m = monthly[i];
-              const x = chartPadLeft + i * slotWidth + slotWidth / 2;
-              const topY = CHART_H - (max > 0 ? (m.totalAmount / max) * CHART_H : 0);
-              return (
-                <SvgText x={x} y={Math.max(10, topY - 6)} fontSize={10} fontWeight="700" fill={Colors.textPrimary} textAnchor="middle">
-                  {fmtCompact(m.totalAmount)}
+          <Svg width={width} height={CHART_H + 28 + TOP_PAD}>
+            {/* Everything below is drawn in the 0..CHART_H coordinate space
+                and shifted down by TOP_PAD as a group, so the top gridline's
+                label has headroom instead of clipping against the SVG edge. */}
+            <G y={TOP_PAD}>
+              {/* Light gridlines at 25/50/75/100% — the baseline (0%) gets its
+                  own separate, equally-light line below instead of a redundant
+                  duplicate here. */}
+              {gridSteps.slice(1).map((s, i) => {
+                const y = CHART_H - CHART_H * s;
+                return <Line key={i} x1={chartPadLeft} y1={y} x2={width} y2={y} stroke="#EAEDED" strokeWidth={1} />;
+              })}
+              {gridSteps.map((s, i) => (
+                <SvgText key={`t-${i}`} x={chartPadLeft - 8} y={CHART_H - CHART_H * s + 4} fontSize={10} fontWeight="700" fill={Colors.textMuted} textAnchor="end">
+                  {fmtCompact(max * s)}
                 </SvgText>
-              );
-            })()}
-            {monthly.map((m, i) => {
-              const x = chartPadLeft + i * slotWidth + slotWidth / 2;
-              return (
-                <SvgText key={`m-${i}`} x={x} y={CHART_H + 18} fontSize={10} fontWeight="800" letterSpacing={1} fill={selectedIdx === i ? Colors.textPrimary : Colors.textSecondary} textAnchor="middle">
-                  {m.label.split(' ')[0].toUpperCase()}
-                </SvgText>
-              );
-            })}
+              ))}
+              {/* Baseline — same light weight as the other gridlines, not a heavy rule */}
+              <Line x1={chartPadLeft} y1={CHART_H} x2={width} y2={CHART_H} stroke="#EAEDED" strokeWidth={1} />
+              {monthly.map((m, i) => {
+                const x = chartPadLeft + i * slotWidth + (slotWidth - barWidth) / 2;
+                return (
+                  <StackedBar
+                    key={i}
+                    x={x} width={barWidth}
+                    collected={m.paidAmount} outstanding={m.outstanding} max={max}
+                    selected={selectedIdx === i}
+                    onPress={() => setSelectedIdx(selectedIdx === i ? null : i)}
+                  />
+                );
+              })}
+              {/* Direct label on the endpoint only (most recent month) — the rest
+                  stay reachable via the axis scale and tap-to-inspect, not hidden.
+                  Skipped when that month has no revenue yet (e.g. the current,
+                  still-in-progress month): with nothing to label, it renders
+                  right on the baseline as a stray "₹0". */}
+              {monthly.length > 0 && monthly[monthly.length - 1].totalAmount > 0 && (() => {
+                const i = monthly.length - 1;
+                const m = monthly[i];
+                const x = chartPadLeft + i * slotWidth + slotWidth / 2;
+                const topY = CHART_H - (max > 0 ? (m.totalAmount / max) * CHART_H : 0);
+                return (
+                  <SvgText x={x} y={Math.max(10, topY - 6)} fontSize={10} fontWeight="700" fill={Colors.textPrimary} textAnchor="middle">
+                    {fmtCompact(m.totalAmount)}
+                  </SvgText>
+                );
+              })()}
+              {monthly.map((m, i) => {
+                const x = chartPadLeft + i * slotWidth + slotWidth / 2;
+                return (
+                  <SvgText key={`m-${i}`} x={x} y={CHART_H + 18} fontSize={10} fontWeight="800" letterSpacing={1} fill={selectedIdx === i ? Colors.textPrimary : Colors.textSecondary} textAnchor="middle">
+                    {m.label.split(' ')[0].toUpperCase()}
+                  </SvgText>
+                );
+              })}
+            </G>
           </Svg>
         )}
       </View>
@@ -200,7 +216,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, color: Colors.textPrimary },
   headerCaption: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, color: Colors.textMuted },
 
-  statsRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border },
+  statsRow: { flexDirection: 'row', borderBottomWidth: 2, borderBottomColor: Colors.textPrimary },
   statBox: { flex: 1, paddingHorizontal: 18, paddingVertical: 16 },
   statBorder: { borderLeftWidth: 1, borderLeftColor: Colors.border },
   statDot: { width: 9, height: 9 },
