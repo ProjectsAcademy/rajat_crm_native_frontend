@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, Modal, FlatList } from 'react-native';
 import Svg, { G, Rect, Line, Text as SvgText } from 'react-native-svg';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { dashboardApi, RevenueMonth, RevenueSnapshot, AuthUser } from '../services/api';
+import { dashboardApi, RevenueMonth, RevenueSnapshot, CustomerAmountRow, AuthUser } from '../services/api';
 import { userHasFeature } from '../store/auth';
 import { Colors } from '../constants/colors';
 
@@ -71,6 +71,30 @@ export default function RevenueChart({ user }: Props) {
   const [width, setWidth] = useState(0);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
+  // Per-customer breakdown for the Collected/Outstanding stat boxes — each
+  // lazy-loaded on first tap and cached separately for the rest of this
+  // screen's life (same convention as the inventory/customer pickers
+  // elsewhere: fetch once, reuse), so switching between the two doesn't
+  // re-fetch one already seen.
+  const [breakdown, setBreakdown] = useState<'collected' | 'outstanding' | null>(null);
+  const [collectedRows,   setCollectedRows]   = useState<CustomerAmountRow[] | null>(null);
+  const [outstandingRows, setOutstandingRows] = useState<CustomerAmountRow[] | null>(null);
+  const [loadingBreakdown, setLoadingBreakdown] = useState(false);
+  const openBreakdown = (kind: 'collected' | 'outstanding') => {
+    setBreakdown(kind);
+    const rows = kind === 'collected' ? collectedRows : outstandingRows;
+    const setRows = kind === 'collected' ? setCollectedRows : setOutstandingRows;
+    const fetcher = kind === 'collected' ? dashboardApi.getCollectedByCustomer : dashboardApi.getOutstandingByCustomer;
+    if (rows === null) {
+      setLoadingBreakdown(true);
+      fetcher()
+        .then(({ data }) => setRows(data.customers))
+        .catch(() => setRows([]))
+        .finally(() => setLoadingBreakdown(false));
+    }
+  };
+  const breakdownRows = breakdown === 'collected' ? collectedRows : breakdown === 'outstanding' ? outstandingRows : null;
+
   useEffect(() => {
     if (!canView) { setLoading(false); return; }
     dashboardApi.getRevenue(6)
@@ -111,20 +135,22 @@ export default function RevenueChart({ user }: Props) {
 
       {/* Stat row */}
       <View style={styles.statsRow}>
-        <View style={styles.statBox}>
+        <TouchableOpacity style={styles.statBox} onPress={() => openBreakdown('collected')} activeOpacity={0.7}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
             <View style={[styles.statDot, { backgroundColor: COLLECTED_COLOR }]} />
             <Text style={styles.statLabel}>COLLECTED</Text>
+            <Ionicons name="chevron-forward" size={12} color={Colors.textMuted} />
           </View>
           <Text style={styles.statValue}>{fmtCompact(snapshot.paidAmount)}</Text>
-        </View>
-        <View style={[styles.statBox, styles.statBorder]}>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.statBox, styles.statBorder]} onPress={() => openBreakdown('outstanding')} activeOpacity={0.7}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
             <View style={[styles.statDot, { backgroundColor: OUTSTANDING_COLOR }]} />
             <Text style={styles.statLabel}>OUTSTANDING</Text>
+            <Ionicons name="chevron-forward" size={12} color={Colors.textMuted} />
           </View>
           <Text style={styles.statValue}>{fmtCompact(snapshot.outstanding)}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Chart */}
@@ -202,6 +228,59 @@ export default function RevenueChart({ user }: Props) {
           </View>
         </View>
       )}
+
+      {/* Collected/Outstanding-by-customer breakdown — small segregation of
+          whichever headline figure was tapped, not a full report; the total
+          row reconciles against that same snapshot figure so it's visibly
+          the same number, just split up. */}
+      <Modal visible={breakdown !== null} transparent animationType="fade" onRequestClose={() => setBreakdown(null)}>
+        <View style={cbc.backdrop}>
+          <View style={cbc.card}>
+            <View style={cbc.header}>
+              <View>
+                <Text style={cbc.title}>{breakdown === 'collected' ? 'Collected' : 'Outstanding'} by Customer</Text>
+                <Text style={cbc.subtitle}>
+                  All-time · {fmtFull(breakdown === 'collected' ? snapshot.paidAmount : snapshot.outstanding)} total
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setBreakdown(null)} hitSlop={10}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingBreakdown ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <ActivityIndicator color={Colors.accent} />
+              </View>
+            ) : !breakdownRows || breakdownRows.length === 0 ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center', gap: 8 }}>
+                <Ionicons name="wallet-outline" size={28} color={Colors.textMuted} />
+                <Text style={{ fontSize: 13, color: Colors.textMuted }}>
+                  {breakdown === 'collected' ? 'No payments recorded yet' : 'Nothing outstanding'}
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={breakdownRows}
+                keyExtractor={(r) => String(r.customerId ?? 'none')}
+                style={{ maxHeight: 380 }}
+                ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: Colors.border }} />}
+                renderItem={({ item }) => (
+                  <View style={cbc.row}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={cbc.name} numberOfLines={1}>{item.customerName}</Text>
+                      {item.customerCode && <Text style={cbc.code}>{item.customerCode}</Text>}
+                    </View>
+                    <Text style={[cbc.amount, { color: breakdown === 'collected' ? COLLECTED_COLOR : OUTSTANDING_COLOR }]}>
+                      {fmtFull(item.amount)}
+                    </Text>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -230,4 +309,26 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 3 },
   detailLabel: { flex: 1, fontSize: 12, color: Colors.textSecondary },
   detailValue: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, ...Platform.select({ default: {}, web: { fontVariant: ['tabular-nums'] } }) },
+});
+
+// Collected-by-customer modal
+const cbc = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  card: {
+    width: '100%', maxWidth: 420, backgroundColor: Colors.surface, borderRadius: 10, overflow: 'hidden',
+    ...Platform.select({
+      web: { boxShadow: '0 12px 32px rgba(0,0,0,0.3)' },
+      default: { elevation: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 20 },
+    }),
+  },
+  header: {
+    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
+    paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  title: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  subtitle: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, gap: 10 },
+  name: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  code: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
+  amount: { fontSize: 13, fontWeight: '700', color: COLLECTED_COLOR },
 });

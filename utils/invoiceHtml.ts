@@ -6,6 +6,11 @@ import { InvoiceDetail } from '../services/api';
 // signature footer. Returned as a standalone HTML document (inline <style>,
 // no external assets) so it works unmodified as both a Print.printAsync/
 // printToFileAsync source and a plain browser-openable file for preview.
+//
+// A second copy of this same letterhead lives server-side at
+// rajat_crm_node_backend/src/utils/invoicePdf.ts (used to render the PDF
+// attached to WhatsApp invoice messages) — two separate npm projects, no
+// shared-package setup, so keep both in sync by hand if the design changes.
 
 // ── Letterhead constants — transcribed from the physical bill book ─────────────
 const COMPANY = {
@@ -76,6 +81,11 @@ export function buildInvoiceHtml(invoice: InvoiceDetail): string {
   const subtotal = parseFloat(invoice.subtotal || '0');
   const tax = parseFloat(invoice.taxAmount || '0');
   const total = parseFloat(invoice.totalAmount || '0');
+  const discountPct = parseFloat(invoice.discountPercent || '0');
+  const showDiscount = invoice.discountEnabled && discountPct > 0;
+  // totalAmount is already stored post-discount — the discount amount itself
+  // isn't a separate column, so it's just the gap between gross and net.
+  const discountAmount = showDiscount ? (subtotal + tax) - total : 0;
 
   return `<!DOCTYPE html>
 <html>
@@ -181,6 +191,7 @@ export function buildInvoiceHtml(invoice: InvoiceDetail): string {
         ${blankRows}
         <tr><td colspan="3" style="border:none;"></td><td class="totals-label">Subtotal</td><td class="r">${fmtAmt(subtotal)}</td></tr>
         ${tax > 0 ? `<tr><td colspan="3" style="border:none;"></td><td class="totals-label">Tax</td><td class="r">${fmtAmt(tax)}</td></tr>` : ''}
+        ${showDiscount ? `<tr><td colspan="3" style="border:none;"></td><td class="totals-label">Discount (${discountPct}%)</td><td class="r">−${fmtAmt(discountAmount)}</td></tr>` : ''}
         <tr class="grand"><td colspan="3" style="border:none;"></td><td class="totals-label">Total</td><td class="r">${fmtAmt(total)}</td></tr>
       </tbody>
     </table>

@@ -61,10 +61,17 @@ export const adminApi = {
 export interface RevenueMonth { label: string; totalAmount: number; paidAmount: number; outstanding: number }
 export interface RevenueSnapshot { totalAmount: number; paidAmount: number; outstanding: number }
 export interface RevenueResponse { monthly: RevenueMonth[]; snapshot: RevenueSnapshot }
+// Shared row shape for both by-customer breakdowns (Collected / Outstanding)
+export interface CustomerAmountRow {
+  customerId: number | null; customerName: string; customerCode: string | null; amount: number;
+}
+export interface CustomerAmountResponse { customers: CustomerAmountRow[]; total: number }
 
 export const dashboardApi = {
   getSummary: () => api.get<DashboardResponse>('/api/dashboard'),
   getRevenue: (months = 6) => api.get<RevenueResponse>('/api/dashboard/revenue', { params: { months } }),
+  getCollectedByCustomer: () => api.get<CustomerAmountResponse>('/api/dashboard/collected-by-customer'),
+  getOutstandingByCustomer: () => api.get<CustomerAmountResponse>('/api/dashboard/outstanding-by-customer'),
 };
 
 // ─── Customers ────────────────────────────────────────────────────────────────
@@ -229,6 +236,7 @@ export const invoicesApi = {
   create: (data: InvoiceCreateInput) => api.post<InvoiceDetailResponse>('/api/invoices', data),
   update: (id: number, data: InvoiceUpdateInput) => api.put<InvoiceDetailResponse>(`/api/invoices/${id}`, data),
   remove: (id: number) => api.delete<{ success: boolean }>(`/api/invoices/${id}`),
+  sendWhatsapp: (id: number) => api.post<{ success: boolean; messageId: string; sentTo: string }>(`/api/invoices/${id}/send-whatsapp`),
 };
 
 // ─── Purchases ────────────────────────────────────────────────────────────────
@@ -248,6 +256,9 @@ export const estimatesApi = {
   list: (params?: { search?: string; status?: string; customerId?: number; projectId?: number; page?: number; limit?: number }) =>
     api.get<EstimateListResponse>('/api/estimates', { params }),
   detail: (id: number) => api.get<EstimateDetailResponse>(`/api/estimates/${id}`),
+  create: (data: EstimateCreateInput) => api.post<EstimateDetailResponse>('/api/estimates', data),
+  update: (id: number, data: EstimateUpdateInput) => api.put<EstimateDetailResponse>(`/api/estimates/${id}`, data),
+  remove: (id: number) => api.delete<{ success: boolean }>(`/api/estimates/${id}`),
 };
 
 // ─── Stock ────────────────────────────────────────────────────────────────────
@@ -594,27 +605,31 @@ export interface InvoiceSummary {
 export interface InvoiceItem {
   id: number; description: string | null; quantity: string; unitPrice: string;
   taxRate: string; total: string;
+  inventory: { id: number; itemCode: string; name: string; unit: string } | null;
 }
 export interface InvoiceDetail extends InvoiceSummary {
   notes: string | null; createdAt: string;
   items: InvoiceItem[];
   mediaFiles: MediaFile[];
   order: { id: number; orderNo: string } | null;
+  discountEnabled: boolean; discountPercent: string;
 }
 export interface InvoiceListResponse { invoices: InvoiceSummary[]; total: number; }
 export interface InvoiceDetailResponse { invoice: InvoiceDetail; }
-export interface InvoiceItemInput { description?: string; quantity: string; unitPrice: string; taxRate?: string }
+export interface InvoiceItemInput { inventoryId?: number | null; description?: string; quantity: string; unitPrice: string; taxRate?: string }
 export interface InvoiceCreateInput {
   customerId?: number; vendorId?: number; projectId?: number; orderId?: number;
   invoiceType?: string; invoiceDate: string; gstDate?: string; dueDate: string;
   paymentTerms?: string; notes?: string; status?: string;
   items?: InvoiceItemInput[];
+  discountEnabled?: boolean; discountPercent?: string;
 }
 export interface InvoiceUpdateInput {
   customerId?: number | null; vendorId?: number | null; projectId?: number | null; orderId?: number | null;
   invoiceType?: string; invoiceDate?: string; gstDate?: string | null; dueDate?: string;
   paymentTerms?: string; notes?: string; status?: string;
   items?: InvoiceItemInput[];
+  discountEnabled?: boolean; discountPercent?: string;
 }
 
 export interface PurchaseSummary {
@@ -797,15 +812,33 @@ export interface EstimateSummary {
 }
 export interface EstimateItemType {
   id: number; description: string; quantity: string; unitPrice: string; total: string;
+  inventory: { id: number; itemCode: string; name: string; unit: string } | null;
 }
 export interface EstimateDetail extends EstimateSummary {
   notes: string; createdAt: string; updatedAt: string;
   items: EstimateItemType[];
   customer: { id: number; customerName: string; businessName: string; phone: string; email: string; address: string } | null;
   project:  { id: number; projectNo: string; name: string; status: string } | null;
+  order:    { id: number; orderNo: string } | null;
+  subtotal: string; discountEnabled: boolean; discountPercent: string;
 }
 export interface EstimateListResponse { estimates: EstimateSummary[]; total: number; page: number; limit: number; }
 export interface EstimateDetailResponse { estimate: EstimateDetail; }
+export interface EstimateItemInput { inventoryId?: number | null; description?: string; quantity: string; unitPrice: string }
+export interface EstimateCreateInput {
+  customerId?: number; projectId?: number; orderId?: number;
+  estimateDate: string; validUntil: string;
+  status?: string; notes?: string;
+  items?: EstimateItemInput[];
+  discountEnabled?: boolean; discountPercent?: string;
+}
+export interface EstimateUpdateInput {
+  customerId?: number | null; projectId?: number | null; orderId?: number | null;
+  estimateDate?: string; validUntil?: string;
+  status?: string; notes?: string;
+  items?: EstimateItemInput[];
+  discountEnabled?: boolean; discountPercent?: string;
+}
 
 // ─── GST Types ────────────────────────────────────────────────────────────────
 

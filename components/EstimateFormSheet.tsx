@@ -5,56 +5,45 @@ import {
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { invoicesApi, customersApi, vendorsApi, projectsApi, ordersApi, inventoryApi, InvoiceDetail } from '../services/api';
+import { estimatesApi, customersApi, projectsApi, ordersApi, inventoryApi, EstimateDetail } from '../services/api';
 import { Colors } from '../constants/colors';
 import DatePickerModal from './DatePickerModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-// inventoryId is optional — unlike Orders, an invoice line is often a plain
-// service/description with no catalog item behind it, so picking from
-// inventory is a convenience (fills description + price, avoids retyping
-// and typos) rather than a requirement the way it is on OrderFormSheet.
+// inventoryId is optional — same convention as InvoiceFormSheet: picking from
+// inventory is a convenience (fills description + price) not a requirement,
+// since an estimate line is often a quoted service with no catalog item.
 interface LocalItem {
   key: string;
   inventoryId: number | null;
   inventoryLabel: string;
-  description: string; quantity: string; unitPrice: string; taxRate: string;
+  description: string; quantity: string; unitPrice: string;
 }
 function makeItem(): LocalItem {
-  return { key: `${Date.now()}-${Math.random()}`, inventoryId: null, inventoryLabel: '', description: '', quantity: '1', unitPrice: '', taxRate: '18' };
+  return { key: `${Date.now()}-${Math.random()}`, inventoryId: null, inventoryLabel: '', description: '', quantity: '1', unitPrice: '' };
 }
 function lineTotal(item: LocalItem): number {
   const q = parseFloat(item.quantity  || '0');
   const p = parseFloat(item.unitPrice || '0');
   return isNaN(q) || isNaN(p) ? 0 : q * p;
 }
-function lineTax(item: LocalItem): number {
-  return lineTotal(item) * (parseFloat(item.taxRate || '0') / 100);
-}
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onSaved: (newInvoiceId?: number) => void;
-  invoice?: InvoiceDetail | null;
+  onSaved: (newEstimateId?: number) => void;
+  estimate?: EstimateDetail | null;
 }
 interface SearchItem { id: number; label: string; sub?: string }
 
-const TYPES = [
-  { key: 'sales',    label: 'Sales'    },
-  { key: 'purchase', label: 'Purchase' },
-];
 const STATUSES = [
-  { key: 'draft',     label: 'Draft'     },
-  { key: 'sent',      label: 'Sent'      },
-  { key: 'paid',      label: 'Paid'      },
-  { key: 'overdue',   label: 'Overdue'   },
-  { key: 'cancelled', label: 'Cancelled' },
+  { key: 'draft',    label: 'Draft'    },
+  { key: 'sent',     label: 'Sent'     },
+  { key: 'accepted', label: 'Accepted' },
+  { key: 'rejected', label: 'Rejected' },
+  { key: 'expired',  label: 'Expired'  },
 ];
 
-// ── Date helpers ─────────────────────────────────────────────────────────────────
-// Invoice/due date are held as ISO (YYYY-MM-DD) and picked via DatePickerModal
-// (house dropdown policy: no native browser/OS pickers, no free-text date typing).
 function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -68,7 +57,9 @@ function fmtCurrency(n: number): string {
   return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-// ── SearchPickerModal ────────────────────────────────────────────────────────────
+// ── SearchPickerModal — same shape as the one in OrderFormSheet/InvoiceFormSheet,
+// duplicated locally rather than shared (each form sheet is self-contained,
+// matching this codebase's existing convention). ──────────────────────────────
 function SearchPickerModal({ visible, title, items, loading, onSelect }: {
   visible: boolean; title: string; items: SearchItem[];
   loading: boolean; onSelect: (item: SearchItem | null) => void;
@@ -123,26 +114,23 @@ const sp = StyleSheet.create({
 });
 
 // ── Main Component ───────────────────────────────────────────────────────────────
-export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }: Props) {
-  const isEdit = !!invoice;
+export default function EstimateFormSheet({ visible, onClose, onSaved, estimate }: Props) {
+  const isEdit = !!estimate;
   const isWeb  = Platform.OS === 'web';
 
   const [customerId,   setCustomerId]   = useState<number | null>(null);
   const [customerName, setCustomerName] = useState('');
-  const [vendorId,      setVendorId]      = useState<number | null>(null);
-  const [vendorName,    setVendorName]    = useState('');
   const [projectId,    setProjectId]    = useState<number | null>(null);
   const [projectName,  setProjectName]  = useState('');
-  // Linking an order is optional and sales-only: picking one copies the
-  // order's customer/project and items into this form (see onOrderSelected).
+  // Linking an order is optional: picking one copies the order's customer,
+  // project and items into this form (see onOrderSelected) — same "fast
+  // path" InvoiceFormSheet offers for billing an order that already exists.
   const [orderId,      setOrderId]      = useState<number | null>(null);
   const [orderLabel,   setOrderLabel]   = useState('');
   const [loadingOrder, setLoadingOrder] = useState(false);
-  const [invoiceType,  setInvoiceType]  = useState('sales');
   const [status,       setStatus]       = useState('draft');
-  const [invoiceDate,  setInvoiceDate]  = useState('');
-  const [dueDate,      setDueDate]      = useState('');
-  const [paymentTerms, setPaymentTerms] = useState('');
+  const [estimateDate, setEstimateDate] = useState('');
+  const [validUntil,   setValidUntil]   = useState('');
   const [notes,        setNotes]        = useState('');
   // Off by default — percent is kept even while disabled (see schema note)
   // so toggling back on restores the last value instead of resetting to 0.
@@ -154,74 +142,62 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
   const [items, setItems] = useState<LocalItem[]>([]);
 
   const [customers,        setCustomers]        = useState<SearchItem[]>([]);
-  const [vendors,          setVendors]          = useState<SearchItem[]>([]);
   const [projects,         setProjects]         = useState<SearchItem[]>([]);
   const [orders,           setOrders]           = useState<SearchItem[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
-  const [loadingVendors,   setLoadingVendors]   = useState(false);
   const [loadingProjects,  setLoadingProjects]  = useState(false);
   const [loadingOrders,    setLoadingOrders]    = useState(false);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
-  const [showVendorPicker,   setShowVendorPicker]   = useState(false);
   const [showProjectPicker,  setShowProjectPicker]  = useState(false);
   const [showOrderPicker,    setShowOrderPicker]    = useState(false);
   const [inventoryList,    setInventoryList]    = useState<SearchItem[]>([]);
   const [inventoryMap,     setInventoryMap]     = useState<Record<number, { unit: string; price: string }>>({});
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [showInventoryPicker, setShowInventoryPicker] = useState(false);
-  // Which item row's "pick from inventory" is open — '__new__' means the
-  // picker was opened via "Add Item" itself rather than an existing row's icon.
   const [editingItemKey, setEditingItemKey] = useState<string | null>(null);
   // Which date field the shared DatePickerModal is currently editing
-  const [activeDateField, setActiveDateField] = useState<'invoice' | 'due' | null>(null);
+  const [activeDateField, setActiveDateField] = useState<'estimate' | 'validUntil' | null>(null);
 
   useEffect(() => {
     if (!visible) return;
-    if (invoice) {
-      setCustomerId(invoice.customer?.id ?? null);
-      setCustomerName(invoice.customer?.customerName ?? '');
-      setVendorId(invoice.vendor?.id ?? null);
-      setVendorName(invoice.vendor?.name ?? '');
-      setProjectId(invoice.project?.id ?? null);
-      setProjectName(invoice.project ? `${invoice.project.projectNo} · ${invoice.project.name}` : '');
-      setOrderId(invoice.order?.id ?? null);
-      setOrderLabel(invoice.order?.orderNo ?? '');
-      setInvoiceType(invoice.invoiceType);
-      setStatus(invoice.status);
-      setInvoiceDate(invoice.invoiceDate.slice(0, 10));
-      setDueDate(invoice.dueDate.slice(0, 10));
-      setPaymentTerms((invoice as any).paymentTerms ?? '');
-      setNotes(invoice.notes ?? '');
-      setDiscountEnabled(invoice.discountEnabled ?? false);
-      setDiscountPercent(invoice.discountPercent && parseFloat(invoice.discountPercent) > 0 ? invoice.discountPercent : '');
-      setItems((invoice.items ?? []).map(it => ({
+    if (estimate) {
+      setCustomerId(estimate.customer?.id ?? null);
+      setCustomerName(estimate.customer?.customerName ?? '');
+      setProjectId(estimate.project?.id ?? null);
+      setProjectName(estimate.project ? `${estimate.project.projectNo} · ${estimate.project.name}` : '');
+      setOrderId(estimate.order?.id ?? null);
+      setOrderLabel(estimate.order?.orderNo ?? '');
+      setStatus(estimate.status);
+      setEstimateDate(estimate.estimateDate.slice(0, 10));
+      setValidUntil(estimate.validUntil.slice(0, 10));
+      setNotes(estimate.notes ?? '');
+      setDiscountEnabled(estimate.discountEnabled ?? false);
+      setDiscountPercent(estimate.discountPercent && parseFloat(estimate.discountPercent) > 0 ? estimate.discountPercent : '');
+      setItems((estimate.items ?? []).map(it => ({
         key: String(it.id),
         inventoryId: it.inventory?.id ?? null,
         inventoryLabel: it.inventory ? `${it.inventory.itemCode} - ${it.inventory.name}` : '',
         description: it.description ?? '',
         quantity: parseFloat(it.quantity).toString(),
         unitPrice: parseFloat(it.unitPrice).toString(),
-        taxRate: parseFloat(it.taxRate).toString(),
       })));
     } else {
       setCustomerId(null); setCustomerName('');
-      setVendorId(null);   setVendorName('');
       setProjectId(null);  setProjectName('');
       setOrderId(null);    setOrderLabel('');
-      setInvoiceType('sales'); setStatus('draft');
-      setInvoiceDate(todayIso()); setDueDate('');
-      setPaymentTerms(''); setNotes('');
+      setStatus('draft');
+      setEstimateDate(todayIso()); setValidUntil('');
+      setNotes('');
       setDiscountEnabled(false); setDiscountPercent('');
       setItems([]);
     }
     setSaveError('');
-  }, [visible, invoice]);
+  }, [visible, estimate]);
 
   const subtotal = items.reduce((s, it) => s + lineTotal(it), 0);
-  const taxTotal  = items.reduce((s, it) => s + lineTax(it), 0);
   const discountPct = parseFloat(discountPercent || '0') || 0;
-  const discountAmount = discountEnabled && discountPct > 0 ? (subtotal + taxTotal) * (discountPct / 100) : 0;
-  const grandTotal = subtotal + taxTotal - discountAmount;
+  const discountAmount = discountEnabled && discountPct > 0 ? subtotal * (discountPct / 100) : 0;
+  const grandTotal = subtotal - discountAmount;
 
   const openCustomerPicker = () => {
     if (!customers.length) {
@@ -231,15 +207,6 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
         .catch(() => {}).finally(() => setLoadingCustomers(false));
     }
     setShowCustomerPicker(true);
-  };
-  const openVendorPicker = () => {
-    if (!vendors.length) {
-      setLoadingVendors(true);
-      vendorsApi.list({ limit: 500, active: true })
-        .then(({ data }) => setVendors(data.vendors.map(v => ({ id: v.id, label: v.name, sub: v.phone }))))
-        .catch(() => {}).finally(() => setLoadingVendors(false));
-    }
-    setShowVendorPicker(true);
   };
   const openProjectPicker = () => {
     if (!projects.length) {
@@ -278,8 +245,9 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
     setShowInventoryPicker(true);
   };
 
-  // Same confirm convention used by the invoice delete flow (app/(app)/invoices/[id].tsx):
-  // window.confirm on web (synchronous), Alert.alert with Cancel/destructive on native.
+  // Same confirm convention used elsewhere (InvoiceFormSheet's order-copy,
+  // the delete flows): window.confirm on web (synchronous), Alert.alert with
+  // Cancel/destructive on native.
   const confirmAsync = (title: string, message: string): Promise<boolean> => {
     if (Platform.OS === 'web') return Promise.resolve(window.confirm(message));
     return new Promise((resolve) => {
@@ -290,21 +258,19 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
     });
   };
 
-  // Picking an order copies its customer/project and items into this form —
-  // items are typed by hand otherwise, so this is the "fast path" for
-  // billing an order that's already been created. Order items carry no tax
-  // rate (Order/OrderItem has no tax concept), so each copied line defaults
-  // to '18' — same default `makeItem()` already uses for a blank line.
-  // Rental items' per-day unitPrice is flattened by rentalDays, mirroring
-  // OrderFormSheet's own order→invoice item conversion for consistency.
+  // Picking an order copies its customer/project and items into this
+  // estimate — same "fast path" InvoiceFormSheet offers, items typed by hand
+  // otherwise. Order items carry no tax rate (irrelevant here anyway —
+  // estimates have no tax concept) and rental items' per-day unitPrice is
+  // flattened by rentalDays, mirroring InvoiceFormSheet's own conversion.
   const onOrderSelected = async (item: SearchItem | null) => {
     setShowOrderPicker(false);
     if (!item) return;
 
     if (items.length > 0) {
       const ok = await confirmAsync(
-        'Replace invoice items?',
-        `Order ${item.label} has its own items. Replace the ${items.length} item${items.length === 1 ? '' : 's'} already on this invoice with them?`
+        'Replace estimate items?',
+        `Order ${item.label} has its own items. Replace the ${items.length} item${items.length === 1 ? '' : 's'} already on this estimate with them?`
       );
       if (!ok) { setOrderId(item.id); setOrderLabel(item.label); return; }
     }
@@ -327,7 +293,6 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
           description: it.description || (it.inventory ? `${it.inventory.itemCode} - ${it.inventory.name}` : ''),
           quantity: it.quantity,
           unitPrice: unitPrice ? String(unitPrice) : '',
-          taxRate: '18',
         };
       }));
     } catch {
@@ -342,40 +307,36 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
 
   const handleSave = async () => {
     setSaveError('');
-    if (!invoiceDate) { setSaveError('Pick an invoice date'); return; }
-    if (!dueDate)      { setSaveError('Pick a due date'); return; }
+    if (!estimateDate) { setSaveError('Pick an estimate date'); return; }
+    if (!validUntil)    { setSaveError('Pick a valid-until date'); return; }
 
     const itemPayload = items.map(it => ({
       inventoryId: it.inventoryId ?? undefined,
       description: it.description,
       quantity:    it.quantity  || '1',
       unitPrice:   it.unitPrice || '0',
-      taxRate:     it.taxRate   || '0',
     }));
 
     setSaving(true);
     try {
       if (isEdit) {
-        await invoicesApi.update(invoice!.id, {
-          customerId: customerId ?? null, vendorId: vendorId ?? null, projectId: projectId ?? null,
-          invoiceType, status, invoiceDate, dueDate,
-          paymentTerms, notes, items: itemPayload,
+        await estimatesApi.update(estimate!.id, {
+          customerId: customerId ?? null, projectId: projectId ?? null, orderId: orderId ?? null,
+          status, estimateDate, validUntil, notes, items: itemPayload,
           discountEnabled, discountPercent: discountPercent || '0',
         });
         onSaved();
       } else {
-        const { data } = await invoicesApi.create({
-          customerId: customerId ?? undefined, vendorId: vendorId ?? undefined, projectId: projectId ?? undefined,
-          orderId: orderId ?? undefined,
-          invoiceType, status, invoiceDate, dueDate,
-          paymentTerms, notes, items: itemPayload,
+        const { data } = await estimatesApi.create({
+          customerId: customerId ?? undefined, projectId: projectId ?? undefined, orderId: orderId ?? undefined,
+          status, estimateDate, validUntil, notes, items: itemPayload,
           discountEnabled, discountPercent: discountPercent || '0',
         });
-        onSaved(data.invoice.id);
+        onSaved(data.estimate.id);
       }
       onClose();
     } catch (e: any) {
-      setSaveError(e?.response?.data?.error ?? 'Could not save invoice.');
+      setSaveError(e?.response?.data?.error ?? 'Could not save estimate.');
     } finally { setSaving(false); }
   };
 
@@ -383,8 +344,6 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
     <>
       <SearchPickerModal visible={showCustomerPicker} title="Select Customer" items={customers} loading={loadingCustomers}
         onSelect={item => { if (item) { setCustomerId(item.id); setCustomerName(item.label); } setShowCustomerPicker(false); }} />
-      <SearchPickerModal visible={showVendorPicker} title="Select Vendor" items={vendors} loading={loadingVendors}
-        onSelect={item => { if (item) { setVendorId(item.id); setVendorName(item.label); } setShowVendorPicker(false); }} />
       <SearchPickerModal visible={showProjectPicker} title="Select Project" items={projects} loading={loadingProjects}
         onSelect={item => { if (item) { setProjectId(item.id); setProjectName(`${item.sub} · ${item.label}`); } setShowProjectPicker(false); }} />
       <SearchPickerModal visible={showOrderPicker} title="Select Order" items={orders} loading={loadingOrders}
@@ -404,10 +363,10 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
         }} />
       <DatePickerModal
         visible={activeDateField !== null}
-        title={activeDateField === 'invoice' ? 'Invoice Date' : 'Due Date'}
-        value={activeDateField === 'invoice' ? invoiceDate : dueDate}
+        title={activeDateField === 'estimate' ? 'Estimate Date' : 'Valid Until'}
+        value={activeDateField === 'estimate' ? estimateDate : validUntil}
         onSelect={(iso) => {
-          if (iso) { if (activeDateField === 'invoice') setInvoiceDate(iso); else setDueDate(iso); }
+          if (iso) { if (activeDateField === 'estimate') setEstimateDate(iso); else setValidUntil(iso); }
           setActiveDateField(null);
         }}
         onClose={() => setActiveDateField(null)}
@@ -425,50 +384,28 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
         </View>
       ) : null}
 
-      <Text style={st.label}>Invoice Type</Text>
-      <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
-        {TYPES.map(t => (
-          <TouchableOpacity key={t.key} style={[st.chip, invoiceType === t.key && st.chipActive]} onPress={() => setInvoiceType(t.key)}>
-            <Text style={[st.chipText, invoiceType === t.key && st.chipTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {invoiceType === 'sales' && (
-        <>
-          <Text style={st.label}>
-            Order <Text style={st.opt}>(optional — copies its customer, project and items in)</Text>
-          </Text>
-          <TouchableOpacity style={st.pickerField} onPress={openOrderPicker} disabled={loadingOrder}>
-            <Text style={orderId ? st.pickerValue : st.pickerPlaceholder} numberOfLines={1}>
-              {loadingOrder ? 'Loading order...' : orderId ? orderLabel : 'Select order...'}
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-              {loadingOrder ? <ActivityIndicator size="small" color={Colors.accent} /> : (
-                <>
-                  {orderId && <TouchableOpacity onPress={() => { setOrderId(null); setOrderLabel(''); }}><Ionicons name="close-circle" size={15} color={Colors.textMuted} /></TouchableOpacity>}
-                  <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
-                </>
-              )}
-            </View>
-          </TouchableOpacity>
-        </>
-      )}
+      <Text style={st.label}>
+        Order <Text style={st.opt}>(optional — copies its customer, project and items in)</Text>
+      </Text>
+      <TouchableOpacity style={st.pickerField} onPress={openOrderPicker} disabled={loadingOrder}>
+        <Text style={orderId ? st.pickerValue : st.pickerPlaceholder} numberOfLines={1}>
+          {loadingOrder ? 'Loading order...' : orderId ? orderLabel : 'Select order...'}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+          {loadingOrder ? <ActivityIndicator size="small" color={Colors.accent} /> : (
+            <>
+              {orderId && <TouchableOpacity onPress={() => { setOrderId(null); setOrderLabel(''); }}><Ionicons name="close-circle" size={15} color={Colors.textMuted} /></TouchableOpacity>}
+              <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
 
       <Text style={st.label}>Customer <Text style={st.opt}>(optional)</Text></Text>
       <TouchableOpacity style={st.pickerField} onPress={openCustomerPicker}>
         <Text style={customerId ? st.pickerValue : st.pickerPlaceholder} numberOfLines={1}>{customerId ? customerName : 'Select customer...'}</Text>
         <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
           {customerId && <TouchableOpacity onPress={() => { setCustomerId(null); setCustomerName(''); }}><Ionicons name="close-circle" size={15} color={Colors.textMuted} /></TouchableOpacity>}
-          <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
-        </View>
-      </TouchableOpacity>
-
-      <Text style={st.label}>Vendor <Text style={st.opt}>(optional)</Text></Text>
-      <TouchableOpacity style={st.pickerField} onPress={openVendorPicker}>
-        <Text style={vendorId ? st.pickerValue : st.pickerPlaceholder} numberOfLines={1}>{vendorId ? vendorName : 'Select vendor...'}</Text>
-        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-          {vendorId && <TouchableOpacity onPress={() => { setVendorId(null); setVendorName(''); }}><Ionicons name="close-circle" size={15} color={Colors.textMuted} /></TouchableOpacity>}
           <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
         </View>
       </TouchableOpacity>
@@ -484,21 +421,21 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
 
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <View style={{ flex: 1 }}>
-          <Text style={st.label}>Invoice Date <Text style={st.req}>*</Text></Text>
-          <TouchableOpacity style={st.inputRow} onPress={() => setActiveDateField('invoice')} activeOpacity={0.7}>
+          <Text style={st.label}>Estimate Date <Text style={st.req}>*</Text></Text>
+          <TouchableOpacity style={st.inputRow} onPress={() => setActiveDateField('estimate')} activeOpacity={0.7}>
             <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
-            <Text style={[st.input, { flex: 1 }, !invoiceDate && { color: Colors.textMuted }]}>
-              {invoiceDate ? isoToDisplay(invoiceDate) : 'DD/MM/YYYY'}
+            <Text style={[st.input, { flex: 1 }, !estimateDate && { color: Colors.textMuted }]}>
+              {estimateDate ? isoToDisplay(estimateDate) : 'DD/MM/YYYY'}
             </Text>
             <Ionicons name="chevron-down" size={13} color={Colors.textMuted} />
           </TouchableOpacity>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={st.label}>Due Date <Text style={st.req}>*</Text></Text>
-          <TouchableOpacity style={st.inputRow} onPress={() => setActiveDateField('due')} activeOpacity={0.7}>
+          <Text style={st.label}>Valid Until <Text style={st.req}>*</Text></Text>
+          <TouchableOpacity style={st.inputRow} onPress={() => setActiveDateField('validUntil')} activeOpacity={0.7}>
             <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
-            <Text style={[st.input, { flex: 1 }, !dueDate && { color: Colors.textMuted }]}>
-              {dueDate ? isoToDisplay(dueDate) : 'DD/MM/YYYY'}
+            <Text style={[st.input, { flex: 1 }, !validUntil && { color: Colors.textMuted }]}>
+              {validUntil ? isoToDisplay(validUntil) : 'DD/MM/YYYY'}
             </Text>
             <Ionicons name="chevron-down" size={13} color={Colors.textMuted} />
           </TouchableOpacity>
@@ -514,9 +451,6 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
         ))}
       </View>
 
-      <Text style={st.label}>Payment Terms <Text style={st.opt}>(optional)</Text></Text>
-      <TextInput style={st.inputBox} value={paymentTerms} onChangeText={setPaymentTerms} placeholder="e.g. Net 15" placeholderTextColor={Colors.textMuted} />
-
       <Text style={st.label}>Notes <Text style={st.opt}>(optional)</Text></Text>
       <TextInput style={st.textArea} value={notes} onChangeText={setNotes} placeholder="Add notes..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} textAlignVertical="top" />
 
@@ -524,7 +458,7 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
 
       {/* Items */}
       <View style={st.itemsHeader}>
-        <Text style={st.sectionTitle}>Invoice Items</Text>
+        <Text style={st.sectionTitle}>Estimate Items</Text>
         <TouchableOpacity style={st.addBtn} onPress={addItem}>
           <Ionicons name="add" size={14} color="#111" />
           <Text style={st.addBtnText}>Add Item</Text>
@@ -548,13 +482,9 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
             </TouchableOpacity>
             <TextInput style={[st.itemInput, { flex: 1.6, minWidth: 0 }]} value={item.description} onChangeText={v => updateItem(item.key, { description: v, inventoryId: null })} placeholder="Description, or pick from inventory" placeholderTextColor={Colors.textMuted} />
             <TextInput style={[st.itemInput, { width: 56, flexShrink: 0 }]} value={item.quantity} onChangeText={v => updateItem(item.key, { quantity: v })} keyboardType="decimal-pad" placeholder="Qty" placeholderTextColor={Colors.textMuted} />
-            <View style={[st.priceBox, { width: 96, flexShrink: 0 }]}>
+            <View style={[st.priceBox, { width: 100, flexShrink: 0 }]}>
               <Text style={st.rupeePrefix}>₹</Text>
               <TextInput style={st.priceInput} value={item.unitPrice} onChangeText={v => updateItem(item.key, { unitPrice: v })} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.textMuted} />
-            </View>
-            <View style={[st.taxBox, { width: 60, flexShrink: 0 }]}>
-              <TextInput style={st.taxInput} value={item.taxRate} onChangeText={v => updateItem(item.key, { taxRate: v })} keyboardType="decimal-pad" placeholder="18" placeholderTextColor={Colors.textMuted} />
-              <Text style={st.taxSuffix}>%</Text>
             </View>
             <Text style={st.itemTotal} numberOfLines={1}>{fmtCurrency(total)}</Text>
             <TouchableOpacity onPress={() => removeItem(item.key)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -580,12 +510,11 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
                 placeholder="0"
                 placeholderTextColor={Colors.textMuted}
               />
-              <Text style={st.discountPercentSuffix}>% off subtotal + tax</Text>
+              <Text style={st.discountPercentSuffix}>% off subtotal</Text>
             </View>
           )}
           <View style={st.totalsBox}>
             <View style={st.totalsRow}><Text style={st.totalsLabel}>Subtotal</Text><Text style={st.totalsValue}>{fmtCurrency(subtotal)}</Text></View>
-            <View style={st.totalsRow}><Text style={st.totalsLabel}>Tax</Text><Text style={st.totalsValue}>{fmtCurrency(taxTotal)}</Text></View>
             {discountEnabled && discountAmount > 0 && (
               <View style={st.totalsRow}>
                 <Text style={st.totalsLabel}>Discount ({discountPct}%)</Text>
@@ -611,9 +540,9 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
           <View style={[w.dialog, { maxHeight: SCREEN_H * 0.92 }]}>
             <View style={w.header}>
               <View style={w.headerLeft}>
-                <Ionicons name="document-text-outline" size={18} color={Colors.accent} />
-                <Text style={w.headerTitle}>{isEdit ? 'Edit Invoice' : 'New Invoice'}</Text>
-                {isEdit && invoice && <Text style={w.headerSub}>{invoice.invoiceNo}</Text>}
+                <Ionicons name="document-outline" size={18} color={Colors.accent} />
+                <Text style={w.headerTitle}>{isEdit ? 'Edit Estimate' : 'New Estimate'}</Text>
+                {isEdit && estimate && <Text style={w.headerSub}>{estimate.estimateNo}</Text>}
               </View>
               <View style={w.headerActions}>
                 <TouchableOpacity style={w.cancelBtn} onPress={onClose} disabled={saving}>
@@ -621,7 +550,7 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
                 </TouchableOpacity>
                 <TouchableOpacity style={[w.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
                   {saving ? <ActivityIndicator size="small" color="#111" /> : (
-                    <><Ionicons name="checkmark" size={15} color="#111" /><Text style={w.saveText}>{isEdit ? 'Update Invoice' : 'Create Invoice'}</Text></>
+                    <><Ionicons name="checkmark" size={15} color="#111" /><Text style={w.saveText}>{isEdit ? 'Update Estimate' : 'Create Estimate'}</Text></>
                   )}
                 </TouchableOpacity>
               </View>
@@ -641,7 +570,7 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.header}>
-          <Text style={s.title}>{isEdit ? 'Edit Invoice' : 'New Invoice'}</Text>
+          <Text style={s.title}>{isEdit ? 'Edit Estimate' : 'New Estimate'}</Text>
           <TouchableOpacity onPress={onClose} style={s.closeBtn}>
             <Ionicons name="close" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
@@ -653,7 +582,7 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
               <Text style={s.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-              {saving ? <ActivityIndicator size="small" color="#111" /> : <Text style={s.saveText}>{isEdit ? 'Update Invoice' : 'Create Invoice'}</Text>}
+              {saving ? <ActivityIndicator size="small" color="#111" /> : <Text style={s.saveText}>{isEdit ? 'Update Estimate' : 'Create Estimate'}</Text>}
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -704,9 +633,6 @@ const shared = {
   priceBox: { flexDirection: 'row' as const, alignItems: 'center' as const, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, overflow: 'hidden' as const },
   rupeePrefix: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' as const, paddingLeft: 7, flexShrink: 0 },
   priceInput: { flex: 1, minWidth: 0, textAlign: 'right' as const, fontSize: 13, fontWeight: '600' as const, color: Colors.textPrimary, paddingVertical: 6, paddingLeft: 4, paddingRight: 7, borderWidth: 0, backgroundColor: 'transparent', ...Platform.select({ web: { outlineStyle: 'none' as const } }) },
-  taxBox: { flexDirection: 'row' as const, alignItems: 'center' as const, backgroundColor: Colors.accentLight, borderWidth: 1, borderColor: Colors.accent, borderRadius: 5, overflow: 'hidden' as const },
-  taxInput: { flex: 1, minWidth: 0, textAlign: 'right' as const, fontSize: 13, fontWeight: '700' as const, color: Colors.accentDark, paddingVertical: 6, paddingLeft: 4, borderWidth: 0, backgroundColor: 'transparent', ...Platform.select({ web: { outlineStyle: 'none' as const } }) },
-  taxSuffix: { fontSize: 11, fontWeight: '700' as const, color: Colors.accentDark, paddingRight: 6, flexShrink: 0 },
   itemTotal: { width: 84, fontSize: 13, fontWeight: '700' as const, color: Colors.textPrimary, textAlign: 'right' as const, flexShrink: 0 },
 
   discountToggleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, paddingVertical: 6 },
@@ -720,7 +646,7 @@ const shared = {
   totalsValue: { fontSize: 12, color: '#fff', fontWeight: '600' as const },
   totalsGrandRow: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', marginTop: 4, paddingTop: 8 },
   totalsGrandLabel: { fontSize: 12, fontWeight: '700' as const, color: 'rgba(255,255,255,0.85)', letterSpacing: 0.5 },
-  totalsGrandValue: { fontSize: 17, fontWeight: '800' as const, color: Colors.accent },
+  totalsGrandValue: { fontSize: 17, fontWeight: '800' as const, color: '#E65100' },
 };
 
 // ── Web styles ───────────────────────────────────────────────────────────────────

@@ -30,6 +30,8 @@ export default function InvoiceDetailScreen() {
   const [showEdit, setShowEdit] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
 
   const loadInvoice = useCallback(() => {
     invoicesApi.detail(parseInt(id!))
@@ -111,6 +113,70 @@ export default function InvoiceDetailScreen() {
     }
   };
 
+  // Preview — same rendered HTML as Print, but lets the user actually look
+  // at it before committing to a print/save/share action, rather than
+  // jumping straight into a print dialog (web) or the share sheet (native,
+  // "Share PDF") with no chance to check it first.
+  const handlePreview = async () => {
+    if (!invoice) return;
+    setPreviewing(true);
+    try {
+      const html = buildInvoiceHtml(invoice);
+      if (Platform.OS === 'web') {
+        // Same blob-tab approach as handlePrint (see its comment for why a
+        // real top-level document via blob: URL is needed), just without the
+        // auto print() call — the tab is left open for the user to read,
+        // zoom, scroll; they can still print from it (Ctrl/Cmd+P) if they
+        // decide to after looking.
+        const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        const w = window.open(blobUrl, '_blank');
+        if (!w) { URL.revokeObjectURL(blobUrl); throw new Error('Pop-up blocked — allow pop-ups for this site to preview the invoice.'); }
+        w.onunload = () => URL.revokeObjectURL(blobUrl);
+      } else {
+        // Native: Print.printAsync opens the OS's own print-preview screen
+        // (paginated, zoomable) with Print/Save-as-PDF/Share as options from
+        // inside it — unlike "Share PDF" below, which skips straight to the
+        // share sheet with no preview step.
+        await Print.printAsync({ html });
+      }
+    } catch (e: any) {
+      const msg = e?.message ?? 'Could not preview the invoice.';
+      if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Preview Failed', msg);
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  // Sending costs real money per message and can't be recalled once it's
+  // gone, so this confirms first — same web-confirm/Alert.alert convention
+  // as handleDelete, showing the number it's about to go to.
+  const handleSendWhatsapp = () => {
+    if (!invoice?.customer) return;
+    const doIt = async () => {
+      setSendingWhatsapp(true);
+      try {
+        const { data } = await invoicesApi.sendWhatsapp(invoice.id);
+        const msg = `Sent to ${data.sentTo} via WhatsApp.`;
+        if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Sent', msg);
+      } catch (e: any) {
+        const msg = e?.response?.data?.error ?? 'Could not send the invoice via WhatsApp.';
+        if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Send Failed', msg);
+      } finally {
+        setSendingWhatsapp(false);
+      }
+    };
+    const phone = invoice.customer.phone || '(no phone on file)';
+    const prompt = `Send "${invoice.invoiceNo}" to ${invoice.customer.customerName} on WhatsApp (${phone})?`;
+    if (Platform.OS === 'web') {
+      if (window.confirm(prompt)) doIt();
+      return;
+    }
+    Alert.alert('Send via WhatsApp', prompt, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Send', onPress: doIt },
+    ]);
+  };
+
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !invoice) return (
     <View style={styles.center}>
@@ -156,10 +222,20 @@ export default function InvoiceDetailScreen() {
           )}
 
           <View style={styles.headerActions}>
+            <TouchableOpacity style={[styles.previewBtn, previewing && { opacity: 0.6 }]} onPress={handlePreview} disabled={previewing}>
+              {previewing ? <ActivityIndicator size="small" color={Colors.accent} /> : <Ionicons name="eye-outline" size={15} color={Colors.accent} />}
+              <Text style={styles.previewBtnText}>Preview</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.printBtn, printing && { opacity: 0.6 }]} onPress={handlePrint} disabled={printing}>
               {printing ? <ActivityIndicator size="small" color="#111" /> : <Ionicons name="print-outline" size={15} color="#111" />}
               <Text style={styles.printBtnText}>{Platform.OS === 'web' ? 'Print' : 'Share PDF'}</Text>
             </TouchableOpacity>
+            {invoice.invoiceType === 'sales' && invoice.customer && (
+              <TouchableOpacity style={[styles.whatsappBtn, sendingWhatsapp && { opacity: 0.6 }]} onPress={handleSendWhatsapp} disabled={sendingWhatsapp}>
+                {sendingWhatsapp ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="logo-whatsapp" size={15} color="#fff" />}
+                <Text style={styles.whatsappBtnText}>WhatsApp</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
               <Ionicons name="create-outline" size={15} color={Colors.accent} />
               <Text style={styles.editBtnText}>Edit</Text>
@@ -181,7 +257,15 @@ export default function InvoiceDetailScreen() {
             <Text style={styles.statLabel}>Tax</Text>
             <Text style={styles.statValue}>{fmtAmt(invoice.taxAmount)}</Text>
           </View>
-          <View style={styles.statBox}>
+          {invoice.discountEnabled && parseFloat(invoice.discountPercent) > 0 && (
+            <View style={[styles.statBox, styles.statBorder]}>
+              <Text style={styles.statLabel}>Discount ({parseFloat(invoice.discountPercent)}%)</Text>
+              <Text style={[styles.statValue, { color: Colors.error }]}>
+                −{fmtAmt(String((parseFloat(invoice.subtotal) + parseFloat(invoice.taxAmount)) - parseFloat(invoice.totalAmount)))}
+              </Text>
+            </View>
+          )}
+          <View style={[styles.statBox, invoice.discountEnabled && parseFloat(invoice.discountPercent) > 0 && styles.statBorder]}>
             <Text style={styles.statLabel}>Total</Text>
             <Text style={[styles.statValue, { color: '#6A1B9A' }]}>{fmtAmt(invoice.totalAmount)}</Text>
           </View>
@@ -276,13 +360,26 @@ const styles = StyleSheet.create({
   orderLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
   orderLinkText: { fontSize: 12, color: Colors.accent, fontWeight: '600' },
 
-  headerActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  headerActions: { flexDirection: 'row', gap: 10, marginTop: 16, flexWrap: 'wrap' },
+  previewBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(255,153,0,0.15)', paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6, borderWidth: 1,
+    borderColor: 'rgba(255,153,0,0.4)',
+  },
+  previewBtnText: { fontSize: 13, fontWeight: '700', color: Colors.accent },
   printBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: Colors.accent, paddingHorizontal: 16,
     paddingVertical: 8, borderRadius: 6,
   },
   printBtnText: { fontSize: 13, fontWeight: '700', color: '#111' },
+  whatsappBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#25D366', paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6,
+  },
+  whatsappBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   editBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(255,153,0,0.15)', paddingHorizontal: 16,
