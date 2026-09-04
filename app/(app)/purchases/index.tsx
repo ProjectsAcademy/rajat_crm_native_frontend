@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 import { purchasesApi, PurchaseSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import PurchaseFormSheet from '../../../components/PurchaseFormSheet';
@@ -93,6 +94,7 @@ export default function PurchasesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumbs moduleKey="purchases" />
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />

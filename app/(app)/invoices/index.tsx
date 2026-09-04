@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { invoicesApi, InvoiceSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -81,6 +82,7 @@ export default function InvoicesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumbs moduleKey="invoices" />
       {customerId && customerName ? (
         <CustomerFilterBanner
           name={customerName}

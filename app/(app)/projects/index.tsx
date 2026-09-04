@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 import { projectsApi, ProjectSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import ProjectFormSheet from '../../../components/ProjectFormSheet';
@@ -209,6 +210,7 @@ export default function ProjectsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumbs moduleKey="projects" />
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />

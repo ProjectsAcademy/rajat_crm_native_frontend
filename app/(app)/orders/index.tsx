@@ -7,6 +7,7 @@ import { ordersApi, OrderSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import OrderFormSheet from '../../../components/OrderFormSheet';
 import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: '#FFF8E1', text: '#F57F17' },
@@ -86,6 +87,7 @@ export default function OrdersScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumbs moduleKey="orders" />
       {customerId && customerName ? (
         <CustomerFilterBanner
           name={customerName}

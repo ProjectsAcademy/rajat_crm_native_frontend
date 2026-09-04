@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { gstApi, GstRecord } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 import GstFormSheet from '../../../components/GstFormSheet';
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -90,6 +91,7 @@ export default function GstScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumbs moduleKey="gst" />
       {customerId && customerName ? (
         <CustomerFilterBanner
           name={customerName}

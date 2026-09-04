@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dashboardApi, DashboardResponse } from '../../../services/api';
 import { useAuthStore, userHasFeature } from '../../../store/auth';
 import { Colors } from '../../../constants/colors';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 
 const MODULES = [
   { key: 'attendance',       feature: 'hr.attendance',        label: 'Attendance',      icon: 'calendar-outline'         as const, route: '/(app)/hr/attendance',        color: '#1565C0' },
@@ -34,9 +35,13 @@ export default function HRIndexScreen() {
   return (
     <View style={styles.safe}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity onPress={() => router.push('/(app)/people' as any)} hitSlop={12} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>HR & Payroll</Text>
         <Text style={styles.headerSub}>Attendance · Salary · EPF/ESIC</Text>
       </View>
+      <Breadcrumbs moduleKey="hr" />
 
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>
@@ -82,6 +87,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary, paddingHorizontal: 20,
     paddingBottom: 20, borderBottomWidth: 2, borderBottomColor: Colors.accent,
   },
+  backBtn: { alignSelf: 'flex-start', marginLeft: -4, marginBottom: 6 },
   headerTitle: { fontSize: 22, fontWeight: '800', color: '#fff' },
   headerSub:   { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   scroll:  { flex: 1, backgroundColor: Colors.background },

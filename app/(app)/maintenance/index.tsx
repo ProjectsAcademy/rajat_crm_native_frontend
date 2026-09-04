@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 import { maintenanceApi, MaintenancePeriod } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 
@@ -111,6 +112,7 @@ export default function MaintenanceScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumbs moduleKey="maintenance" />
       <View style={styles.pills}>
         {FILTERS.map(f => (
           <TouchableOpacity

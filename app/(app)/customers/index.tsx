@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 import { customersApi, Customer } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import CustomerFormSheet from '../../../components/CustomerFormSheet';
@@ -96,6 +97,7 @@ export default function CustomersScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumbs moduleKey="customers" />
       {/* Search */}
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
