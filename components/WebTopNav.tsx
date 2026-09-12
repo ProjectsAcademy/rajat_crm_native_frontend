@@ -76,7 +76,7 @@ export default function WebTopNav() {
         {/* Right actions */}
         {user?.isSuperuser && (
           <TouchableOpacity
-            style={[styles.link, pathname.startsWith('/admin') && styles.linkActive]}
+            style={[styles.link, styles.linkStretch, pathname.startsWith('/admin') && styles.linkActive]}
             onPress={() => router.push('/(app)/admin' as any)}
             activeOpacity={0.7}
           >
@@ -92,7 +92,7 @@ export default function WebTopNav() {
             <Text style={styles.userRole}>{role}</Text>
           </View>
         </View>
-        <TouchableOpacity style={[styles.link, { marginLeft: 6 }]} onPress={handleLogout} activeOpacity={0.7}>
+        <TouchableOpacity style={[styles.link, styles.linkStretch, { marginLeft: 6 }]} onPress={handleLogout} activeOpacity={0.7}>
           <Ionicons name="log-out-outline" size={15} color="rgba(255,255,255,0.7)" />
           <Text style={styles.linkText}>Sign out</Text>
         </TouchableOpacity>
@@ -133,6 +133,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 15,
   },
+  // For a `link` rendered directly in `inner` (Admin, Sign out) rather than
+  // inside the `links` row above — `inner` only vertically centers its
+  // children, so without this such a button shrink-wraps to its own text
+  // height instead of the bar's, and linkActive's highlight then covers
+  // just that short box instead of the full-height tab look every other
+  // active link gets.
+  linkStretch: { alignSelf: 'stretch' },
   linkActive: {
     backgroundColor: 'rgba(255,153,0,0.14)',
     ...Platform.select({
