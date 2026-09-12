@@ -1,10 +1,11 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { estimatesApi, EstimateDetail } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import EstimateFormSheet from '../../../components/EstimateFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:    { bg: Colors.border,       text: Colors.textMuted },
@@ -28,13 +29,41 @@ export default function EstimateDetailScreen() {
   const [estimate, setEstimate] = useState<EstimateDetail | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
+  const [showEdit, setShowEdit] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  const loadEstimate = useCallback(() => {
+    setLoading(true);
     estimatesApi.detail(parseInt(id!))
       .then(({ data }) => setEstimate(data.estimate))
       .catch(() => setError('Could not load estimate.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { loadEstimate(); }, [loadEstimate]);
+
+  const handleDelete = () => {
+    const doIt = async () => {
+      setDeleting(true);
+      try {
+        await estimatesApi.remove(parseInt(id!));
+        router.back();
+      } catch (e: any) {
+        const msg = e?.response?.data?.error ?? 'Could not delete estimate.';
+        setDeleting(false);
+        if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Cannot Delete', msg);
+      }
+    };
+    const label = estimate?.estimateNo ?? 'this estimate';
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Permanently delete "${label}"? This cannot be undone.`)) doIt();
+      return;
+    }
+    Alert.alert('Delete Estimate', `Permanently delete "${label}"? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: doIt },
+    ]);
+  };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !estimate) return (
@@ -71,12 +100,43 @@ export default function EstimateDetailScreen() {
               Valid: {fmtDate(estimate.validUntil)}{isExpired ? ' (Expired)' : ''}
             </Text>
           </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+              <Ionicons name="create-outline" size={15} color={Colors.accent} />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.6 }]} onPress={handleDelete} disabled={deleting}>
+              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
+              <Text style={styles.deleteBtnText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Total */}
         <View style={styles.totalBar}>
-          <Text style={styles.totalLabel}>Total Amount</Text>
-          <Text style={styles.totalValue}>{fmtAmt(estimate.totalAmount)}</Text>
+          {estimate.discountEnabled && parseFloat(estimate.discountPercent) > 0 ? (
+            <View style={{ flex: 1 }}>
+              <View style={styles.totalSubRow}>
+                <Text style={styles.totalSubLabel}>Subtotal</Text>
+                <Text style={styles.totalSubValue}>{fmtAmt(estimate.subtotal)}</Text>
+              </View>
+              <View style={styles.totalSubRow}>
+                <Text style={styles.totalSubLabel}>Discount ({parseFloat(estimate.discountPercent)}%)</Text>
+                <Text style={[styles.totalSubValue, { color: Colors.error }]}>
+                  −{fmtAmt(String(parseFloat(estimate.subtotal) - parseFloat(estimate.totalAmount)))}
+                </Text>
+              </View>
+              <View style={[styles.totalSubRow, { marginTop: 4 }]}>
+                <Text style={styles.totalLabel}>Total Amount</Text>
+                <Text style={styles.totalValue}>{fmtAmt(estimate.totalAmount)}</Text>
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.totalLabel}>Total Amount</Text>
+              <Text style={styles.totalValue}>{fmtAmt(estimate.totalAmount)}</Text>
+            </>
+          )}
         </View>
 
         {/* Line items */}
@@ -129,6 +189,13 @@ export default function EstimateDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      <EstimateFormSheet
+        visible={showEdit}
+        estimate={estimate}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => { setShowEdit(false); loadEstimate(); }}
+      />
     </SafeAreaView>
   );
 }
@@ -151,9 +218,27 @@ const styles = StyleSheet.create({
   dates:        { flexDirection: 'row', gap: 14, marginTop: 8, flexWrap: 'wrap' },
   dateItem:     { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
 
+  headerActions: { flexDirection: 'row', gap: 10, marginTop: 16, flexWrap: 'wrap' },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(255,153,0,0.15)', paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6, borderWidth: 1,
+    borderColor: 'rgba(255,153,0,0.4)',
+  },
+  editBtnText: { fontSize: 13, fontWeight: '700', color: Colors.accent },
+  deleteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.error, paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6,
+  },
+  deleteBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
   totalBar:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.surface, padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
   totalLabel: { fontSize: 13, color: Colors.textSecondary, fontWeight: '600' },
   totalValue: { fontSize: 22, fontWeight: '800', color: '#E65100' },
+  totalSubRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
+  totalSubLabel: { fontSize: 12, color: Colors.textMuted },
+  totalSubValue: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
 
   section:      { marginTop: 16, paddingHorizontal: 14 },
   sectionTitle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },

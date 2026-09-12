@@ -42,6 +42,7 @@ export const adminApi = {
       api.put<{ user: AdminUser }>(`/api/admin/users/${id}`, data),
     setGroups: (id: number, groupIds: number[]) =>
       api.put<{ user: AdminUser }>(`/api/admin/users/${id}/groups`, { groupIds }),
+    remove: (id: number) => api.delete<{ message: string }>(`/api/admin/users/${id}`),
   },
   groups: {
     list: () => api.get<{ groups: AdminGroup[]; total: number }>('/api/admin/groups'),
@@ -57,8 +58,20 @@ export const adminApi = {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
+export interface RevenueMonth { label: string; totalAmount: number; paidAmount: number; outstanding: number }
+export interface RevenueSnapshot { totalAmount: number; paidAmount: number; outstanding: number }
+export interface RevenueResponse { monthly: RevenueMonth[]; snapshot: RevenueSnapshot }
+// Shared row shape for both by-customer breakdowns (Collected / Outstanding)
+export interface CustomerAmountRow {
+  customerId: number | null; customerName: string; customerCode: string | null; amount: number;
+}
+export interface CustomerAmountResponse { customers: CustomerAmountRow[]; total: number }
+
 export const dashboardApi = {
   getSummary: () => api.get<DashboardResponse>('/api/dashboard'),
+  getRevenue: (months = 6) => api.get<RevenueResponse>('/api/dashboard/revenue', { params: { months } }),
+  getCollectedByCustomer: () => api.get<CustomerAmountResponse>('/api/dashboard/collected-by-customer'),
+  getOutstandingByCustomer: () => api.get<CustomerAmountResponse>('/api/dashboard/outstanding-by-customer'),
 };
 
 // ─── Customers ────────────────────────────────────────────────────────────────
@@ -179,11 +192,19 @@ export interface OrderItemInput {
   isRental?: boolean;
   rentalDays?: number;
 }
+export interface OrderInvoiceItemInput { description?: string; quantity: string; unitPrice: string; }
+export interface OrderInvoiceGstInput { gstRate: number; isInterstate: boolean; gstNo?: string; }
+export interface OrderInvoiceInput {
+  invoiceDate: string; dueDate: string; paymentTerms?: string; notes?: string;
+  items: OrderInvoiceItemInput[];
+  gst: OrderInvoiceGstInput;
+}
 export interface OrderCreateInput {
   customerId?: number; projectId?: number;
   orderDate: string; deliveryDate?: string;
   status?: string; notes?: string;
   items?: OrderItemInput[];
+  invoice?: OrderInvoiceInput;
 }
 export interface OrderUpdateInput {
   customerId?: number | null; projectId?: number | null;
@@ -196,7 +217,7 @@ export interface OrderPaymentInput {
 }
 
 export const ordersApi = {
-  list: (params?: { search?: string; status?: string; paymentStatus?: string; limit?: number }) =>
+  list: (params?: { search?: string; status?: string; paymentStatus?: string; customerId?: number; limit?: number }) =>
     api.get<OrderListResponse>('/api/orders', { params }),
   detail:     (id: number) => api.get<OrderDetailResponse>(`/api/orders/${id}`),
   create:     (data: OrderCreateInput) => api.post<{ order: OrderSummary }>('/api/orders', data),
@@ -209,9 +230,13 @@ export const ordersApi = {
 // ─── Invoices ─────────────────────────────────────────────────────────────────
 
 export const invoicesApi = {
-  list: (params?: { search?: string; status?: string; invoiceType?: string; limit?: number }) =>
+  list: (params?: { search?: string; status?: string; invoiceType?: string; customerId?: number; limit?: number }) =>
     api.get<InvoiceListResponse>('/api/invoices', { params }),
   detail: (id: number) => api.get<InvoiceDetailResponse>(`/api/invoices/${id}`),
+  create: (data: InvoiceCreateInput) => api.post<InvoiceDetailResponse>('/api/invoices', data),
+  update: (id: number, data: InvoiceUpdateInput) => api.put<InvoiceDetailResponse>(`/api/invoices/${id}`, data),
+  remove: (id: number) => api.delete<{ success: boolean }>(`/api/invoices/${id}`),
+  sendWhatsapp: (id: number) => api.post<{ success: boolean; messageId: string; sentTo: string }>(`/api/invoices/${id}/send-whatsapp`),
 };
 
 // ─── Purchases ────────────────────────────────────────────────────────────────
@@ -231,6 +256,9 @@ export const estimatesApi = {
   list: (params?: { search?: string; status?: string; customerId?: number; projectId?: number; page?: number; limit?: number }) =>
     api.get<EstimateListResponse>('/api/estimates', { params }),
   detail: (id: number) => api.get<EstimateDetailResponse>(`/api/estimates/${id}`),
+  create: (data: EstimateCreateInput) => api.post<EstimateDetailResponse>('/api/estimates', data),
+  update: (id: number, data: EstimateUpdateInput) => api.put<EstimateDetailResponse>(`/api/estimates/${id}`, data),
+  remove: (id: number) => api.delete<{ success: boolean }>(`/api/estimates/${id}`),
 };
 
 // ─── Stock ────────────────────────────────────────────────────────────────────
@@ -250,6 +278,9 @@ export const gstApi = {
   list: (params?: { transactionType?: string; isFiled?: boolean; customerId?: number; vendorId?: number; from?: string; to?: string; page?: number; limit?: number }) =>
     api.get<GstListResponse>('/api/gst', { params }),
   detail: (id: number) => api.get<GstDetailResponse>(`/api/gst/${id}`),
+  create: (data: GstCreateInput) => api.post<GstDetailResponse>('/api/gst', data),
+  update: (id: number, data: GstUpdateInput) => api.put<GstDetailResponse>(`/api/gst/${id}`, data),
+  remove: (id: number) => api.delete<{ message: string }>(`/api/gst/${id}`),
 };
 
 // ─── HR ───────────────────────────────────────────────────────────────────────
@@ -314,6 +345,30 @@ export const vehiclesApi = {
 
 // ─── Maintenance ──────────────────────────────────────────────────────────────
 
+// ─── Calendar ─────────────────────────────────────────────────────────────────
+
+export interface CalendarEvent {
+  id: number; title: string; description: string;
+  eventDate: string; allDay: boolean; color: string;
+  createdById: number; createdBy: { id: number; username: string };
+  isMine: boolean; createdAt: string; updatedAt: string;
+}
+export interface CalendarOrderEntry {
+  id: number; orderNo: string; deliveryDate: string; status: string;
+  customer: { id: number; customerName: string } | null;
+}
+export interface CalendarResponse { events: CalendarEvent[]; orders: CalendarOrderEntry[] }
+export interface CalendarEventPayload {
+  title?: string; description?: string; eventDate?: string; allDay?: boolean; color?: string;
+}
+
+export const calendarApi = {
+  list: (params: { from: string; to: string }) => api.get<CalendarResponse>('/api/calendar', { params }),
+  create: (data: CalendarEventPayload) => api.post<{ event: CalendarEvent }>('/api/calendar', data),
+  update: (id: number, data: CalendarEventPayload) => api.put<{ event: CalendarEvent }>(`/api/calendar/${id}`, data),
+  remove: (id: number) => api.delete<{ message: string }>(`/api/calendar/${id}`),
+};
+
 export const maintenanceApi = {
   list: (params?: { status?: string; projectId?: number; limit?: number }) =>
     api.get<MaintenanceListResponse>('/api/maintenance', { params }),
@@ -347,13 +402,13 @@ export interface FeatureDef { key: string; label: string; hub: string; parent?: 
 export interface AdminUser {
   id: number; username: string; email: string;
   firstName: string; lastName: string;
-  isActive: boolean; isStaff: boolean; isSuperuser: boolean;
+  isActive: boolean; isStaff: boolean; isSuperuser: boolean; isLegacyAccess: boolean;
   lastLogin: string | null; dateJoined: string;
   groups: { id: number; name: string }[];
 }
 export interface AdminUserPayload {
   username?: string; password?: string; email?: string;
-  firstName?: string; lastName?: string; isActive?: boolean;
+  firstName?: string; lastName?: string; isActive?: boolean; isLegacyAccess?: boolean;
   groupIds?: number[];
 }
 export interface AdminGroup {
@@ -384,6 +439,7 @@ export interface Customer {
   id: number; customerCode: string; customerName: string; businessName: string;
   email: string; phone: string; address: string; gstin: string;
   isActive: boolean; createdAt: string; updatedAt?: string;
+  _count?: { orders: number; invoices: number; estimates: number; gstRecords: number };
 }
 export interface CustomerListResponse { customers: Customer[]; total: number; page: number; limit: number; }
 export interface CustomerDetailResponse { customer: Customer; }
@@ -533,6 +589,7 @@ export interface OrderDetail extends OrderSummary {
   items: OrderItem[];
   payments: OrderPayment[];
   mediaFiles: MediaFile[];
+  invoices: { id: number; invoiceNo: string; invoiceDate: string; totalAmount: string; status: string }[];
 }
 export interface OrderListResponse { orders: OrderSummary[]; total: number; }
 export interface OrderDetailResponse { order: OrderDetail; }
@@ -541,21 +598,39 @@ export interface InvoiceSummary {
   id: number; invoiceNo: string; status: string; invoiceType: string;
   invoiceDate: string; dueDate: string; gstDate: string | null;
   subtotal: string; taxAmount: string; totalAmount: string;
-  customer: { id: number; customerName: string; phone: string; email: string } | null;
-  vendor: { id: number; name: string; phone: string; email: string; gstin: string } | null;
+  customer: { id: number; customerName: string; customerCode: string; phone: string; email: string; gstin: string; address: string } | null;
+  vendor: { id: number; name: string; vendorCode: string; phone: string; email: string; gstin: string; address: string } | null;
   project: { id: number; projectNo: string; name: string } | null;
 }
 export interface InvoiceItem {
   id: number; description: string | null; quantity: string; unitPrice: string;
   taxRate: string; total: string;
+  inventory: { id: number; itemCode: string; name: string; unit: string } | null;
 }
 export interface InvoiceDetail extends InvoiceSummary {
   notes: string | null; createdAt: string;
   items: InvoiceItem[];
   mediaFiles: MediaFile[];
+  order: { id: number; orderNo: string } | null;
+  discountEnabled: boolean; discountPercent: string;
 }
 export interface InvoiceListResponse { invoices: InvoiceSummary[]; total: number; }
 export interface InvoiceDetailResponse { invoice: InvoiceDetail; }
+export interface InvoiceItemInput { inventoryId?: number | null; description?: string; quantity: string; unitPrice: string; taxRate?: string }
+export interface InvoiceCreateInput {
+  customerId?: number; vendorId?: number; projectId?: number; orderId?: number;
+  invoiceType?: string; invoiceDate: string; gstDate?: string; dueDate: string;
+  paymentTerms?: string; notes?: string; status?: string;
+  items?: InvoiceItemInput[];
+  discountEnabled?: boolean; discountPercent?: string;
+}
+export interface InvoiceUpdateInput {
+  customerId?: number | null; vendorId?: number | null; projectId?: number | null; orderId?: number | null;
+  invoiceType?: string; invoiceDate?: string; gstDate?: string | null; dueDate?: string;
+  paymentTerms?: string; notes?: string; status?: string;
+  items?: InvoiceItemInput[];
+  discountEnabled?: boolean; discountPercent?: string;
+}
 
 export interface PurchaseSummary {
   id: number; purchaseNo: string; status: string; paymentStatus: string;
@@ -737,15 +812,33 @@ export interface EstimateSummary {
 }
 export interface EstimateItemType {
   id: number; description: string; quantity: string; unitPrice: string; total: string;
+  inventory: { id: number; itemCode: string; name: string; unit: string } | null;
 }
 export interface EstimateDetail extends EstimateSummary {
   notes: string; createdAt: string; updatedAt: string;
   items: EstimateItemType[];
   customer: { id: number; customerName: string; businessName: string; phone: string; email: string; address: string } | null;
   project:  { id: number; projectNo: string; name: string; status: string } | null;
+  order:    { id: number; orderNo: string } | null;
+  subtotal: string; discountEnabled: boolean; discountPercent: string;
 }
 export interface EstimateListResponse { estimates: EstimateSummary[]; total: number; page: number; limit: number; }
 export interface EstimateDetailResponse { estimate: EstimateDetail; }
+export interface EstimateItemInput { inventoryId?: number | null; description?: string; quantity: string; unitPrice: string }
+export interface EstimateCreateInput {
+  customerId?: number; projectId?: number; orderId?: number;
+  estimateDate: string; validUntil: string;
+  status?: string; notes?: string;
+  items?: EstimateItemInput[];
+  discountEnabled?: boolean; discountPercent?: string;
+}
+export interface EstimateUpdateInput {
+  customerId?: number | null; projectId?: number | null; orderId?: number | null;
+  estimateDate?: string; validUntil?: string;
+  status?: string; notes?: string;
+  items?: EstimateItemInput[];
+  discountEnabled?: boolean; discountPercent?: string;
+}
 
 // ─── GST Types ────────────────────────────────────────────────────────────────
 
@@ -755,8 +848,8 @@ export interface GstRecord {
   cgst: string; sgst: string; igst: string; totalGst: string; totalAmount: string;
   gstRate: string; isFiled: boolean; filingDate: string | null; notes: string;
   createdAt: string; updatedAt: string;
-  customer: { id: number; customerName: string } | null;
-  vendor:   { id: number; name: string } | null;
+  customer: { id: number; customerName: string; gstin?: string; phone?: string } | null;
+  vendor:   { id: number; name: string; gstin?: string; phone?: string } | null;
 }
 export interface GstSummary {
   taxableAmount: string | null; cgst: string | null; sgst: string | null;
@@ -764,6 +857,18 @@ export interface GstSummary {
 }
 export interface GstListResponse { records: GstRecord[]; total: number; page: number; limit: number; summary: GstSummary; }
 export interface GstDetailResponse { record: GstRecord; }
+export interface GstCreateInput {
+  gstNo?: string; transactionType: string; invoiceNo?: string;
+  customerId?: number; vendorId?: number;
+  transactionDate: string; taxableAmount: string; gstRate: string; isInterstate?: boolean;
+  isFiled?: boolean; filingDate?: string; notes?: string;
+}
+export interface GstUpdateInput {
+  gstNo?: string; transactionType?: string; invoiceNo?: string;
+  customerId?: number | null; vendorId?: number | null;
+  transactionDate?: string; taxableAmount?: string; gstRate?: string; isInterstate?: boolean;
+  isFiled?: boolean; filingDate?: string | null; notes?: string;
+}
 
 // ─── Vehicle Types ────────────────────────────────────────────────────────────
 

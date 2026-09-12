@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 import { vendorsApi, VendorSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import VendorFormSheet from '../../../components/VendorFormSheet';
@@ -97,6 +98,7 @@ export default function VendorsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumbs moduleKey="vendors" />
       {/* Search */}
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>

@@ -23,6 +23,19 @@ function InfoRow({ label, value, icon }: { label: string; value: string; icon?: 
   );
 }
 
+function RelatedRow({ icon, label, count, onPress }: { icon: string; label: string; count: number; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.relatedRow} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.relatedIcon}>
+        <Ionicons name={icon as any} size={16} color={Colors.accent} />
+      </View>
+      <Text style={styles.relatedLabel}>{label}</Text>
+      <Text style={styles.relatedCount}>{count}</Text>
+      <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+    </TouchableOpacity>
+  );
+}
+
 export default function CustomerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -222,6 +235,37 @@ export default function CustomerDetailScreen() {
           </View>
         </View>
 
+        {/* Related Records — everything tied to this customer, drill into each */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Related Records</Text>
+          <View style={styles.card}>
+            <RelatedRow
+              icon="receipt-outline"
+              label="Orders"
+              count={customer._count?.orders ?? 0}
+              onPress={() => router.push({ pathname: '/(app)/orders', params: { customerId: String(customer.id), customerName: customer.customerName } } as any)}
+            />
+            <RelatedRow
+              icon="document-text-outline"
+              label="Invoices"
+              count={customer._count?.invoices ?? 0}
+              onPress={() => router.push({ pathname: '/(app)/invoices', params: { customerId: String(customer.id), customerName: customer.customerName } } as any)}
+            />
+            <RelatedRow
+              icon="calculator-outline"
+              label="Estimates"
+              count={customer._count?.estimates ?? 0}
+              onPress={() => router.push({ pathname: '/(app)/estimates', params: { customerId: String(customer.id), customerName: customer.customerName } } as any)}
+            />
+            <RelatedRow
+              icon="pricetags-outline"
+              label="GST Records"
+              count={customer._count?.gstRecords ?? 0}
+              onPress={() => router.push({ pathname: '/(app)/gst', params: { customerId: String(customer.id), customerName: customer.customerName } } as any)}
+            />
+          </View>
+        </View>
+
       </ScrollView>
 
       {/* Edit form sheet */}
@@ -309,4 +353,16 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500', flex: 1 },
   infoValueRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1.5, justifyContent: 'flex-end' },
   infoValue: { fontSize: 13, color: Colors.textPrimary, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
+
+  relatedRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  relatedIcon: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: Colors.accentLight, justifyContent: 'center', alignItems: 'center',
+  },
+  relatedLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  relatedCount: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
 });

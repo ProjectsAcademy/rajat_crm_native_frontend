@@ -209,6 +209,33 @@ export default function OrderDetailScreen() {
           )}
         </View>
 
+        {/* Invoices — created together with the order via "Also create an invoice" */}
+        {order.invoices.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Invoices ({order.invoices.length})</Text>
+            <View style={styles.card}>
+              {order.invoices.map((inv, i) => (
+                <TouchableOpacity
+                  key={inv.id}
+                  style={[styles.payRow, i > 0 && styles.itemBorder]}
+                  onPress={() => router.push(`/(app)/invoices/${inv.id}` as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.payIconBox}>
+                    <Ionicons name="document-text-outline" size={16} color={Colors.info} />
+                  </View>
+                  <View style={styles.payBody}>
+                    <Text style={styles.payMode}>{inv.invoiceNo}</Text>
+                    <Text style={styles.payDate}>{fmtDate(inv.invoiceDate)} · {inv.status}</Text>
+                  </View>
+                  <Text style={styles.payAmt}>{fmtAmt(inv.totalAmount)}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Notes */}
         {order.notes ? (
           <View style={styles.section}>

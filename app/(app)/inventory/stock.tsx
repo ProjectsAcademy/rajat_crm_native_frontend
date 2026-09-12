@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Breadcrumbs from '../../../components/Breadcrumbs';
 import { stockApi, StockMovement, StockSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import StockEntryFormSheet from '../../../components/StockEntryFormSheet';
@@ -111,6 +112,7 @@ export default function StockLedgerScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumbs moduleKey="stock" />
       {/* Summary bar */}
       <View style={styles.summaryBar}>
         <View style={styles.sumItem}>

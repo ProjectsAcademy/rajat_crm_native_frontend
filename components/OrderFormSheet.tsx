@@ -79,6 +79,17 @@ function lineTotal(item: LocalItem): number {
   return isNaN(q) || isNaN(p) ? 0 : q * p * d;
 }
 
+// ── Invoice + GST (optional, "also create an invoice for this order") ────────────
+interface LocalInvoiceItem { key: string; description: string; quantity: string; unitPrice: string }
+function makeInvoiceItem(): LocalInvoiceItem {
+  return { key: `${Date.now()}-${Math.random()}`, description: '', quantity: '1', unitPrice: '' };
+}
+function invoiceLineTotal(item: LocalInvoiceItem): number {
+  const q = parseFloat(item.quantity  || '0');
+  const p = parseFloat(item.unitPrice || '0');
+  return isNaN(q) || isNaN(p) ? 0 : q * p;
+}
+
 // ── SearchPickerModal ────────────────────────────────────────────────────────────
 function SearchPickerModal({ visible, title, items, loading, onSelect }: {
   visible: boolean; title: string; items: SearchItem[];
@@ -157,6 +168,15 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
   const [inventoryMap,        setInventoryMap]        = useState<Record<number, InvExtra>>({});
   const [loadingInventory,    setLoadingInventory]    = useState(false);
 
+  // Invoice + GST (new orders only — mirrors the item-adding pattern above)
+  const [createInvoice, setCreateInvoice] = useState(false);
+  const [invoiceDate,   setInvoiceDate]   = useState('');
+  const [dueDate,       setDueDate]       = useState('');
+  const [invoiceItems,  setInvoiceItems]  = useState<LocalInvoiceItem[]>([]);
+  const [gstRate,       setGstRate]       = useState('18');
+  const [isInterstate,  setIsInterstate]  = useState(false);
+  const [gstNo,         setGstNo]         = useState('');
+
   // Pickers
   const [customers,        setCustomers]        = useState<SearchItem[]>([]);
   const [projects,         setProjects]         = useState<SearchItem[]>([]);
@@ -196,9 +216,51 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
       setStatus('pending'); setNotes('');
       setItems([]);
     }
+    // Invoice section only applies to new orders — always reset, whichever mode.
+    setCreateInvoice(false);
+    setInvoiceDate(today()); setDueDate('');
+    setInvoiceItems([]);
+    setGstRate('18'); setIsInterstate(false); setGstNo('');
   }, [visible, order]);
 
   const grandTotal = items.reduce((s, it) => s + lineTotal(it), 0);
+
+  // Invoice totals — live preview of what the backend will compute
+  const invoiceSubtotal = invoiceItems.reduce((s, it) => s + invoiceLineTotal(it), 0);
+  const gstRateNum  = parseFloat(gstRate || '0') || 0;
+  const invoiceTax   = invoiceSubtotal * (gstRateNum / 100);
+  const invoiceTotal = invoiceSubtotal + invoiceTax;
+  const cgstPreview = isInterstate ? 0 : invoiceTax / 2;
+  const sgstPreview = isInterstate ? 0 : invoiceTax / 2;
+  const igstPreview = isInterstate ? invoiceTax : 0;
+
+  const addInvoiceItem = () => setInvoiceItems(p => [...p, makeInvoiceItem()]);
+  const removeInvoiceItem = (key: string) => setInvoiceItems(p => p.filter(it => it.key !== key));
+  const updateInvoiceItem = (key: string, patch: Partial<LocalInvoiceItem>) =>
+    setInvoiceItems(p => p.map(it => it.key === key ? { ...it, ...patch } : it));
+
+  // Keep invoice items synced with order items while the invoice section is
+  // open: each order item mirrors into an invoice line sharing its key (its
+  // quantity/effective price/description track the order item live), and
+  // disappears if the order item is removed. Manually-added invoice-only
+  // lines (via "Add Item" below, which get a fresh key) are never touched.
+  useEffect(() => {
+    if (!createInvoice) return;
+    setInvoiceItems(prev => {
+      const manual = prev.filter(inv => !items.some(it => it.key === inv.key));
+      const synced: LocalInvoiceItem[] = items.map(it => {
+        const days = it.isRental ? (parseInt(it.rentalDays || '1') || 1) : 1;
+        const effectivePrice = (parseFloat(it.unitPrice || '0') || 0) * days;
+        return {
+          key: it.key,
+          description: it.description || it.inventoryLabel || '',
+          quantity: it.quantity || '1',
+          unitPrice: effectivePrice ? String(effectivePrice) : '',
+        };
+      });
+      return [...synced, ...manual];
+    });
+  }, [items, createInvoice]);
 
   // Pickers
   const openCustomerPicker = () => {
@@ -276,13 +338,28 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
       rentalDays:  it.isRental ? (parseInt(it.rentalDays || '1') || 1) : 1,
     }));
 
+    let invoicePayload: import('../services/api').OrderInvoiceInput | undefined;
+    if (!isEdit && createInvoice) {
+      const isoInvoiceDate = displayToIso(invoiceDate);
+      if (!isoInvoiceDate) { Alert.alert('Invalid date', 'Enter invoice date as DD/MM/YYYY'); return; }
+      const isoDueDate = displayToIso(dueDate);
+      if (!isoDueDate) { Alert.alert('Invalid date', 'Enter due date as DD/MM/YYYY'); return; }
+      if (invoiceItems.length === 0) { Alert.alert('Add invoice items', 'Add at least one invoice line item, or uncheck "Also create an invoice".'); return; }
+      invoicePayload = {
+        invoiceDate: isoInvoiceDate,
+        dueDate:     isoDueDate,
+        items:       invoiceItems.map(it => ({ description: it.description, quantity: it.quantity || '1', unitPrice: it.unitPrice || '0' })),
+        gst:         { gstRate: gstRateNum, isInterstate, gstNo: gstNo.trim() || undefined },
+      };
+    }
+
     setSaving(true);
     try {
       if (isEdit) {
         await ordersApi.update(order!.id, { customerId: customerId ?? null, projectId: projectId ?? null, orderDate: isoDate, deliveryDate: isoDelivery, status, notes, items: itemPayload });
         onSaved();
       } else {
-        const { data } = await ordersApi.create({ customerId: customerId ?? undefined, projectId: projectId ?? undefined, orderDate: isoDate, deliveryDate: isoDelivery ?? undefined, status, notes, items: itemPayload });
+        const { data } = await ordersApi.create({ customerId: customerId ?? undefined, projectId: projectId ?? undefined, orderDate: isoDate, deliveryDate: isoDelivery ?? undefined, status, notes, items: itemPayload, invoice: invoicePayload });
         onSaved(data.order.id);
       }
       onClose();
@@ -313,6 +390,112 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
           setShowInventoryPicker(false); setEditingItemKey(null);
         }} />
     </>
+  );
+
+  // ── Invoice + GST section — shared between web and mobile layouts (see below) ────
+  const invoiceSectionJsx = !isEdit && (
+    <View style={inv.section}>
+      <TouchableOpacity style={inv.toggleRow} onPress={() => setCreateInvoice(v => !v)} activeOpacity={0.7}>
+        <Ionicons name={createInvoice ? 'checkbox' : 'square-outline'} size={20} color={createInvoice ? Colors.accent : Colors.textMuted} />
+        <View style={{ flex: 1 }}>
+          <Text style={inv.toggleLabel}>Also create an invoice for this order</Text>
+          <Text style={inv.toggleSub}>Generates a linked sales invoice with GST details alongside the order.</Text>
+        </View>
+      </TouchableOpacity>
+
+      {createInvoice && (
+        <View style={inv.body}>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={inv.label}>Invoice Date <Text style={inv.req}>*</Text></Text>
+              <View style={inv.inputRow}>
+                <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
+                <TextInput style={[inv.input, { flex: 1 }]} value={invoiceDate} onChangeText={t => setInvoiceDate(autoDate(t))} placeholder="DD/MM/YYYY" placeholderTextColor={Colors.textMuted} keyboardType="numeric" maxLength={10} />
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={inv.label}>Due Date <Text style={inv.req}>*</Text></Text>
+              <View style={inv.inputRow}>
+                <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
+                <TextInput style={[inv.input, { flex: 1 }]} value={dueDate} onChangeText={t => setDueDate(autoDate(t))} placeholder="DD/MM/YYYY" placeholderTextColor={Colors.textMuted} keyboardType="numeric" maxLength={10} />
+              </View>
+            </View>
+          </View>
+
+          {/* Invoice items */}
+          <View style={inv.itemsHeader}>
+            <Text style={inv.sectionTitle}>Invoice Items</Text>
+            <TouchableOpacity style={inv.addBtn} onPress={addInvoiceItem}>
+              <Ionicons name="add" size={14} color="#111" />
+              <Text style={inv.addBtnText}>Add Extra Line</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={inv.syncHint}>Order items are added here automatically. Use "Add Extra Line" for charges not in the order (e.g. installation, freight).</Text>
+
+          {invoiceItems.length === 0 && (
+            <View style={inv.empty}><Text style={inv.emptyText}>No items yet — add order items above, or tap "Add Extra Line".</Text></View>
+          )}
+
+          {invoiceItems.map(item => {
+            const total = invoiceLineTotal(item);
+            return (
+              <View key={item.key} style={inv.itemRow}>
+                <TextInput style={[inv.itemInput, { flex: 1.4, minWidth: 0 }]} value={item.description} onChangeText={v => updateInvoiceItem(item.key, { description: v })} placeholder="Description" placeholderTextColor={Colors.textMuted} />
+                <TextInput style={[inv.itemInput, { width: 60, flexShrink: 0 }]} value={item.quantity} onChangeText={v => updateInvoiceItem(item.key, { quantity: v })} keyboardType="decimal-pad" placeholder="Qty" placeholderTextColor={Colors.textMuted} />
+                <View style={[inv.priceBox, { width: 100, flexShrink: 0 }]}>
+                  <Text style={inv.rupeePrefix}>₹</Text>
+                  <TextInput style={inv.priceInput} value={item.unitPrice} onChangeText={v => updateInvoiceItem(item.key, { unitPrice: v })} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.textMuted} />
+                </View>
+                <Text style={inv.itemTotal} numberOfLines={1}>{fmtCurrency(total)}</Text>
+                <TouchableOpacity onPress={() => removeInvoiceItem(item.key)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="trash-outline" size={16} color={Colors.error} />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+
+          {/* GST details */}
+          <View style={inv.gstBox}>
+            <Text style={inv.sectionTitle}>GST Details</Text>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={inv.label}>GST Rate <Text style={inv.opt}>(%)</Text></Text>
+                <View style={inv.inputRow}>
+                  <TextInput style={[inv.input, { flex: 1 }]} value={gstRate} onChangeText={setGstRate} keyboardType="decimal-pad" placeholder="18" placeholderTextColor={Colors.textMuted} />
+                </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={inv.label}>GST Number <Text style={inv.opt}>(optional)</Text></Text>
+                <View style={inv.inputRow}>
+                  <TextInput style={[inv.input, { flex: 1 }]} value={gstNo} onChangeText={setGstNo} placeholder="27ABCDE1234F1Z5" placeholderTextColor={Colors.textMuted} autoCapitalize="characters" />
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity style={inv.interstateRow} onPress={() => setIsInterstate(v => !v)} activeOpacity={0.7}>
+              <Ionicons name={isInterstate ? 'checkbox' : 'square-outline'} size={18} color={isInterstate ? Colors.accent : Colors.textMuted} />
+              <Text style={inv.interstateLabel}>Interstate transaction (IGST instead of CGST + SGST)</Text>
+            </TouchableOpacity>
+
+            <View style={inv.gstPreview}>
+              <View style={inv.gstPreviewRow}><Text style={inv.gstPreviewLabel}>Subtotal</Text><Text style={inv.gstPreviewValue}>{fmtCurrency(invoiceSubtotal)}</Text></View>
+              {isInterstate ? (
+                <View style={inv.gstPreviewRow}><Text style={inv.gstPreviewLabel}>IGST ({gstRateNum}%)</Text><Text style={inv.gstPreviewValue}>{fmtCurrency(igstPreview)}</Text></View>
+              ) : (
+                <>
+                  <View style={inv.gstPreviewRow}><Text style={inv.gstPreviewLabel}>CGST ({(gstRateNum / 2).toFixed(1)}%)</Text><Text style={inv.gstPreviewValue}>{fmtCurrency(cgstPreview)}</Text></View>
+                  <View style={inv.gstPreviewRow}><Text style={inv.gstPreviewLabel}>SGST ({(gstRateNum / 2).toFixed(1)}%)</Text><Text style={inv.gstPreviewValue}>{fmtCurrency(sgstPreview)}</Text></View>
+                </>
+              )}
+              <View style={[inv.gstPreviewRow, inv.gstPreviewTotalRow]}>
+                <Text style={inv.gstPreviewTotalLabel}>Invoice Total</Text>
+                <Text style={inv.gstPreviewTotalValue}>{fmtCurrency(invoiceTotal)}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
   );
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -579,6 +762,8 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
                   )}
                 </View>
               </View>
+
+              {invoiceSectionJsx}
             </ScrollView>
           </View>
 
@@ -701,6 +886,8 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
               <View style={s.grandTotalBox}><Text style={s.grandTotalLabel}>GRAND TOTAL</Text><Text style={s.grandTotalValue}>{fmtCurrency(grandTotal)}</Text></View>
             </View>
           )}
+
+          {invoiceSectionJsx}
 
           <Text style={[s.label, { marginTop: 16 }]}>Status</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
@@ -895,4 +1082,47 @@ const s = StyleSheet.create({
   cancelText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
   saveBtn:    { flex: 2, paddingVertical: 14, borderRadius: 8, backgroundColor: Colors.accent, alignItems: 'center' },
   saveText:   { fontSize: 15, fontWeight: '700', color: '#111' },
+});
+
+// ── Invoice + GST section styles — shared by web and mobile layouts ──────────────
+const inv = StyleSheet.create({
+  section: { marginTop: 20, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 16 },
+  toggleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  toggleLabel: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  toggleSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+
+  body: { marginTop: 16, gap: 0 },
+  label: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 5, marginTop: 2 },
+  opt: { fontWeight: '400', color: Colors.textMuted },
+  req: { color: Colors.error },
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 10, marginBottom: 12 },
+  input: { fontSize: 14, color: Colors.textPrimary, paddingVertical: 9, ...Platform.select({ web: { outlineStyle: 'none' } }) },
+
+  itemsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 10 },
+  sectionTitle: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7 },
+  addBtnText: { fontSize: 13, fontWeight: '700', color: '#111' },
+  syncHint: { fontSize: 11, color: Colors.textMuted, marginBottom: 10, marginTop: -4 },
+
+  empty: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', paddingVertical: 18, marginBottom: 12 },
+  emptyText: { fontSize: 13, color: Colors.textMuted },
+
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 8, marginBottom: 8 },
+  itemInput: { backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 7, fontSize: 13, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
+  priceBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, overflow: 'hidden' },
+  rupeePrefix: { fontSize: 12, color: Colors.textMuted, fontWeight: '600', paddingLeft: 7, flexShrink: 0 },
+  priceInput: { flex: 1, minWidth: 0, textAlign: 'right', fontSize: 13, fontWeight: '600', color: Colors.textPrimary, paddingVertical: 6, paddingLeft: 4, paddingRight: 7, borderWidth: 0, backgroundColor: 'transparent', ...Platform.select({ web: { outlineStyle: 'none' } }) },
+  itemTotal: { width: 84, fontSize: 13, fontWeight: '700', color: Colors.textPrimary, textAlign: 'right', flexShrink: 0 },
+
+  gstBox: { backgroundColor: Colors.accentLight, borderRadius: 8, borderWidth: 1, borderColor: Colors.accent + '40', padding: 14, marginTop: 8 },
+  interstateRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 12 },
+  interstateLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600', flex: 1 },
+
+  gstPreview: { backgroundColor: Colors.surface, borderRadius: 6, borderWidth: 1, borderColor: Colors.border, padding: 10 },
+  gstPreviewRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  gstPreviewLabel: { fontSize: 12, color: Colors.textSecondary },
+  gstPreviewValue: { fontSize: 12, color: Colors.textPrimary, fontWeight: '600' },
+  gstPreviewTotalRow: { borderTopWidth: 1, borderTopColor: Colors.border, marginTop: 4, paddingTop: 8 },
+  gstPreviewTotalLabel: { fontSize: 13, color: Colors.textPrimary, fontWeight: '700' },
+  gstPreviewTotalValue: { fontSize: 15, color: Colors.accentDark, fontWeight: '800' },
 });

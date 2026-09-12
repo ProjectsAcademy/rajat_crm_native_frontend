@@ -1,6 +1,6 @@
 import {
   View, Text, TouchableOpacity, StyleSheet, ActivityIndicator,
-  FlatList, RefreshControl, Platform,
+  FlatList, RefreshControl, Platform, Alert,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -16,6 +16,7 @@ export default function AdminUsersScreen() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchUsers = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -36,6 +37,29 @@ export default function AdminUsersScreen() {
   const openCreate = () => { setEditUser(null); setShowForm(true); };
   const openEdit = (u: AdminUser) => { setEditUser(u); setShowForm(true); };
 
+  const confirmDelete = (u: AdminUser) => {
+    Alert.alert(
+      'Delete user?',
+      `This permanently deletes "${u.username}". This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDelete(u.id) },
+      ]
+    );
+  };
+
+  const performDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await adminApi.users.remove(id);
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+    } catch (e: any) {
+      Alert.alert('Could not delete user', e?.response?.data?.error ?? 'Something went wrong.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const renderUser = ({ item }: { item: AdminUser }) => {
     const fullName = `${item.firstName} ${item.lastName}`.trim();
     return (
@@ -51,14 +75,17 @@ export default function AdminUsersScreen() {
           <View style={styles.nameRow}>
             <Text style={styles.username}>{item.username}</Text>
             {item.isSuperuser && <View style={[styles.badge, { backgroundColor: Colors.warningLight }]}><Text style={[styles.badgeText, { color: '#7A5400' }]}>Super Admin</Text></View>}
+            {!item.isSuperuser && item.isLegacyAccess && <View style={[styles.badge, { backgroundColor: Colors.infoLight }]}><Text style={[styles.badgeText, { color: Colors.info }]}>Legacy Access</Text></View>}
             {!item.isActive && <View style={[styles.badge, { backgroundColor: Colors.errorLight }]}><Text style={[styles.badgeText, { color: Colors.error }]}>Disabled</Text></View>}
           </View>
           {!!fullName && <Text style={styles.sub}>{fullName}</Text>}
           <View style={styles.groupRow}>
             {item.isSuperuser ? (
               <Text style={styles.groupHint}>Full access to all modules</Text>
+            ) : item.isLegacyAccess ? (
+              <Text style={styles.groupHint}>Legacy access — bypasses groups</Text>
             ) : item.groups.length === 0 ? (
-              <Text style={styles.groupHint}>No groups — legacy full access</Text>
+              <Text style={styles.groupHint}>No groups — no access yet</Text>
             ) : (
               item.groups.map((g) => (
                 <View key={g.id} style={styles.groupChip}>
@@ -68,6 +95,18 @@ export default function AdminUsersScreen() {
             )}
           </View>
         </View>
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation(); confirmDelete(item); }}
+          disabled={deletingId === item.id}
+          hitSlop={8}
+          style={styles.deleteBtn}
+        >
+          {deletingId === item.id ? (
+            <ActivityIndicator size="small" color={Colors.error} />
+          ) : (
+            <Ionicons name="trash-outline" size={18} color={Colors.error} />
+          )}
+        </TouchableOpacity>
         <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
       </TouchableOpacity>
     );
@@ -141,6 +180,7 @@ const styles = StyleSheet.create({
   groupChip: { backgroundColor: Colors.accentLight, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
   groupChipText: { fontSize: 11, fontWeight: '600', color: '#7A5400' },
   groupHint: { fontSize: 11, color: Colors.textMuted, fontStyle: 'italic' },
+  deleteBtn: { padding: 6 },
 
   fab: {
     position: 'absolute', right: 20, bottom: 24,

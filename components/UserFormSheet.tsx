@@ -25,6 +25,7 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [isLegacyAccess, setIsLegacyAccess] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<number[]>([]);
 
   const [groups, setGroups] = useState<AdminGroup[]>([]);
@@ -41,6 +42,7 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
     setFirstName(user?.firstName ?? '');
     setLastName(user?.lastName ?? '');
     setIsActive(user?.isActive ?? true);
+    setIsLegacyAccess(user?.isLegacyAccess ?? false);
     setSelectedGroups(user?.groups.map((g) => g.id) ?? []);
     setSaveError('');
     setShowPassword(false);
@@ -67,14 +69,14 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
     setSaving(true);
     try {
       if (isEdit && user) {
-        const payload: Partial<AdminUserPayload> = { email, firstName, lastName, isActive };
+        const payload: Partial<AdminUserPayload> = { email, firstName, lastName, isActive, isLegacyAccess };
         if (password) payload.password = password;
         await adminApi.users.update(user.id, payload);
         await adminApi.users.setGroups(user.id, selectedGroups);
       } else {
         await adminApi.users.create({
           username: username.trim(), password, email, firstName, lastName,
-          groupIds: selectedGroups,
+          isLegacyAccess, groupIds: selectedGroups,
         });
       }
       onSaved();
@@ -205,6 +207,19 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
           />
         </View>
       )}
+
+      <View style={st.switchRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={st.label}>Legacy Access</Text>
+          <Text style={st.checkSub}>Full access to every feature, regardless of groups below. A deliberate override — leave off unless this user genuinely needs it.</Text>
+        </View>
+        <Switch
+          value={isLegacyAccess}
+          onValueChange={setIsLegacyAccess}
+          trackColor={{ true: Colors.accent, false: Colors.border }}
+          thumbColor="#fff"
+        />
+      </View>
 
       <Text style={st.label}>Groups</Text>
       {renderGroupChecks(st)}

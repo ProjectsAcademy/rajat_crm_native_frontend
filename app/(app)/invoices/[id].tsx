@@ -1,11 +1,15 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { invoicesApi, InvoiceDetail } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
+import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
+import { buildInvoiceHtml } from '../../../utils/invoiceHtml';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,       text: Colors.textMuted },
@@ -23,6 +27,11 @@ export default function InvoiceDetailScreen() {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
+  const [showEdit, setShowEdit] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
 
   const loadInvoice = useCallback(() => {
     invoicesApi.detail(parseInt(id!))
@@ -32,6 +41,141 @@ export default function InvoiceDetailScreen() {
   }, [id]);
 
   useEffect(() => { loadInvoice(); }, [loadInvoice]);
+
+  const handleDelete = () => {
+    const doIt = async () => {
+      setDeleting(true);
+      try {
+        await invoicesApi.remove(parseInt(id!));
+        router.back();
+      } catch (e: any) {
+        const msg = e?.response?.data?.error ?? 'Could not delete invoice.';
+        setDeleting(false);
+        if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Cannot Delete', msg);
+      }
+    };
+    const label = invoice?.invoiceNo ?? 'this invoice';
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Permanently delete "${label}"? This cannot be undone.`)) doIt();
+      return;
+    }
+    Alert.alert('Delete Invoice', `Permanently delete "${label}"? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: doIt },
+    ]);
+  };
+
+  const handlePrint = async () => {
+    if (!invoice) return;
+    setPrinting(true);
+    try {
+      const html = buildInvoiceHtml(invoice);
+      if (Platform.OS === 'web') {
+        // expo-print's web implementation ignores the `html` argument entirely
+        // (it's a stub that just calls window.print() on the current page —
+        // see node_modules/expo-print/src/ExponentPrint.web.ts) — using it here
+        // would print the live app UI, not the invoice.
+        //
+        // A hidden iframe (tried first) printed the right content, but
+        // Chrome's "Save as PDF" then named the file after the PARENT page's
+        // URL (e.g. "11.pdf" from /invoices/11), ignoring the iframe's own
+        // <title>. A real top-level document — reached via a blob: URL rather
+        // than a bare window.open('', '_blank') — keeps its own title for
+        // both the print header and the Save-as-PDF filename, and gives the
+        // print footer a real address instead of literally "about:blank".
+        const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        const w = window.open(blobUrl, '_blank');
+        if (!w) { URL.revokeObjectURL(blobUrl); throw new Error('Pop-up blocked — allow pop-ups for this site to print the invoice.'); }
+        const cleanup = () => URL.revokeObjectURL(blobUrl);
+        w.onafterprint = cleanup;
+        setTimeout(() => {
+          w.focus();
+          w.print();
+          // Some browsers (e.g. Safari) never fire onafterprint reliably — clean up regardless.
+          setTimeout(cleanup, 5000);
+        }, 300);
+      } else {
+        // Native: render to a PDF file and hand it to the share sheet (save to
+        // files, send via WhatsApp/email, etc.) — more useful on a phone than
+        // a print dialog when there's no printer nearby.
+        const { uri } = await Print.printToFileAsync({ html });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: invoice.invoiceNo });
+        } else {
+          await Print.printAsync({ html });
+        }
+      }
+    } catch (e: any) {
+      const msg = e?.message ?? 'Could not generate the invoice PDF.';
+      if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Print Failed', msg);
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  // Preview — same rendered HTML as Print, but lets the user actually look
+  // at it before committing to a print/save/share action, rather than
+  // jumping straight into a print dialog (web) or the share sheet (native,
+  // "Share PDF") with no chance to check it first.
+  const handlePreview = async () => {
+    if (!invoice) return;
+    setPreviewing(true);
+    try {
+      const html = buildInvoiceHtml(invoice);
+      if (Platform.OS === 'web') {
+        // Same blob-tab approach as handlePrint (see its comment for why a
+        // real top-level document via blob: URL is needed), just without the
+        // auto print() call — the tab is left open for the user to read,
+        // zoom, scroll; they can still print from it (Ctrl/Cmd+P) if they
+        // decide to after looking.
+        const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        const w = window.open(blobUrl, '_blank');
+        if (!w) { URL.revokeObjectURL(blobUrl); throw new Error('Pop-up blocked — allow pop-ups for this site to preview the invoice.'); }
+        w.onunload = () => URL.revokeObjectURL(blobUrl);
+      } else {
+        // Native: Print.printAsync opens the OS's own print-preview screen
+        // (paginated, zoomable) with Print/Save-as-PDF/Share as options from
+        // inside it — unlike "Share PDF" below, which skips straight to the
+        // share sheet with no preview step.
+        await Print.printAsync({ html });
+      }
+    } catch (e: any) {
+      const msg = e?.message ?? 'Could not preview the invoice.';
+      if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Preview Failed', msg);
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  // Sending costs real money per message and can't be recalled once it's
+  // gone, so this confirms first — same web-confirm/Alert.alert convention
+  // as handleDelete, showing the number it's about to go to.
+  const handleSendWhatsapp = () => {
+    if (!invoice?.customer) return;
+    const doIt = async () => {
+      setSendingWhatsapp(true);
+      try {
+        const { data } = await invoicesApi.sendWhatsapp(invoice.id);
+        const msg = `Sent to ${data.sentTo} via WhatsApp.`;
+        if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Sent', msg);
+      } catch (e: any) {
+        const msg = e?.response?.data?.error ?? 'Could not send the invoice via WhatsApp.';
+        if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Send Failed', msg);
+      } finally {
+        setSendingWhatsapp(false);
+      }
+    };
+    const phone = invoice.customer.phone || '(no phone on file)';
+    const prompt = `Send "${invoice.invoiceNo}" to ${invoice.customer.customerName} on WhatsApp (${phone})?`;
+    if (Platform.OS === 'web') {
+      if (window.confirm(prompt)) doIt();
+      return;
+    }
+    Alert.alert('Send via WhatsApp', prompt, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Send', onPress: doIt },
+    ]);
+  };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error || !invoice) return (
@@ -70,6 +214,37 @@ export default function InvoiceDetailScreen() {
             <Text style={[styles.dateItem, isOverdue && { color: Colors.error }]}>Due: {fmtDate(invoice.dueDate)}</Text>
             {invoice.gstDate && <Text style={styles.dateItem}>GST: {fmtDate(invoice.gstDate)}</Text>}
           </View>
+          {invoice.order && (
+            <TouchableOpacity style={styles.orderLink} onPress={() => router.push(`/(app)/orders/${invoice.order!.id}` as any)}>
+              <Ionicons name="receipt-outline" size={13} color={Colors.accent} />
+              <Text style={styles.orderLinkText}>Created from order {invoice.order.orderNo}</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={[styles.previewBtn, previewing && { opacity: 0.6 }]} onPress={handlePreview} disabled={previewing}>
+              {previewing ? <ActivityIndicator size="small" color={Colors.accent} /> : <Ionicons name="eye-outline" size={15} color={Colors.accent} />}
+              <Text style={styles.previewBtnText}>Preview</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.printBtn, printing && { opacity: 0.6 }]} onPress={handlePrint} disabled={printing}>
+              {printing ? <ActivityIndicator size="small" color="#111" /> : <Ionicons name="print-outline" size={15} color="#111" />}
+              <Text style={styles.printBtnText}>{Platform.OS === 'web' ? 'Print' : 'Share PDF'}</Text>
+            </TouchableOpacity>
+            {invoice.invoiceType === 'sales' && invoice.customer && (
+              <TouchableOpacity style={[styles.whatsappBtn, sendingWhatsapp && { opacity: 0.6 }]} onPress={handleSendWhatsapp} disabled={sendingWhatsapp}>
+                {sendingWhatsapp ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="logo-whatsapp" size={15} color="#fff" />}
+                <Text style={styles.whatsappBtnText}>WhatsApp</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+              <Ionicons name="create-outline" size={15} color={Colors.accent} />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.6 }]} onPress={handleDelete} disabled={deleting}>
+              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
+              <Text style={styles.deleteBtnText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Totals */}
@@ -82,7 +257,15 @@ export default function InvoiceDetailScreen() {
             <Text style={styles.statLabel}>Tax</Text>
             <Text style={styles.statValue}>{fmtAmt(invoice.taxAmount)}</Text>
           </View>
-          <View style={styles.statBox}>
+          {invoice.discountEnabled && parseFloat(invoice.discountPercent) > 0 && (
+            <View style={[styles.statBox, styles.statBorder]}>
+              <Text style={styles.statLabel}>Discount ({parseFloat(invoice.discountPercent)}%)</Text>
+              <Text style={[styles.statValue, { color: Colors.error }]}>
+                −{fmtAmt(String((parseFloat(invoice.subtotal) + parseFloat(invoice.taxAmount)) - parseFloat(invoice.totalAmount)))}
+              </Text>
+            </View>
+          )}
+          <View style={[styles.statBox, invoice.discountEnabled && parseFloat(invoice.discountPercent) > 0 && styles.statBorder]}>
             <Text style={styles.statLabel}>Total</Text>
             <Text style={[styles.statValue, { color: '#6A1B9A' }]}>{fmtAmt(invoice.totalAmount)}</Text>
           </View>
@@ -142,6 +325,13 @@ export default function InvoiceDetailScreen() {
           />
         </View>
       </ScrollView>
+
+      <InvoiceFormSheet
+        visible={showEdit}
+        invoice={invoice}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => { setShowEdit(false); loadInvoice(); }}
+      />
     </SafeAreaView>
   );
 }
@@ -167,6 +357,42 @@ const styles = StyleSheet.create({
   projectName: { fontSize: 12, color: Colors.accent, marginTop: 2, fontWeight: '600' },
   dates: { flexDirection: 'row', gap: 14, marginTop: 8, flexWrap: 'wrap' },
   dateItem: { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
+  orderLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  orderLinkText: { fontSize: 12, color: Colors.accent, fontWeight: '600' },
+
+  headerActions: { flexDirection: 'row', gap: 10, marginTop: 16, flexWrap: 'wrap' },
+  previewBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(255,153,0,0.15)', paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6, borderWidth: 1,
+    borderColor: 'rgba(255,153,0,0.4)',
+  },
+  previewBtnText: { fontSize: 13, fontWeight: '700', color: Colors.accent },
+  printBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.accent, paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6,
+  },
+  printBtnText: { fontSize: 13, fontWeight: '700', color: '#111' },
+  whatsappBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#25D366', paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6,
+  },
+  whatsappBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(255,153,0,0.15)', paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6, borderWidth: 1,
+    borderColor: 'rgba(255,153,0,0.4)',
+  },
+  editBtnText: { fontSize: 13, fontWeight: '700', color: Colors.accent },
+  deleteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.error, paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: 6,
+  },
+  deleteBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   statsRow: { flexDirection: 'row', backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
   statBox:  { flex: 1, padding: 14, alignItems: 'center' },
