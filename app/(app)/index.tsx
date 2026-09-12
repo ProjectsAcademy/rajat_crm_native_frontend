@@ -344,8 +344,13 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.primary },
 
-  splitRow: { flexDirection: 'row', gap: 12 },
-  splitHalf: { flex: 1, minWidth: 0 },
+  // Side-by-side only on web, where there's enough width for both a full
+  // calendar grid and a chart with axis labels at 50% each. Forcing the same
+  // row on native squeezed both into ~half a phone's width, clipping the
+  // calendar's day columns and the chart's month labels/bars — stack them
+  // instead, each at its natural full width.
+  splitRow: Platform.OS === 'web' ? { flexDirection: 'row', gap: 12 } : { gap: 12 },
+  splitHalf: Platform.OS === 'web' ? { flex: 1, minWidth: 0 } : {},
 
   navbar: {
     backgroundColor: Colors.primary,

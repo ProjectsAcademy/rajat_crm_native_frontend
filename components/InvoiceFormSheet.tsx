@@ -537,29 +537,73 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
 
       {items.map(item => {
         const total = lineTotal(item);
+        const invPickIcon = (
+          <TouchableOpacity
+            style={[st.invPickBtn, item.inventoryId && st.invPickBtnActive]}
+            onPress={() => openInventoryPicker(item.key)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons name="cube-outline" size={15} color={item.inventoryId ? '#111' : Colors.accent} />
+          </TouchableOpacity>
+        );
+        const descriptionInput = (
+          <TextInput style={[st.itemInput, { flex: 1, minWidth: 0 }]} value={item.description} onChangeText={v => updateItem(item.key, { description: v, inventoryId: null })} placeholder="Description, or pick from inventory" placeholderTextColor={Colors.textMuted} />
+        );
+        const deleteBtn = (
+          <TouchableOpacity onPress={() => removeItem(item.key)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="trash-outline" size={16} color={Colors.error} />
+          </TouchableOpacity>
+        );
+        const qtyInput = (
+          <TextInput style={[st.itemInput, { width: 56, flexShrink: 0 }]} value={item.quantity} onChangeText={v => updateItem(item.key, { quantity: v })} keyboardType="decimal-pad" placeholder="Qty" placeholderTextColor={Colors.textMuted} />
+        );
+        const priceInput = (
+          <View style={[st.priceBox, { width: 96, flexShrink: 0 }]}>
+            <Text style={st.rupeePrefix}>₹</Text>
+            <TextInput style={st.priceInput} value={item.unitPrice} onChangeText={v => updateItem(item.key, { unitPrice: v })} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.textMuted} />
+          </View>
+        );
+        const taxInput = (
+          <View style={[st.taxBox, { width: 60, flexShrink: 0 }]}>
+            <TextInput style={st.taxInput} value={item.taxRate} onChangeText={v => updateItem(item.key, { taxRate: v })} keyboardType="decimal-pad" placeholder="18" placeholderTextColor={Colors.textMuted} />
+            <Text style={st.taxSuffix}>%</Text>
+          </View>
+        );
+
+        // Web: everything fits comfortably in one row at the dialog's 640px
+        // width. Native: that same row's fixed-width columns (pick button +
+        // qty + price + tax + total + delete, ~410px before Description
+        // gets any space at all) don't fit a ~360-400dp phone screen —
+        // Description was being squeezed to near-nothing and the total/
+        // delete pushed off the right edge entirely. Stacked instead:
+        // description gets its own full-width row, qty/price/tax/total
+        // share a second row with real room each.
+        if (isWeb) {
+          return (
+            <View key={item.key} style={st.itemRow}>
+              {invPickIcon}
+              {descriptionInput}
+              {qtyInput}
+              {priceInput}
+              {taxInput}
+              <Text style={st.itemTotal} numberOfLines={1}>{fmtCurrency(total)}</Text>
+              {deleteBtn}
+            </View>
+          );
+        }
         return (
-          <View key={item.key} style={st.itemRow}>
-            <TouchableOpacity
-              style={[st.invPickBtn, item.inventoryId && st.invPickBtnActive]}
-              onPress={() => openInventoryPicker(item.key)}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Ionicons name="cube-outline" size={15} color={item.inventoryId ? '#111' : Colors.accent} />
-            </TouchableOpacity>
-            <TextInput style={[st.itemInput, { flex: 1.6, minWidth: 0 }]} value={item.description} onChangeText={v => updateItem(item.key, { description: v, inventoryId: null })} placeholder="Description, or pick from inventory" placeholderTextColor={Colors.textMuted} />
-            <TextInput style={[st.itemInput, { width: 56, flexShrink: 0 }]} value={item.quantity} onChangeText={v => updateItem(item.key, { quantity: v })} keyboardType="decimal-pad" placeholder="Qty" placeholderTextColor={Colors.textMuted} />
-            <View style={[st.priceBox, { width: 96, flexShrink: 0 }]}>
-              <Text style={st.rupeePrefix}>₹</Text>
-              <TextInput style={st.priceInput} value={item.unitPrice} onChangeText={v => updateItem(item.key, { unitPrice: v })} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.textMuted} />
+          <View key={item.key} style={st.itemRowMobile}>
+            <View style={st.itemRowTop}>
+              {invPickIcon}
+              {descriptionInput}
+              {deleteBtn}
             </View>
-            <View style={[st.taxBox, { width: 60, flexShrink: 0 }]}>
-              <TextInput style={st.taxInput} value={item.taxRate} onChangeText={v => updateItem(item.key, { taxRate: v })} keyboardType="decimal-pad" placeholder="18" placeholderTextColor={Colors.textMuted} />
-              <Text style={st.taxSuffix}>%</Text>
+            <View style={st.itemRowBottom}>
+              {qtyInput}
+              {priceInput}
+              {taxInput}
+              <Text style={st.itemTotalMobile} numberOfLines={1}>{fmtCurrency(total)}</Text>
             </View>
-            <Text style={st.itemTotal} numberOfLines={1}>{fmtCurrency(total)}</Text>
-            <TouchableOpacity onPress={() => removeItem(item.key)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="trash-outline" size={16} color={Colors.error} />
-            </TouchableOpacity>
           </View>
         );
       })}
@@ -708,6 +752,12 @@ const shared = {
   taxInput: { flex: 1, minWidth: 0, textAlign: 'right' as const, fontSize: 13, fontWeight: '700' as const, color: Colors.accentDark, paddingVertical: 6, paddingLeft: 4, borderWidth: 0, backgroundColor: 'transparent', ...Platform.select({ web: { outlineStyle: 'none' as const } }) },
   taxSuffix: { fontSize: 11, fontWeight: '700' as const, color: Colors.accentDark, paddingRight: 6, flexShrink: 0 },
   itemTotal: { width: 84, fontSize: 13, fontWeight: '700' as const, color: Colors.textPrimary, textAlign: 'right' as const, flexShrink: 0 },
+
+  // Mobile-only stacked item card — see the isWeb branch above for why.
+  itemRowMobile: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 8, marginBottom: 8, gap: 8 },
+  itemRowTop:    { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+  itemRowBottom: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+  itemTotalMobile: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: '700' as const, color: Colors.textPrimary, textAlign: 'right' as const },
 
   discountToggleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, paddingVertical: 6 },
   discountToggleLabel: { fontSize: 13, fontWeight: '600' as const, color: Colors.textPrimary },

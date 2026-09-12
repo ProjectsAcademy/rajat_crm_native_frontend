@@ -471,25 +471,61 @@ export default function EstimateFormSheet({ visible, onClose, onSaved, estimate 
 
       {items.map(item => {
         const total = lineTotal(item);
-        return (
-          <View key={item.key} style={st.itemRow}>
-            <TouchableOpacity
-              style={[st.invPickBtn, item.inventoryId && st.invPickBtnActive]}
-              onPress={() => openInventoryPicker(item.key)}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Ionicons name="cube-outline" size={15} color={item.inventoryId ? '#111' : Colors.accent} />
-            </TouchableOpacity>
-            <TextInput style={[st.itemInput, { flex: 1.6, minWidth: 0 }]} value={item.description} onChangeText={v => updateItem(item.key, { description: v, inventoryId: null })} placeholder="Description, or pick from inventory" placeholderTextColor={Colors.textMuted} />
-            <TextInput style={[st.itemInput, { width: 56, flexShrink: 0 }]} value={item.quantity} onChangeText={v => updateItem(item.key, { quantity: v })} keyboardType="decimal-pad" placeholder="Qty" placeholderTextColor={Colors.textMuted} />
-            <View style={[st.priceBox, { width: 100, flexShrink: 0 }]}>
-              <Text style={st.rupeePrefix}>₹</Text>
-              <TextInput style={st.priceInput} value={item.unitPrice} onChangeText={v => updateItem(item.key, { unitPrice: v })} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.textMuted} />
+        const invPickIcon = (
+          <TouchableOpacity
+            style={[st.invPickBtn, item.inventoryId && st.invPickBtnActive]}
+            onPress={() => openInventoryPicker(item.key)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons name="cube-outline" size={15} color={item.inventoryId ? '#111' : Colors.accent} />
+          </TouchableOpacity>
+        );
+        const descriptionInput = (
+          <TextInput style={[st.itemInput, { flex: 1, minWidth: 0 }]} value={item.description} onChangeText={v => updateItem(item.key, { description: v, inventoryId: null })} placeholder="Description, or pick from inventory" placeholderTextColor={Colors.textMuted} />
+        );
+        const deleteBtn = (
+          <TouchableOpacity onPress={() => removeItem(item.key)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="trash-outline" size={16} color={Colors.error} />
+          </TouchableOpacity>
+        );
+        const qtyInput = (
+          <TextInput style={[st.itemInput, { width: 56, flexShrink: 0 }]} value={item.quantity} onChangeText={v => updateItem(item.key, { quantity: v })} keyboardType="decimal-pad" placeholder="Qty" placeholderTextColor={Colors.textMuted} />
+        );
+        const priceInput = (
+          <View style={[st.priceBox, { width: 100, flexShrink: 0 }]}>
+            <Text style={st.rupeePrefix}>₹</Text>
+            <TextInput style={st.priceInput} value={item.unitPrice} onChangeText={v => updateItem(item.key, { unitPrice: v })} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.textMuted} />
+          </View>
+        );
+
+        // Same fix as InvoiceFormSheet's identical item row — the fixed-width
+        // columns (pick button + qty + price + total + delete) fit web's
+        // 640px dialog fine but squeeze Description to nothing and push the
+        // total/delete off a ~360-400dp phone's right edge. Stacked on native.
+        if (isWeb) {
+          return (
+            <View key={item.key} style={st.itemRow}>
+              {invPickIcon}
+              {descriptionInput}
+              {qtyInput}
+              {priceInput}
+              <Text style={st.itemTotal} numberOfLines={1}>{fmtCurrency(total)}</Text>
+              {deleteBtn}
             </View>
-            <Text style={st.itemTotal} numberOfLines={1}>{fmtCurrency(total)}</Text>
-            <TouchableOpacity onPress={() => removeItem(item.key)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="trash-outline" size={16} color={Colors.error} />
-            </TouchableOpacity>
+          );
+        }
+        return (
+          <View key={item.key} style={st.itemRowMobile}>
+            <View style={st.itemRowTop}>
+              {invPickIcon}
+              {descriptionInput}
+              {deleteBtn}
+            </View>
+            <View style={st.itemRowBottom}>
+              {qtyInput}
+              {priceInput}
+              <Text style={st.itemTotalMobile} numberOfLines={1}>{fmtCurrency(total)}</Text>
+            </View>
           </View>
         );
       })}
@@ -634,6 +670,12 @@ const shared = {
   rupeePrefix: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' as const, paddingLeft: 7, flexShrink: 0 },
   priceInput: { flex: 1, minWidth: 0, textAlign: 'right' as const, fontSize: 13, fontWeight: '600' as const, color: Colors.textPrimary, paddingVertical: 6, paddingLeft: 4, paddingRight: 7, borderWidth: 0, backgroundColor: 'transparent', ...Platform.select({ web: { outlineStyle: 'none' as const } }) },
   itemTotal: { width: 84, fontSize: 13, fontWeight: '700' as const, color: Colors.textPrimary, textAlign: 'right' as const, flexShrink: 0 },
+
+  // Mobile-only stacked item card — see the isWeb branch above for why.
+  itemRowMobile: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 8, marginBottom: 8, gap: 8 },
+  itemRowTop:    { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+  itemRowBottom: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+  itemTotalMobile: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: '700' as const, color: Colors.textPrimary, textAlign: 'right' as const },
 
   discountToggleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, paddingVertical: 6 },
   discountToggleLabel: { fontSize: 13, fontWeight: '600' as const, color: Colors.textPrimary },
