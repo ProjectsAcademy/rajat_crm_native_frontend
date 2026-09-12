@@ -64,7 +64,10 @@ function StackedBar({ x, width, collected, outstanding, max, selected, onPress }
 interface Props { user: AuthUser | null }
 
 export default function RevenueChart({ user }: Props) {
-  const canView = userHasFeature(user, 'orders');
+  // Own 'revenue' key, not 'orders' — matches dashboard.ts's routes, which
+  // gate on 'revenue' specifically so this can be granted/denied
+  // independently of Orders module access.
+  const canView = userHasFeature(user, 'revenue');
   const [monthly, setMonthly] = useState<RevenueMonth[]>([]);
   const [snapshot, setSnapshot] = useState<RevenueSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
