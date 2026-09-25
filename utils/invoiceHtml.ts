@@ -87,6 +87,17 @@ export function buildInvoiceHtml(invoice: InvoiceDetail): string {
   // isn't a separate column, so it's just the gap between gross and net.
   const discountAmount = showDiscount ? (subtotal + tax) - total : 0;
 
+  // Order No. + Event Date (the order's date) [+ Delivery] and the project,
+  // only when this invoice was raised from an order — so the printed invoice
+  // says which event it bills and when it happened. Mirrors the same block in
+  // the server-side copy (rajat_crm_node_backend/src/utils/invoicePdf.ts).
+  const orderBlock = invoice.order ? `
+      <div class="meta-row">
+        <div class="no-field"><span class="field-label">Order No.</span><b>${esc(invoice.order.orderNo)}</b></div>
+        <div class="date-field"><span class="field-label">Event Date</span><span class="field-line">${fmtDate(invoice.order.orderDate)}${invoice.order.deliveryDate ? ` &nbsp;·&nbsp; Delivery: ${fmtDate(invoice.order.deliveryDate)}` : ''}</span></div>
+      </div>${invoice.project ? `
+      <div class="party-row"><span class="field-label">Project</span><span class="field-line">${esc(`${invoice.project.projectNo} · ${invoice.project.name}`)}</span></div>` : ''}` : '';
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -172,6 +183,7 @@ export function buildInvoiceHtml(invoice: InvoiceDetail): string {
         <div class="no-field"><span class="field-label">No.</span><b>${esc(invoice.invoiceNo)}</b></div>
         <div class="date-field"><span class="field-label">Date</span><span class="field-line">${fmtDate(invoice.invoiceDate)}</span></div>
       </div>
+      ${orderBlock}
       <div class="party-row"><span class="field-label">M/s.</span><span class="field-line">${esc(partyName)}</span></div>
       <div class="party-row"><span class="field-label">Add.</span><span class="field-line">${esc(partyAddress)}</span></div>
     </div>

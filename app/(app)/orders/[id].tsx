@@ -8,6 +8,8 @@ import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
 import OrderFormSheet from '../../../components/OrderFormSheet';
 import PaymentFormSheet from '../../../components/PaymentFormSheet';
+import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
+import { useAuthStore, userHasFeature } from '../../../store/auth';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: '#FFF8E1', text: '#F57F17' },
@@ -37,6 +39,8 @@ export default function OrderDetailScreen() {
   const [error,       setError]       = useState('');
   const [showEdit,    setShowEdit]    = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const user = useAuthStore((st) => st.user);
   const [editPayment, setEditPayment] = useState<OrderPayment | null>(null);
   const [deleting,    setDeleting]    = useState(false);
 
@@ -109,6 +113,12 @@ export default function OrderDetailScreen() {
               <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
               <Text style={styles.editBtnText}>Edit</Text>
             </TouchableOpacity>
+            {userHasFeature(user, 'invoices') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowInvoice(true)}>
+                <Ionicons name="document-text-outline" size={14} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Make Invoice</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
               {deleting
                 ? <ActivityIndicator size="small" color={Colors.error} />
@@ -250,6 +260,12 @@ export default function OrderDetailScreen() {
         </View>
       </ScrollView>
 
+      <InvoiceFormSheet
+        visible={showInvoice}
+        presetOrderId={order.id}
+        onClose={() => setShowInvoice(false)}
+        onSaved={(newId) => { setShowInvoice(false); if (newId) router.push(`/(app)/invoices/${newId}` as any); }}
+      />
       <OrderFormSheet
         visible={showEdit}
         onClose={() => setShowEdit(false)}

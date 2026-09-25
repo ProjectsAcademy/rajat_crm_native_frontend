@@ -37,6 +37,9 @@ interface Props {
   onClose: () => void;
   onSaved: (newInvoiceId?: number) => void;
   invoice?: InvoiceDetail | null;
+  // Opens a NEW invoice already filled from this order (customer, project,
+  // items, order link) — used by the order screen's "Make Invoice" button.
+  presetOrderId?: number | null;
 }
 interface SearchItem { id: number; label: string; sub?: string }
 
@@ -123,7 +126,7 @@ const sp = StyleSheet.create({
 });
 
 // ── Main Component ───────────────────────────────────────────────────────────────
-export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }: Props) {
+export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice, presetOrderId }: Props) {
   const isEdit = !!invoice;
   const isWeb  = Platform.OS === 'web';
 
@@ -213,9 +216,10 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
       setPaymentTerms(''); setNotes('');
       setDiscountEnabled(false); setDiscountPercent('');
       setItems([]);
+      if (presetOrderId) applyOrder(presetOrderId);
     }
     setSaveError('');
-  }, [visible, invoice]);
+  }, [visible, invoice, presetOrderId]);
 
   const subtotal = items.reduce((s, it) => s + lineTotal(it), 0);
   const taxTotal  = items.reduce((s, it) => s + lineTax(it), 0);
@@ -309,9 +313,16 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice }:
       if (!ok) { setOrderId(item.id); setOrderLabel(item.label); return; }
     }
 
+    await applyOrder(item.id);
+  };
+
+  // Loads an order and copies its customer/project/items into the form. Split
+  // out of onOrderSelected so the "Make Invoice" preset path can reuse it
+  // without the replace-existing-items confirm (a fresh form has none).
+  const applyOrder = async (id: number) => {
     setLoadingOrder(true);
     try {
-      const { data } = await ordersApi.detail(item.id);
+      const { data } = await ordersApi.detail(id);
       const order = data.order;
       setOrderId(order.id);
       setOrderLabel(order.orderNo);

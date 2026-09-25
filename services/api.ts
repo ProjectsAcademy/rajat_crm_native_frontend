@@ -611,7 +611,7 @@ export interface InvoiceDetail extends InvoiceSummary {
   notes: string | null; createdAt: string;
   items: InvoiceItem[];
   mediaFiles: MediaFile[];
-  order: { id: number; orderNo: string } | null;
+  order: { id: number; orderNo: string; orderDate: string; deliveryDate: string | null } | null;
   discountEnabled: boolean; discountPercent: string;
 }
 export interface InvoiceListResponse { invoices: InvoiceSummary[]; total: number; }
