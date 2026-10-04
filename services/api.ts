@@ -86,6 +86,25 @@ export const customersApi = {
   deactivate: (id: number) => api.delete(`/api/customers/${id}`),
 };
 
+// ─── Customer Ledger ──────────────────────────────────────────────────────────
+
+export const ledgerApi = {
+  receivables: (params?: { all?: boolean }) =>
+    api.get<ReceivablesResponse>('/api/ledger/receivables', { params }),
+  customer: (id: number, params?: { from?: string; to?: string }) =>
+    api.get<CustomerLedgerResponse>(`/api/ledger/customers/${id}`, { params }),
+  setOpeningBalance: (id: number, data: { amount: number; side: 'dr' | 'cr'; date: string | null }) =>
+    api.put(`/api/ledger/customers/${id}/opening-balance`, data),
+  dueOrders: (id: number) =>
+    api.get<{ orders: LedgerDueOrder[] }>(`/api/ledger/customers/${id}/due-orders`),
+  createReceipt: (id: number, data: ReceiptInput) =>
+    api.post<ReceiptCreateResponse>(`/api/ledger/customers/${id}/receipts`, data),
+  deleteReceipt: (receiptId: number) => api.delete(`/api/ledger/receipts/${receiptId}`),
+  createEntry: (id: number, data: LedgerEntryInput) => api.post(`/api/ledger/customers/${id}/entries`, data),
+  updateEntry: (entryId: number, data: LedgerEntryInput) => api.put(`/api/ledger/entries/${entryId}`, data),
+  deleteEntry: (entryId: number) => api.delete(`/api/ledger/entries/${entryId}`),
+};
+
 // ─── Tenders ──────────────────────────────────────────────────────────────────
 
 export interface TenderPayload {
@@ -583,6 +602,9 @@ export interface OrderItem {
 }
 export interface OrderPayment {
   id: number; amount: string; paymentMode: string; paymentDate: string; referenceNo: string | null;
+  // Set when this payment is a slice of a lump-sum receipt from the customer
+  // ledger — edited/deleted through that receipt, not from the order.
+  receipt?: { id: number; receiptNo: string } | null;
 }
 export interface OrderDetail extends OrderSummary {
   notes: string | null; createdAt: string;
@@ -912,3 +934,67 @@ export interface FdAlertWithPeriod extends FdAlert {
 }
 export interface MaintenanceListResponse { periods: MaintenancePeriod[]; total: number; }
 export interface FdAlertListResponse { alerts: FdAlertWithPeriod[]; total: number; }
+
+// ─── Ledger Types ─────────────────────────────────────────────────────────────
+
+export type LedgerLineType = 'opening' | 'order' | 'payment' | 'receipt' | 'adjustment';
+export interface LedgerLine {
+  key: string;
+  date: string | null;          // YYYY-MM-DD; null = undated opening balance
+  type: LedgerLineType;
+  refId: number | null;
+  refNo: string;
+  particulars: string;
+  detail: string;
+  debit: number;
+  credit: number;
+  balance: number;              // running; + = customer owes (Dr), − = advance (Cr)
+  orderId: number | null;
+  entryType: string | null;
+}
+export interface LedgerAgeing { d0_30: number; d31_60: number; d61_90: number; d90_plus: number }
+export interface LedgerPosition {
+  billed: number; received: number; balance: number;
+  outstanding: number; advance: number;
+  ageing: LedgerAgeing;
+  oldestDueDate: string | null; lastReceiptDate: string | null;
+}
+export interface CustomerLedgerResponse {
+  customer: {
+    id: number; customerCode: string; customerName: string; businessName: string;
+    phone: string; email: string; address: string; gstin: string;
+    openingBalance: number; openingBalanceDate: string | null;
+  };
+  statement: {
+    from: string | null; to: string | null;
+    openingBalance: number;
+    lines: LedgerLine[];
+    totals: { debit: number; credit: number };
+    closingBalance: number;
+  };
+  position: LedgerPosition;
+}
+export interface ReceivableRow extends LedgerPosition {
+  id: number; customerCode: string; customerName: string; businessName: string; phone: string; isActive: boolean;
+}
+export interface ReceivablesResponse {
+  asOf: string;
+  customers: ReceivableRow[];
+  totals: { outstanding: number; advance: number; balance: number; ageing: LedgerAgeing };
+}
+export interface LedgerDueOrder {
+  id: number; orderNo: string; orderDate: string; project: string;
+  total: number; paid: number; due: number;
+}
+export interface ReceiptInput {
+  receiptDate: string; amount: number; paymentMode: string;
+  referenceNo?: string; notes?: string;
+  allocations?: { orderId: number; amount: number }[];
+}
+export interface ReceiptCreateResponse {
+  receipt: { id: number; receiptNo: string };
+  allocations: { orderId: number; orderNo: string; amount: number }[];
+  advance: number;
+}
+export type LedgerEntryType = 'discount' | 'write_off' | 'charge' | 'refund';
+export interface LedgerEntryInput { entryType: LedgerEntryType; entryDate: string; amount: number; notes?: string }

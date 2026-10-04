@@ -90,6 +90,7 @@ export default function AppLayout() {
       <Tabs.Screen name="vehicles"    options={{ href: null }} />
       <Tabs.Screen name="maintenance" options={{ href: null }} />
       <Tabs.Screen name="admin"       options={{ href: null }} />
+      <Tabs.Screen name="ledger"      options={{ href: null }} />
     </Tabs>
     </View>
   );

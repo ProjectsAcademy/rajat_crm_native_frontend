@@ -203,16 +203,25 @@ export default function OrderDetailScreen() {
                   <View style={styles.payBody}>
                     <Text style={styles.payMode}>{p.paymentMode.toUpperCase()}</Text>
                     {p.referenceNo ? <Text style={styles.payRef}>{p.referenceNo}</Text> : null}
+                    {p.receipt ? <Text style={styles.payRef}>Part of receipt {p.receipt.receiptNo}</Text> : null}
                     <Text style={styles.payDate}>{fmtDate(p.paymentDate)}</Text>
                   </View>
                   <Text style={styles.payAmt}>{fmtAmt(p.amount)}</Text>
-                  <TouchableOpacity
-                    style={styles.payEditBtn}
-                    onPress={() => { setEditPayment(p); setShowPayment(true); }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
-                  </TouchableOpacity>
+                  {/* A slice of a lump-sum receipt is changed through the receipt
+                      in the customer ledger, not here (the server refuses it too). */}
+                  {p.receipt ? (
+                    <View style={styles.payEditBtn}>
+                      <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.payEditBtn}
+                      onPress={() => { setEditPayment(p); setShowPayment(true); }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))}
             </View>

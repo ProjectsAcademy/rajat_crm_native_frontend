@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { dashboardApi } from '../../services/api';
+import { dashboardApi, ledgerApi } from '../../services/api';
+import { fmtMoney } from '../../utils/ledgerFormat';
 import { useAuthStore, userHasFeature } from '../../store/auth';
 import { Colors } from '../../constants/colors';
 import WebHubPage, { HubCard } from '../../components/WebHubPage';
@@ -15,6 +16,7 @@ const CARDS = [
   { key: 'estimates', label: 'Estimates', icon: 'document-outline'      as const, route: '/(app)/estimates',        color: '#E65100', feature: 'estimates' },
   { key: 'gstRecords',label: 'GST',       icon: 'shield-half-outline'   as const, route: '/(app)/gst',              color: '#006064', feature: 'gst' },
   { key: 'stockMovements', label: 'Stock', icon: 'layers-outline'        as const, route: '/(app)/inventory/stock',  color: '#00695C', feature: 'stock' },
+  { key: 'receivables', label: 'Receivables', icon: 'wallet-outline'     as const, route: '/(app)/ledger',           color: '#AD1457', feature: 'ledger' },
 ];
 
 export default function FinanceScreen() {
@@ -23,6 +25,7 @@ export default function FinanceScreen() {
   const visibleCards = CARDS.filter((c) => userHasFeature(user, c.feature));
   const [kpis, setKpis] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const canLedger = userHasFeature(user, 'ledger');
 
   const fetchData = useCallback(async () => {
     try {
@@ -30,7 +33,20 @@ export default function FinanceScreen() {
       setKpis(data.kpis);
     } catch {}
     finally { setLoading(false); }
-  }, []);
+    // Receivables isn't in the dashboard summary — its card shows how many
+    // customers owe money and the total due, from the ledger API.
+    if (canLedger) {
+      ledgerApi.receivables()
+        .then(({ data }) => setKpis((k) => ({
+          ...k,
+          receivables: {
+            total: data.customers.filter((c) => c.outstanding > 0).length,
+            due: `${fmtMoney(data.totals.outstanding)} due`,
+          },
+        })))
+        .catch(() => {});
+    }
+  }, [canLedger]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -40,7 +56,7 @@ export default function FinanceScreen() {
       return {
         key: c.feature,
         label: c.label,
-        sub: kpi?.active != null ? `${kpi.active} active` : undefined,
+        sub: kpi?.due ?? (kpi?.active != null ? `${kpi.active} active` : undefined),
         icon: c.icon,
         color: c.color,
         bg: c.color + '18',
@@ -94,7 +110,9 @@ export default function FinanceScreen() {
                 <View style={styles.cardBody}>
                   <Text style={styles.cardLabel}>{c.label}</Text>
                   <Text style={[styles.cardCount, { color: c.color }]}>{total}</Text>
-                  {active !== null && (
+                  {kpi?.due ? (
+                    <Text style={styles.cardSub}>{kpi.due}</Text>
+                  ) : active !== null && (
                     <Text style={styles.cardSub}>{active} active</Text>
                   )}
                 </View>
