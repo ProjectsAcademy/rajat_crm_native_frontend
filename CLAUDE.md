@@ -77,10 +77,13 @@ mobile/
 │       ├── hr/              ← index, attendance, salary-components, salary-payments, incentives, epf-esic, _layout
 │       ├── vehicles/        ← index, [id], _layout
 │       ├── maintenance/     ← index, _layout
+│       ├── ledger/          ← index (Receivables), [id] (customer ledger/statement), _layout
 │       └── (no vendors detail yet — see vendors/[id].tsx)
 ├── components/
 │   ├── OrderFormSheet.tsx   ← Full CRUD form for orders (modal)
 │   ├── PaymentFormSheet.tsx ← Payment entry modal
+│   ├── ReceiptFormSheet.tsx ← Customer ledger: lump-sum receipt spread over due orders
+│   ├── LedgerEntrySheet.tsx ← Customer ledger: adjustments + opening balance
 │   ├── MediaSection.tsx     ← Reusable file attachment component
 │   ├── CameraUploadSheet.tsx← Camera/gallery upload bottom sheet
 │   └── ui/                 ← (reserved, currently empty)
@@ -246,6 +249,7 @@ All API functions are grouped by domain and fully typed:
 | `hrApi` | `/api/hr` | attendance.list/detail, salaryComponents.list, salaryPayments.list/detail, incentives.list, epfEsic.list/detail |
 | `vehiclesApi` | `/api/vehicles` | list, detail |
 | `maintenanceApi` | `/api/maintenance` | list, fdAlerts |
+| `ledgerApi` | `/api/ledger` | receivables, customer (statement + position), setOpeningBalance, dueOrders, createReceipt, deleteReceipt, createEntry, updateEntry, deleteEntry |
 
 All TypeScript interfaces for request/response shapes are defined at the bottom of `services/api.ts`.
 

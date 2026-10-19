@@ -11,6 +11,7 @@ export const MODULE_HUBS: Record<string, { label: string; hub: HubInfo }> = {
   estimates:   { label: 'Estimates',            hub: { label: 'Finance', route: '/(app)/finance' } },
   gst:         { label: 'GST Records',          hub: { label: 'Finance', route: '/(app)/finance' } },
   stock:       { label: 'Stock Ledger',         hub: { label: 'Finance', route: '/(app)/finance' } },
+  ledger:      { label: 'Receivables',          hub: { label: 'Finance', route: '/(app)/finance' } },
   tenders:     { label: 'Tenders',              hub: { label: 'Work',    route: '/(app)/work' } },
   projects:    { label: 'Projects',             hub: { label: 'Work',    route: '/(app)/work' } },
   vehicles:    { label: 'Vehicles',             hub: { label: 'Work',    route: '/(app)/work' } },

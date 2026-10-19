@@ -6,7 +6,9 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { customersApi, Customer } from '../../../services/api';
+import { customersApi, Customer, ledgerApi, LedgerPosition } from '../../../services/api';
+import { useAuthStore, userHasFeature } from '../../../store/auth';
+import { fmtDrCr } from '../../../utils/ledgerFormat';
 import { Colors } from '../../../constants/colors';
 import CustomerFormSheet from '../../../components/CustomerFormSheet';
 
@@ -44,6 +46,8 @@ export default function CustomerDetailScreen() {
   const [showEdit, setShowEdit] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [deleting, setDeleting]         = useState(false);
+  const [ledger, setLedger]             = useState<LedgerPosition | null>(null);
+  const canLedger = userHasFeature(useAuthStore((st) => st.user), 'ledger');
 
   const loadCustomer = () => {
     setLoading(true);
@@ -52,6 +56,15 @@ export default function CustomerDetailScreen() {
       .catch(() => setError('Could not load customer.'))
       .finally(() => setLoading(false));
   };
+
+  // Separate from loadCustomer: on a web deep link the auth user can arrive
+  // after the first render, so canLedger may only turn true later.
+  useEffect(() => {
+    if (!canLedger) return;
+    ledgerApi.customer(parseInt(id!))
+      .then(({ data }) => setLedger(data.position))
+      .catch(() => setLedger(null));
+  }, [id, canLedger]);
 
   useEffect(() => { loadCustomer(); }, [id]);
 
@@ -235,6 +248,38 @@ export default function CustomerDetailScreen() {
           </View>
         </View>
 
+        {/* Account — ledger balance, opens the full statement */}
+        {canLedger && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.relatedRow}
+                onPress={() => router.push(`/(app)/ledger/${customer.id}` as any)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.relatedIcon}>
+                  <Ionicons name="book-outline" size={16} color={Colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.relatedLabel}>Ledger & Statement</Text>
+                  <Text style={styles.ledgerSub}>
+                    {!ledger ? 'Payments, receipts, adjustments'
+                      : ledger.balance > 0 ? 'Balance due'
+                      : ledger.balance < 0 ? 'Advance with us' : 'Settled'}
+                  </Text>
+                </View>
+                {ledger && (
+                  <Text style={[styles.ledgerBal, { color: ledger.balance > 0 ? Colors.error : ledger.balance < 0 ? Colors.info : Colors.textSecondary }]}>
+                    {fmtDrCr(ledger.balance)}
+                  </Text>
+                )}
+                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Related Records — everything tied to this customer, drill into each */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Related Records</Text>
@@ -365,4 +410,6 @@ const styles = StyleSheet.create({
   },
   relatedLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
   relatedCount: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
+  ledgerSub: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
+  ledgerBal: { fontSize: 14, fontWeight: '800' },
 });

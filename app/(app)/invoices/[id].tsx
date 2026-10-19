@@ -220,6 +220,16 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.orderLinkText}>Created from order {invoice.order.orderNo}</Text>
             </TouchableOpacity>
           )}
+          {invoice.order && (
+            // Order summary carried onto the invoice: which order, which event
+            // date, delivery, and the project — so the invoice alone says what
+            // it bills and when the event was.
+            <View style={styles.orderInfo}>
+              <View style={styles.orderInfoRow}><Text style={styles.orderInfoLabel}>Order No.</Text><Text style={styles.orderInfoValue}>{invoice.order.orderNo}</Text></View>
+              <View style={styles.orderInfoRow}><Text style={styles.orderInfoLabel}>Event Date</Text><Text style={styles.orderInfoValue}>{fmtDate(invoice.order.orderDate)}</Text></View>
+              {invoice.order.deliveryDate && <View style={styles.orderInfoRow}><Text style={styles.orderInfoLabel}>Delivery</Text><Text style={styles.orderInfoValue}>{fmtDate(invoice.order.deliveryDate)}</Text></View>}
+            </View>
+          )}
 
           <View style={styles.headerActions}>
             <TouchableOpacity style={[styles.previewBtn, previewing && { opacity: 0.6 }]} onPress={handlePreview} disabled={previewing}>
@@ -358,6 +368,10 @@ const styles = StyleSheet.create({
   dates: { flexDirection: 'row', gap: 14, marginTop: 8, flexWrap: 'wrap' },
   dateItem: { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
   orderLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  orderInfo: { marginTop: 8, gap: 3 },
+  orderInfoRow: { flexDirection: 'row', gap: 8 },
+  orderInfoLabel: { width: 74, fontSize: 11, color: 'rgba(255,255,255,0.55)' },
+  orderInfoValue: { flex: 1, fontSize: 12, fontWeight: '700', color: '#fff' },
   orderLinkText: { fontSize: 12, color: Colors.accent, fontWeight: '600' },
 
   headerActions: { flexDirection: 'row', gap: 10, marginTop: 16, flexWrap: 'wrap' },

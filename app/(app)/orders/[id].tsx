@@ -8,6 +8,8 @@ import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
 import OrderFormSheet from '../../../components/OrderFormSheet';
 import PaymentFormSheet from '../../../components/PaymentFormSheet';
+import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
+import { useAuthStore, userHasFeature } from '../../../store/auth';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: '#FFF8E1', text: '#F57F17' },
@@ -37,6 +39,8 @@ export default function OrderDetailScreen() {
   const [error,       setError]       = useState('');
   const [showEdit,    setShowEdit]    = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const user = useAuthStore((st) => st.user);
   const [editPayment, setEditPayment] = useState<OrderPayment | null>(null);
   const [deleting,    setDeleting]    = useState(false);
 
@@ -109,6 +113,12 @@ export default function OrderDetailScreen() {
               <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
               <Text style={styles.editBtnText}>Edit</Text>
             </TouchableOpacity>
+            {userHasFeature(user, 'invoices') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowInvoice(true)}>
+                <Ionicons name="document-text-outline" size={14} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Make Invoice</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
               {deleting
                 ? <ActivityIndicator size="small" color={Colors.error} />
@@ -193,16 +203,25 @@ export default function OrderDetailScreen() {
                   <View style={styles.payBody}>
                     <Text style={styles.payMode}>{p.paymentMode.toUpperCase()}</Text>
                     {p.referenceNo ? <Text style={styles.payRef}>{p.referenceNo}</Text> : null}
+                    {p.receipt ? <Text style={styles.payRef}>Part of receipt {p.receipt.receiptNo}</Text> : null}
                     <Text style={styles.payDate}>{fmtDate(p.paymentDate)}</Text>
                   </View>
                   <Text style={styles.payAmt}>{fmtAmt(p.amount)}</Text>
-                  <TouchableOpacity
-                    style={styles.payEditBtn}
-                    onPress={() => { setEditPayment(p); setShowPayment(true); }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
-                  </TouchableOpacity>
+                  {/* A slice of a lump-sum receipt is changed through the receipt
+                      in the customer ledger, not here (the server refuses it too). */}
+                  {p.receipt ? (
+                    <View style={styles.payEditBtn}>
+                      <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.payEditBtn}
+                      onPress={() => { setEditPayment(p); setShowPayment(true); }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))}
             </View>
@@ -250,6 +269,12 @@ export default function OrderDetailScreen() {
         </View>
       </ScrollView>
 
+      <InvoiceFormSheet
+        visible={showInvoice}
+        presetOrderId={order.id}
+        onClose={() => setShowInvoice(false)}
+        onSaved={(newId) => { setShowInvoice(false); if (newId) router.push(`/(app)/invoices/${newId}` as any); }}
+      />
       <OrderFormSheet
         visible={showEdit}
         onClose={() => setShowEdit(false)}

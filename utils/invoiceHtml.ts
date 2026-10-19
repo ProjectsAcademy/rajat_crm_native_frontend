@@ -13,7 +13,8 @@ import { InvoiceDetail } from '../services/api';
 // shared-package setup, so keep both in sync by hand if the design changes.
 
 // ── Letterhead constants — transcribed from the physical bill book ─────────────
-const COMPANY = {
+// Also used by the customer statement (utils/ledgerHtml.ts).
+export const COMPANY = {
   name: 'RAJAT',
   tagline: 'ELECTRIC DECORATION & POWER POINT',
   regnLine: `'A' Class Electric Contractor in M.P. State   Regn. No. 23/8319-A`,
@@ -29,7 +30,7 @@ const COMPANY = {
 };
 
 // ── Formatting helpers ──────────────────────────────────────────────────────
-function esc(s: string): string {
+export function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 function fmtDate(iso: string | null): string {
@@ -48,12 +49,12 @@ function fmtAmt(v: string | number): string {
 
 // Small inline-SVG icons (pin/phone/mail) matching the letterhead's icon
 // chips — no external image assets needed.
-const ICON = {
+export const ICON = {
   pin:   '<path d="M8 0C4.7 0 2 2.7 2 6c0 4.5 6 10 6 10s6-5.5 6-10c0-3.3-2.7-6-6-6zm0 8.2A2.2 2.2 0 1 1 8 3.8a2.2 2.2 0 0 1 0 4.4z" fill="#fff"/>',
   phone: '<path d="M3.6 1.3c.4-.3.9-.2 1.2.2l1.5 2c.3.4.2.9-.1 1.2L5 5.8c.6 1.3 1.7 2.4 3 3l1.1-1.2c.3-.3.8-.4 1.2-.1l2 1.5c.4.3.5.8.2 1.2l-1 1.4c-.3.4-.8.6-1.3.5-3.4-.7-6.4-3.7-7.1-7.1-.1-.5.1-1 .5-1.3l1.4-1z" fill="#fff"/>',
   mail:  '<path d="M1 3h14v10H1V3zm7 5.2L2.2 4h11.6L8 8.2zM1.6 4.6V12h12.8V4.6L8 9.4 1.6 4.6z" fill="#fff"/>',
 };
-function iconChip(svgPath: string): string {
+export function iconChip(svgPath: string): string {
   return `<span class="icon-chip"><svg width="12" height="12" viewBox="0 0 16 16">${svgPath}</svg></span>`;
 }
 
@@ -86,6 +87,17 @@ export function buildInvoiceHtml(invoice: InvoiceDetail): string {
   // totalAmount is already stored post-discount — the discount amount itself
   // isn't a separate column, so it's just the gap between gross and net.
   const discountAmount = showDiscount ? (subtotal + tax) - total : 0;
+
+  // Order No. + Event Date (the order's date) [+ Delivery] and the project,
+  // only when this invoice was raised from an order — so the printed invoice
+  // says which event it bills and when it happened. Mirrors the same block in
+  // the server-side copy (rajat_crm_node_backend/src/utils/invoicePdf.ts).
+  const orderBlock = invoice.order ? `
+      <div class="meta-row">
+        <div class="no-field"><span class="field-label">Order No.</span><b>${esc(invoice.order.orderNo)}</b></div>
+        <div class="date-field"><span class="field-label">Event Date</span><span class="field-line">${fmtDate(invoice.order.orderDate)}${invoice.order.deliveryDate ? ` &nbsp;·&nbsp; Delivery: ${fmtDate(invoice.order.deliveryDate)}` : ''}</span></div>
+      </div>${invoice.project ? `
+      <div class="party-row"><span class="field-label">Project</span><span class="field-line">${esc(`${invoice.project.projectNo} · ${invoice.project.name}`)}</span></div>` : ''}` : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -172,6 +184,7 @@ export function buildInvoiceHtml(invoice: InvoiceDetail): string {
         <div class="no-field"><span class="field-label">No.</span><b>${esc(invoice.invoiceNo)}</b></div>
         <div class="date-field"><span class="field-label">Date</span><span class="field-line">${fmtDate(invoice.invoiceDate)}</span></div>
       </div>
+      ${orderBlock}
       <div class="party-row"><span class="field-label">M/s.</span><span class="field-line">${esc(partyName)}</span></div>
       <div class="party-row"><span class="field-label">Add.</span><span class="field-line">${esc(partyAddress)}</span></div>
     </div>
