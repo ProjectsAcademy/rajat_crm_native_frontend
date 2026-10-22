@@ -6,6 +6,41 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-22 — Project handover documentation
+
+- **Request:** structure both repos so that any new AI assistant (or person)
+  can understand the whole project from either repo alone, avoid known
+  mistakes, and keep documenting its own work.
+- **Done by:** Claude Code (Claude Opus).
+- **Changes:** backend `f05d7ef`, frontend `341f25f`.
+  - `AGENTS.md` in each repo as the single entry point; pointer files for
+    Claude (`CLAUDE.md`), Gemini / Antigravity (`GEMINI.md`,
+    `.agents/rules/`), Copilot, Cursor, Windsurf and Cline.
+  - `docs/shared/` (mirrored): README index, PROJECT_OVERVIEW, RULES,
+    ARCHITECTURE, FEATURES, INFRASTRUCTURE_AND_DEPLOY, LOCAL_DEV_AND_TESTING,
+    KNOWN_ISSUES_AND_PENDING, DOCUMENTATION_PROTOCOL, WORK_LOG (backfilled
+    from git history).
+  - `docs/BACKEND_REFERENCE.md` and `docs/FRONTEND_REFERENCE.md` replace the
+    old CLAUDE.md content after a full code audit; the owner's UI rules moved
+    verbatim to `docs/FRONTEND_UI_RULES.md`.
+  - `scripts/check-shared-docs.sh` in both repos.
+  - Backend `.env.example` now lists every variable; `server.ts` comment
+    translated to English.
+- **Corrections found during the audit** (old docs were wrong): many routes
+  documented as read-only have full CRUD; salary payments allow several
+  installments per month; `RBAC_STRICT=false` grants full access to
+  legacy-access users only; `update.sh` is tracked in git but the server
+  copies have local edits.
+- **Server reference:** content of the old `SERVER_README.md` (kept outside
+  the repos) is now in INFRASTRUCTURE_AND_DEPLOY.md, without personal
+  details.
+- **Tested:** all relative links and code paths referenced in the docs exist
+  (automated check); `check-shared-docs.sh` reports identical copies; backend
+  `tsc --noEmit` 0 errors.
+- **Open questions recorded:** web hosting details, whether dev and prod
+  share one database (KNOWN_ISSUES D).
+- **Deploy status:** committed on `dev_01`; owner pushes.
+
 ## 2026-10-22 — Vendor Work on orders
 
 - **Request:** when creating an order, record work done by a third party
