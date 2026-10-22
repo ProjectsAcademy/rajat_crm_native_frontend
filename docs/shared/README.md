@@ -25,6 +25,7 @@
 | 7 | [LOCAL_DEV_AND_TESTING.md](LOCAL_DEV_AND_TESTING.md) | Running locally and testing safely without touching real data | Before running or testing anything |
 | 8 | [DOCUMENTATION_PROTOCOL.md](DOCUMENTATION_PROTOCOL.md) | How to record your work so the next person/AI can continue | Before finishing ANY task |
 | 9 | [WORK_LOG.md](WORK_LOG.md) | Chronological history of what was built, when and why | When you need context on past decisions |
+| 10 | [WORKSPACE_GUIDE.md](WORKSPACE_GUIDE.md) | Working with both repos from their parent folder; source of the workspace-root `AGENTS.md` | When your tool opens the parent folder, or on a new machine |
 
 Repository-specific references (not mirrored):
 

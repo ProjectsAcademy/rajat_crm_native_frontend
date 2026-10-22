@@ -35,6 +35,8 @@ repositories, so this repo alone is enough to understand everything.
 9. Before finishing: `docs/shared/DOCUMENTATION_PROTOCOL.md`.
 
 Index of all docs: `docs/shared/README.md`. History: `docs/shared/WORK_LOG.md`.
+Opened from the parent folder with both repos? See `docs/shared/WORKSPACE_GUIDE.md`
+(and run `scripts/setup-workspace-root.sh` to write the workspace guide files).
 
 ## The rules you are most likely to break (full list: RULES.md)
 
