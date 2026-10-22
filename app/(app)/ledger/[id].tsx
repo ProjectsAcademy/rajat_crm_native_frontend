@@ -185,7 +185,7 @@ export default function CustomerLedgerScreen() {
                 </View>
                 <Text style={styles.ageFoot}>
                   {position.oldestDueDate ? `Oldest unpaid since ${fmtDay(position.oldestDueDate)}` : ''}
-                  {position.oldestDueDate && position.lastReceiptDate ? '   ·   ' : ''}
+                  {position.oldestDueDate ? '   ·   ' : ''}
                   {position.lastReceiptDate ? `Last payment ${fmtDay(position.lastReceiptDate)}` : 'No payment received yet'}
                 </Text>
               </View>

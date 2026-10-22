@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, Modal, FlatList } from 'react-native';
 import Svg, { G, Rect, Line, Text as SvgText } from 'react-native-svg';
 import { useState, useEffect } from 'react';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { dashboardApi, RevenueMonth, RevenueSnapshot, CustomerAmountRow, AuthUser } from '../services/api';
 import { userHasFeature } from '../store/auth';
@@ -97,6 +98,15 @@ export default function RevenueChart({ user }: Props) {
     }
   };
   const breakdownRows = breakdown === 'collected' ? collectedRows : breakdown === 'outstanding' ? outstandingRows : null;
+
+  // Tapping a customer opens their full picture: the ledger (every order,
+  // payment, balance and ageing) when allowed, else the customer profile.
+  const customerRoute = (customerId: number | null): string | null => {
+    if (!customerId) return null;
+    if (userHasFeature(user, 'ledger')) return `/(app)/ledger/${customerId}`;
+    if (userHasFeature(user, 'customers')) return `/(app)/customers/${customerId}`;
+    return null;
+  };
 
   useEffect(() => {
     if (!canView) { setLoading(false); return; }
@@ -268,17 +278,26 @@ export default function RevenueChart({ user }: Props) {
                 keyExtractor={(r) => String(r.customerId ?? 'none')}
                 style={{ maxHeight: 380 }}
                 ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: Colors.border }} />}
-                renderItem={({ item }) => (
-                  <View style={cbc.row}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={cbc.name} numberOfLines={1}>{item.customerName}</Text>
-                      {item.customerCode && <Text style={cbc.code}>{item.customerCode}</Text>}
-                    </View>
-                    <Text style={[cbc.amount, { color: breakdown === 'collected' ? COLLECTED_COLOR : OUTSTANDING_COLOR }]}>
-                      {fmtFull(item.amount)}
-                    </Text>
-                  </View>
-                )}
+                renderItem={({ item }) => {
+                  const route = customerRoute(item.customerId);
+                  return (
+                    <TouchableOpacity
+                      style={cbc.row}
+                      disabled={!route}
+                      activeOpacity={0.6}
+                      onPress={() => { setBreakdown(null); router.push(route as any); }}
+                    >
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={cbc.name} numberOfLines={1}>{item.customerName}</Text>
+                        {item.customerCode && <Text style={cbc.code}>{item.customerCode}</Text>}
+                      </View>
+                      <Text style={[cbc.amount, { color: breakdown === 'collected' ? COLLECTED_COLOR : OUTSTANDING_COLOR }]}>
+                        {fmtFull(item.amount)}
+                      </Text>
+                      {route && <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />}
+                    </TouchableOpacity>
+                  );
+                }}
               />
             )}
           </View>
