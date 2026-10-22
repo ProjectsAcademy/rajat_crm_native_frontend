@@ -6,6 +6,26 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-22 — Workspace guide for the parent folder
+
+- **Request:** the owner opens the parent folder (both repos side by side) so
+  the AI can see both; add a guide there explaining the two repos.
+- **Done by:** Claude Code (Claude Opus).
+- **Changes:** backend `5f9c901`, frontend `241b480`.
+  `docs/shared/WORKSPACE_GUIDE.md` (versioned source of the workspace-root
+  `AGENTS.md`) and `scripts/setup-workspace-root.sh`, which writes
+  `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`,
+  `.cursor/rules/crm-workspace.mdc`, `.windsurfrules`, `.clinerules` into the
+  parent folder (skips files it did not generate) and registers
+  `.agents/rules/crm-workspace.md` in the AG Kit toolkit with the kit's own
+  `generate_manifest.py`, rolling back if `validate_kit.py` fails.
+- **Workspace (not versioned):** script run on the developer machine; AG Kit
+  validator passes. `SERVER_README.md` in the parent folder marked LEGACY.
+- **Tested:** script run twice on the real workspace (idempotent); run in a
+  fake workspace with a hand-written `GEMINI.md` (left untouched) and a
+  missing sibling repo (warning); doc link check.
+- **Deploy status:** committed on `dev_01`; owner pushes.
+
 ## 2026-10-22 — Project handover documentation
 
 - **Request:** structure both repos so that any new AI assistant (or person)
