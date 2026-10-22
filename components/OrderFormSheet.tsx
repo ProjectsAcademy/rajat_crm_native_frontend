@@ -457,7 +457,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
             <Ionicons name="people-outline" size={16} color={Colors.textSecondary} />
             <Text style={vw.title}>Vendor Work</Text>
           </View>
-          <Text style={vw.sub}>Kaam jo kisi third party (vendor) se karwaya — kya kaam aur kitne ka.</Text>
+          <Text style={vw.sub}>Work done by a third party (vendor) on this order: what they did and what it cost.</Text>
         </View>
         <TouchableOpacity style={vw.addBtn} onPress={() => openVendorPicker('__new__')}>
           <Ionicons name="add" size={14} color="#111" />
@@ -479,7 +479,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
           <TextInput
             style={[vw.input, { flex: stackVendorRows ? 1 : 1.6 }]} value={row.description}
             onChangeText={t => updateVendorWork(row.key, { description: t })}
-            placeholder="Kya kaam? e.g. Generator on rent, lighting labour" placeholderTextColor={Colors.textMuted}
+            placeholder="Work done, e.g. Generator on rent, lighting labour" placeholderTextColor={Colors.textMuted}
             autoComplete="off" textContentType="none" importantForAutofill="no"
           />
         );
