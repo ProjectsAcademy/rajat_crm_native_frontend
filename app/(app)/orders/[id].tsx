@@ -228,6 +228,46 @@ export default function OrderDetailScreen() {
           )}
         </View>
 
+        {/* Vendor Work — parts of this order done by a third party (set in Edit) */}
+        {(order.vendorWorks?.length ?? 0) > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Vendor Work ({order.vendorWorks!.length})</Text>
+            <View style={styles.card}>
+              {order.vendorWorks!.map((vw, i) => {
+                const canOpen = userHasFeature(user, 'vendors');
+                return (
+                  <TouchableOpacity
+                    key={vw.id}
+                    style={[styles.payRow, i > 0 && styles.itemBorder]}
+                    disabled={!canOpen}
+                    onPress={() => router.push(`/(app)/vendors/${vw.vendor.id}` as any)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.payIconBox}>
+                      <Ionicons name="business-outline" size={16} color={Colors.textSecondary} />
+                    </View>
+                    <View style={styles.payBody}>
+                      <Text style={styles.payMode}>{vw.vendor.name}</Text>
+                      {vw.description ? <Text style={styles.payRef}>{vw.description}</Text> : null}
+                      {vw.vendor.phone ? <Text style={styles.payDate}>{vw.vendor.phone}</Text> : null}
+                    </View>
+                    <Text style={[styles.payAmt, { color: Colors.textPrimary }]}>{parseFloat(vw.amount) ? fmtAmt(vw.amount) : '—'}</Text>
+                    {canOpen && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />}
+                  </TouchableOpacity>
+                );
+              })}
+              {order.vendorWorks!.some(vw => parseFloat(vw.amount) > 0) && (
+                <View style={[styles.payRow, styles.itemBorder, { justifyContent: 'flex-end' }]}>
+                  <Text style={styles.payDate}>Total vendor cost  </Text>
+                  <Text style={[styles.payAmt, { color: Colors.textPrimary }]}>
+                    {fmtAmt(String(order.vendorWorks!.reduce((sum, vw) => sum + (parseFloat(vw.amount) || 0), 0)))}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Invoices — created together with the order via "Also create an invoice" */}
         {order.invoices.length > 0 && (
           <View style={styles.section}>

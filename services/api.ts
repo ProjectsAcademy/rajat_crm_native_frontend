@@ -224,13 +224,17 @@ export interface OrderCreateInput {
   status?: string; notes?: string;
   items?: OrderItemInput[];
   invoice?: OrderInvoiceInput;
+  vendorWorks?: OrderVendorWorkInput[];
 }
 export interface OrderUpdateInput {
   customerId?: number | null; projectId?: number | null;
   orderDate?: string; deliveryDate?: string | null;
   status?: string; notes?: string;
   items?: OrderItemInput[];
+  vendorWorks?: OrderVendorWorkInput[];
 }
+// Work on an order given to a third party (vendor) — what and for how much
+export interface OrderVendorWorkInput { vendorId: number; description: string; amount: number }
 export interface OrderPaymentInput {
   amount: string; paymentMode: string; paymentDate: string; referenceNo?: string;
 }
@@ -510,7 +514,11 @@ export interface Vendor extends VendorSummary {
   ifscCode: string; updatedAt: string;
 }
 export interface VendorListResponse { vendors: VendorSummary[]; total: number; page: number; limit: number; }
-export interface VendorDetailResponse { vendor: Vendor; }
+export interface VendorOrderWork {
+  id: number; description: string; amount: string; createdAt: string;
+  order: { id: number; orderNo: string; orderDate: string; status: string; customer: { id: number; customerName: string } | null };
+}
+export interface VendorDetailResponse { vendor: Vendor & { orderWorks?: VendorOrderWork[] }; }
 export interface VendorPayload {
   vendorCode?: string;
   name: string;
@@ -612,6 +620,11 @@ export interface OrderDetail extends OrderSummary {
   payments: OrderPayment[];
   mediaFiles: MediaFile[];
   invoices: { id: number; invoiceNo: string; invoiceDate: string; totalAmount: string; status: string }[];
+  vendorWorks?: OrderVendorWork[];
+}
+export interface OrderVendorWork {
+  id: number; description: string; amount: string;
+  vendor: { id: number; name: string; vendorCode: string; phone: string };
 }
 export interface OrderListResponse { orders: OrderSummary[]; total: number; }
 export interface OrderDetailResponse { order: OrderDetail; }
