@@ -75,7 +75,7 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
 | GET / | 11 | auth only (any check is in the handler) | Customer, Employee, EmployeeAttendance, Estimate, GstRecord, Inventory, Invoice, MaintenancePeriod, Order, OrderPayment, Project, Purchase, SalaryIncentive, SalaryPayment, Stock, Tender, User, Vehicle, Vendor | — | dashboardApi.getSummary (api.ts:71) ← app/(app)/finance.tsx, app/(app)/hr/index.tsx, app/(app)/index.tsx, app/(app)/people.tsx, app/(app)/work.tsx |
-| GET /revenue | 93 | revenue | Order | — | dashboardApi.getRevenue (api.ts:72) ← components/RevenueChart.tsx |
+| GET /revenue | 93 | revenue | Order | — | dashboardApi.getRevenue (api.ts:72) ← not called |
 | GET /collected-by-customer | 174 | revenue | Order | withCustomerNames | dashboardApi.getCollectedByCustomer (api.ts:73) ← not called |
 | GET /outstanding-by-customer | 197 | revenue | Order | withCustomerNames | dashboardApi.getOutstandingByCustomer (api.ts:74) ← not called |
 
@@ -261,7 +261,7 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 29 | calendar or calendar-write or calendar-manage | CalendarEvent, Order | — | calendarApi.list (api.ts:394) ← components/DashboardCalendar.tsx |
+| GET / | 29 | calendar or calendar-write or calendar-manage | CalendarEvent, Order | — | calendarApi.list (api.ts:394) ← not called |
 | POST / | 69 | calendar-write or calendar-manage | CalendarEvent (w) | — | calendarApi.create (api.ts:395) ← components/DashboardCalendar.tsx |
 | PUT /:id | 94 | calendar-write or calendar-manage | CalendarEvent (w) | canManageAny | calendarApi.update (api.ts:396) ← components/DashboardCalendar.tsx |
 | DELETE /:id | 123 | calendar-write or calendar-manage | CalendarEvent (w) | canManageAny | calendarApi.remove (api.ts:397) ← components/DashboardCalendar.tsx |
@@ -357,7 +357,8 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | components/CameraUploadSheet.tsx | — | not imported |
 | components/CustomerFilterBanner.tsx | — | app/(app)/estimates/index.tsx, app/(app)/gst/index.tsx, app/(app)/invoices/index.tsx, app/(app)/orders/index.tsx |
 | components/CustomerFormSheet.tsx | customersApi.create, customersApi.update | app/(app)/customers/[id].tsx, app/(app)/customers/index.tsx |
-| components/DashboardCalendar.tsx | calendarApi.create, calendarApi.list, calendarApi.remove, calendarApi.update | app/(app)/index.tsx |
+| components/dashboard/ModuleCard.tsx | — | not imported |
+| components/DashboardCalendar.tsx | calendarApi.create, calendarApi.remove, calendarApi.update | app/(app)/index.tsx |
 | components/DatePickerModal.tsx | — | app/(app)/ledger/[id].tsx |
 | components/EmployeeFormSheet.tsx | employeesApi.create, employeesApi.update | app/(app)/employees/[id].tsx, app/(app)/employees/index.tsx |
 | components/EstimateFormSheet.tsx | customersApi.list, estimatesApi.create, estimatesApi.update, inventoryApi.list, ordersApi.detail, ordersApi.list, projectsApi.list | app/(app)/estimates/[id].tsx, app/(app)/estimates/index.tsx |
@@ -375,7 +376,7 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | components/ProjectFormSheet.tsx | projectsApi.create, projectsApi.update, tendersApi.list | app/(app)/projects/[id].tsx, app/(app)/projects/index.tsx |
 | components/PurchaseFormSheet.tsx | inventoryApi.list, purchasesApi.create, purchasesApi.update, vendorsApi.detail, vendorsApi.list | app/(app)/purchases/[id].tsx, app/(app)/purchases/index.tsx |
 | components/ReceiptFormSheet.tsx | ledgerApi.createReceipt, ledgerApi.dueOrders | app/(app)/ledger/[id].tsx |
-| components/RevenueChart.tsx | dashboardApi.getRevenue | app/(app)/index.tsx |
+| components/RevenueChart.tsx | — | app/(app)/index.tsx |
 | components/SalaryComponentFormSheet.tsx | employeesApi.list, hrApi.salaryComponents.create, hrApi.salaryComponents.remove, hrApi.salaryComponents.update | app/(app)/hr/salary-components.tsx |
 | components/SalaryPaymentSheet.tsx | hrApi.salaryPayments.create, hrApi.salaryPayments.remove, hrApi.salaryPayments.update | app/(app)/hr/salary-components.tsx, app/(app)/hr/salary-payments.tsx |
 | components/SearchPickerModal.tsx | — | not imported |
@@ -568,5 +569,5 @@ App functions with no matching backend route (a bug, or the parser missed a patt
 
 App functions defined in `services/api.ts` but not called by any app file:
 
-- dashboardApi.getCollectedByCustomer, dashboardApi.getOutstandingByCustomer, hrApi.attendance.detail, hrApi.salaryPayments.list, hrApi.salaryPayments.detail, hrApi.epfEsic.detail, maintenanceApi.fdAlerts
+- dashboardApi.getRevenue, dashboardApi.getCollectedByCustomer, dashboardApi.getOutstandingByCustomer, hrApi.attendance.detail, hrApi.salaryPayments.list, hrApi.salaryPayments.detail, hrApi.epfEsic.detail, calendarApi.list, maintenanceApi.fdAlerts
 
