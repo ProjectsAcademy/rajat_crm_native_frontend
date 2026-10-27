@@ -6,6 +6,31 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — WhatsApp invoice button ready for the first real send
+
+- **Request:** while the Meta template is under review, invoices must be
+  shared on WhatsApp ONLY when the user taps the button, to the number saved
+  in the customer's profile (no automation yet).
+- **Done by:** Claude Code (Claude Opus).
+- **Changes:** backend `8901e32`, frontend `bbf09c1`. Sending was already
+  manual-only; hardened it: phone + configuration checked before the PDF is
+  rendered (400 / 503), plain-language Meta error messages, clear "Chromium
+  not installed" error, app waits 60 s for the send (prevents a false failure
+  followed by a duplicate paid send), immediate message when the customer has
+  no phone. Docs: FEATURES (WhatsApp), INFRASTRUCTURE (one-time server
+  setup), LOCAL_DEV_AND_TESTING (testing without sending), KNOWN_ISSUES A.3.
+- **Meta status:** app + number +91 97550 63737 registered; template
+  `invoice_share` (Utility, English, Document header, 4 variables) submitted,
+  under review.
+- **Tested:** real API + real PDF rendering with Meta's API mocked (no message
+  sent): success payload (media upload + template with the 4 values), no
+  phone, server not configured, Chromium missing, template-not-approved
+  (132001) and expired-token (190) errors; web UI confirm/alert flow.
+- **Not tested:** a real send through Meta (needs the approved template and
+  server setup); native app.
+- **Deploy status:** committed on `dev_01`; owner pushes, then does the server
+  setup in KNOWN_ISSUES A.3.
+
 ## 2026-10-22 — Workspace guide for the parent folder
 
 - **Request:** the owner opens the parent folder (both repos side by side) so
