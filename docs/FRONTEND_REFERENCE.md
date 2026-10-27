@@ -112,7 +112,7 @@ They are maintained by hand — update them whenever the backend shape changes.
 | `UserFormSheet`, `GroupFormSheet` | Admin |
 | `SearchPickerModal`, `DatePickerModal`, `MonthYearPickerModal` | Custom pickers (no native selects). `OrderFormSheet` has its own inline SearchPickerModal |
 | `MediaSection`, `CameraUploadSheet` | Attachments on detail screens (upload via `useMediaUpload`, XHR) |
-| `RevenueChart`, `DashboardCalendar` | Dashboard widgets |
+| `RevenueChart`, `DashboardCalendar`, `ModuleCard` | Dashboard widgets and presentational module card |
 | `WebTopNav`, `WebHubPage`, `Breadcrumbs`, `HubBackButton`, `CustomerFilterBanner` | Navigation / layout helpers |
 
 ## 6. Printing and PDFs
