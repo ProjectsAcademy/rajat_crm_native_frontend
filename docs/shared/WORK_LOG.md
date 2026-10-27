@@ -6,6 +6,40 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — Orders: delete a wrong payment; 20 orders per page
+
+- **Request:** (1) a payment saved by mistake could only be edited — no way
+  to delete it or set it to 0; (2) paginate the orders list, 20 per page,
+  with search working as before. (3) "show totals on all cards" — the owner
+  said to skip it for now (cards already show counts; the intent was unclear).
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `dev_01` `c9cd4ad`; frontend `dev_01` `19115e3`; docs
+  in the commits after them. Key files: backend `src/routes/orders.ts`;
+  frontend `components/PaymentFormSheet.tsx`, `app/(app)/orders/index.tsx`,
+  `services/api.ts` (`ordersApi.removePayment`, `list` takes `page`).
+- **Database:** none.
+- **Decisions:** delete rather than allowing 0 (a 0 row is noise in the
+  ledger and payment history). Receipt slices stay locked — they are
+  removed by deleting the receipt in the ledger. Pager = Prev / Next with
+  "Page X of Y" and "21–40 of N", shown only when there is more than one page.
+- **Bug found while testing:** the orders list sorted only by `createdAt`;
+  rows created in one batch (imported data) share it, so pages repeated some
+  orders and skipped others. Now `createdAt` desc, then `id` desc.
+  Other list screens still load 100 rows without paging (KNOWN_ISSUES B.8,
+  replacing the old B.8 "payments cannot be deleted").
+- **Tested:** local throwaway PG16, synthetic data (46 orders), backend on
+  3001, Expo web on 8099. API: 3 pages of 20/20/6 with every order exactly
+  once, search over all pages (10 matches, no pager), delete → order back
+  to pending and paid 0, second delete → 404, another order's payment id →
+  404, receipt slice → 400. UI (1280 px and 390 px): Next/Prev, page info,
+  search resets the pager; edit sheet → Delete Payment → confirm text →
+  Payments (0), status PENDING; add mode has no Delete button. No page
+  errors. Backend `tsc` 0; frontend `tsc` 85 (baseline).
+- **Not tested / risks:** native Android/iOS (code path is shared
+  `Modal`/`FlatList`, confirm uses `Alert.alert` there).
+- **Deploy status:** not pushed.
+- **Follow-ups:** KNOWN_ISSUES B.8 (paging for other lists when needed).
+
 ## 2026-10-27 — WhatsApp bot: "My invoices" and "Payment history"
 
 - **Request:** owner picked two more free-tier bot options from a proposed

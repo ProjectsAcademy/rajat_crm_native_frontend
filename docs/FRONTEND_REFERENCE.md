@@ -99,7 +99,7 @@ Axios instance (`timeout 15000`, JSON) with a request interceptor that adds
 | `tendersApi`, `projectsApi`, `estimatesApi`, `purchasesApi`, `gstApi` | matching `/api/*` | list, detail, create, update, remove |
 | `inventoryApi` | `/api/inventory` | list, detail, create, update, deactivate, permanentDelete, categories |
 | `stockApi` | `/api/stock` | list, create, update, remove |
-| `ordersApi` | `/api/orders` | list, detail, create, update, remove, addPayment, updatePayment (create/update accept `vendorWorks`) |
+| `ordersApi` | `/api/orders` | list (`page`, `limit`), detail, create, update, remove, addPayment, updatePayment, removePayment (create/update accept `vendorWorks`) |
 | `invoicesApi` | `/api/invoices` | list, detail, create, update, remove, sendWhatsapp |
 | `hrApi` | `/api/hr` | attendance.*, salaryComponents.*, salaryPayments.*, incentives.*, epfEsic.* |
 | `vehiclesApi` | `/api/vehicles` | list, detail (read-only API) |

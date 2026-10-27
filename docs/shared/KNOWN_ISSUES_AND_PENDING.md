@@ -42,8 +42,9 @@ anything older than a few weeks.
 4. **WhatsApp bot — live on the DEV server since 2026-10-27.** The Meta
    webhook points at `dev-api.urjaradiant.com` (messages field subscribed,
    WABA subscribed to the app, bot enabled on dev only). First real test:
-   "hi" → menu delivered and read. Still to verify: the three buttons
-   (pending amount, orders, statement PDF) with real data. Because the webhook
+   "hi" → menu delivered and read. Still to verify with real data on a phone:
+   the five-option list menu (pending amount, orders, invoices → PDF, payment
+   history, statement PDF; list menu added 2026-10-27). Because the webhook
    belongs to the real number, the DEV server currently answers real
    customers; for production, point the webhook at `prod-api`, enable the bot
    there and disable it on dev (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot
@@ -75,7 +76,13 @@ anything older than a few weeks.
    opened from a customer) may have no back button on native; the ledger
    detail screen has a fallback back button, other modules do not.
 7. `WebTopNav` overflows horizontally when the web app is used at phone width.
-8. Orders: a payment row cannot be deleted from the UI or API (only edited).
+8. List screens other than Orders load one request with `limit: 100` (or
+   200) and have no paging, so rows past the newest 100 are only reachable
+   through search (customers, invoices, estimates, vendors, stock movements,
+   attendance, ...). Orders got 20-per-page paging on 2026-10-27; copy that
+   pattern (`app/(app)/orders/index.tsx`) when a module grows past 100, and
+   give its backend `orderBy` a unique tie-breaker (`id`) first — sorting
+   only by `createdAt` repeats/skips rows across pages for imported batches.
 
 ## C. Looks wrong but is intended
 

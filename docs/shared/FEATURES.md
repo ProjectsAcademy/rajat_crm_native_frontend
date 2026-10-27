@@ -14,12 +14,20 @@ module, update its section here in the same task.
   rental). `totalAmount = subtotal`; there is no tax on orders.
 - Orders do **not** move stock (rentals go out and come back). Only purchases,
   manual stock entries and inventory opening stock create `stocks` rows.
-- Payments: `POST/PUT /api/orders/:id/payments`; after any change
+- Payments: `POST/PUT/DELETE /api/orders/:id/payments`; after any change
   `recalcOrderPaid()` recomputes `paidAmount` and `paymentStatus` from the
-  payment rows. There is no endpoint to delete a single payment.
+  payment rows. A payment saved by mistake is removed with **Delete Payment**
+  in its edit sheet (confirm dialog shows amount, mode and date; added
+  2026-10-27 at the client's request — before that a wrong payment could only
+  be edited, never removed). The customer ledger follows automatically
+  because it is computed from the payment rows.
+- List: 20 orders per page with Prev / Next (newest first; ties on
+  `createdAt` ordered by id). Search and the customer filter run on the
+  server over all orders and always restart at page 1.
 - Payments created by a ledger **receipt** (`receipt_id` set) are locked: the
   order screen shows them with a lock icon and "Part of receipt RCT-...", and
-  the API refuses to edit them. Changing an order's customer is refused while
+  the API refuses to edit or delete them (delete the receipt in the customer
+  ledger instead). Changing an order's customer is refused while
   such payments exist.
 - **Make Invoice** (order screen) opens a new invoice prefilled from the order.
   The order form can also "Also create an invoice" at creation time, which
