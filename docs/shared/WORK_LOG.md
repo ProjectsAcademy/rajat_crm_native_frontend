@@ -6,6 +6,21 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — WhatsApp bot: first dev test, two problems found
+
+- **Symptom:** a test message to the business number got no reply.
+- **Findings:** (1) no `POST /api/whatsapp/webhook` reached the dev server —
+  Meta did not deliver the message (webhook verification GET had succeeded);
+  (2) the dev `.env` had `WHATSAPP_BOT_ENABLED=True` and the code only
+  accepted lowercase `true`, so the bot was off anyway. Dev database was fine
+  (empty `whatsapp_messages` table readable).
+- **Fix (code):** flag parsing is case-insensitive; a startup log line shows
+  bot enabled/disabled and which settings are missing; a warning is logged
+  when a webhook arrives while the bot is off. Troubleshooting steps added to
+  INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook".
+- **Still open:** why Meta does not deliver (messages field subscription /
+  app Live mode) — being checked with the owner.
+
 ## 2026-10-27 — WhatsApp self-service bot (Phase 1)
 
 - **Request:** customers should manage things themselves on WhatsApp by

@@ -143,9 +143,17 @@ it points at answers the real business number.
 4. Test from a phone whose number is saved on a customer: send "hi" to the
    business number → menu with three buttons. `pm2 logs <name>` shows
    `[whatsapp-webhook]` / `[whatsapp-bot]` lines on problems.
-5. If nothing arrives: check the app's webhook subscription, the WABA
-   `subscribed_apps`, and whether Meta requires the app to be in **Live** mode
-   (may need a privacy policy URL in App settings → Basic).
+5. Troubleshooting, in order:
+   - After every restart `pm2 logs` prints `[whatsapp-webhook] bot ENABLED/disabled;
+     app secret set/MISSING; ...` — fix anything MISSING/disabled first.
+   - No `POST /api/whatsapp/webhook` lines at all when you send a message →
+     Meta is not delivering: check the **messages** field is subscribed, use
+     the field's **Test** button (a test POST must appear in the logs; it is
+     ignored by the bot because its phone number id differs), check
+     `subscribed_apps`, and put the app in **Live** mode (may need a privacy
+     policy URL in App settings → Basic).
+   - `POST ... 401` → wrong `WHATSAPP_APP_SECRET`; `503` → it is missing.
+   - `POST ... 200` → look at the `whatsapp_messages` rows (kind/status/error).
 
 ### Releasing to production (backend)
 
