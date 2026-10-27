@@ -17,8 +17,12 @@ history and are short; later entries were written at the time.
   permanent token was generated for system user `rajat_crm_api_admin` (the
   Employee-level system user could not get WhatsApp permissions).
 - **Docs:** INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp Business (Meta) setup";
-  KNOWN_ISSUES A.3 updated (payment method and server setup still pending).
-- **Code:** none.
+  KNOWN_ISSUES A.3 updated (server setup still pending).
+- **Billing:** Meta rejected the owner's Indian-issued Visa card ("India
+  credit cards are currently not supported"); WhatsApp messages are paid from
+  a prepaid INR balance instead (₹100 loaded manually). The 131042 error
+  message now tells the user to top up that balance.
+- **Code:** backend error hint for code 131042 (commit with this entry).
 
 ## 2026-10-27 — WhatsApp invoice button ready for the first real send
 

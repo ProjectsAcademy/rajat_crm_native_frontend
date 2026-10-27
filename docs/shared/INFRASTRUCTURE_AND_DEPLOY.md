@@ -93,6 +93,7 @@ the servers' `.env`).
 | Developer app | `rajatcrmAppForWp` |
 | Token | permanent token of system user `rajat_crm_api_admin` (Admin), permissions `whatsapp_business_messaging` + `whatsapp_business_management` |
 | Template | `invoice_share`, Utility, English (`en`) — lives in the WABA above |
+| Billing | **Prepaid "Available funds" in INR**, topped up manually (Meta Business Suite → Billing & payments → Accounts → Rajat Electricals → Add funds). Indian-issued credit/debit cards are rejected by Meta ("India credit cards are currently not supported", 2026-10-27). Meta deducts about once a day; when the balance runs out, sends fail with code 131042. First top-up ₹100 on 2026-10-27 |
 
 Several duplicate WABAs (and a Meta-provided +1 number) were created by
 repeated setup attempts and deleted on 2026-10-27. Meta's own "Test WhatsApp

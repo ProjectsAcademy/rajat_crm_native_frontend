@@ -29,8 +29,9 @@ anything older than a few weeks.
    Meta setup done (IDs in INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp Business
    (Meta) setup"): number +91 97550 63737 verified and on `CLOUD_API`,
    permanent system-user token created, template `invoice_share` resubmitted
-   in the correct WhatsApp Business Account and under review. Still to do:
-   add a payment method to the WhatsApp Business Account; on each server
+   in the correct WhatsApp Business Account and under review; billing is a
+   prepaid INR balance (₹100 loaded; Indian cards are not accepted — keep it
+   topped up). Still to do: on each server
    checkout (dev first) set the `WHATSAPP_*` values in `.env`, run `npx
    playwright install --with-deps chromium` once, restart pm2; after
    approval, test-send to the owner's own number. The server has ~1 GB RAM and
