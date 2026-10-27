@@ -150,17 +150,31 @@ invoices, optional link to an order.
 Built 2026-10-27. Decisions (owner): Phase 1 inside this backend (not n8n),
 menu with data options only — no "talk to us" option; no AI/LLM.
 
-- A customer writes anything to the business number → reply with three
-  buttons: **Pending amount**, **My orders**, **Statement PDF**. Every answer
-  repeats the buttons.
+- A customer writes anything to the business number → reply with a WhatsApp
+  **list message** (one "Menu" button, five rows). Every answer ends with the
+  menu again. Options (the first three since 2026-10-27, invoices and payment
+  history added the same day at the owner's choice):
   - Pending amount: per customer — total billed (all ledger debits), paid and
     adjusted (all credits), balance due / advance, last payment (amount +
     date), "unpaid since" (oldest due date). Same numbers as the ledger.
   - My orders: latest 5 orders — number, event date, status, amount, paid,
     due.
+  - My invoices: a second list with the latest 10 sales invoices (not
+    cancelled; drafts included, because the client rarely changes invoice
+    status) — invoice no., date, total. Picking one sends that invoice's PDF
+    (same `renderInvoicePdf` as the manual send) as a free-form document,
+    caption "Invoice X — Rs. total, due date". The row id `INV:<id>` comes
+    back from WhatsApp, so the bot re-checks that the invoice belongs to the
+    sender's customers before sending.
+  - Payment history: the last 10 ledger credits of type payment / receipt,
+    newest first (date, amount, receipt no., mode and reference), plus
+    "Total received". The "Imported balance" note of migrated payments is
+    left out.
   - Statement PDF: current financial year statement, rendered on the server
     (`src/utils/statementPdf.ts`) and sent as a document with the closing
     balance in the caption.
+  - Row ids `PENDING`, `ORDERS`, `STATEMENT` are the same as the old
+    three-button menu, so taps on old messages still work.
 - Identity: the sender's WhatsApp number must match a customer's saved phone
   (`normalizeIndianMobile`, so `9000000001` and `+91 90000 00001` both match).
   If several customers share the number, each is shown, skipping the ones with
@@ -169,6 +183,17 @@ menu with data options only — no "talk to us" option; no AI/LLM.
 - Replies are normal (non-template) messages inside the 24-hour customer
   service window, so no template approval is needed and Meta does not charge
   for them.
+- Cost rules (Meta per-message pricing, checked 2026-10-27 — confirm current
+  rates on Meta's pricing page before quoting the client):
+  - Each customer message opens (or restarts) a 24-hour window. Inside it,
+    free-form messages (all bot replies, including PDFs) are free.
+  - Utility templates (`invoice_share`, a future `payment_reminder`) are
+    free when sent inside an open window and charged per message outside it.
+    So a manual invoice send right after the customer used the bot costs
+    nothing; the same send two days later is charged.
+  - Marketing templates are charged always, window or not.
+  - Outside a window only templates can be sent (free-form fails with Meta
+    code 131047).
 - Safety: webhook signature (`WHATSAPP_APP_SECRET`) is mandatory; messages for
   other phone numbers on the app (Meta's test number) are ignored; retried
   webhooks are answered once (`whatsapp_messages.wa_message_id` unique);

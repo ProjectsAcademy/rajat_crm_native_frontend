@@ -6,6 +6,39 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — WhatsApp bot: "My invoices" and "Payment history"
+
+- **Request:** owner picked two more free-tier bot options from a proposed
+  list: "My invoices" and "Payment history".
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `dev_01` `bf48200` (code) + the docs commit after
+  it; frontend `dev_01`: docs mirror only, no code. Key files:
+  `src/lib/whatsapp.ts` (`sendList`), `src/lib/whatsappBot.ts`,
+  `src/routes/invoices.ts` (`INVOICE_FULL_INCLUDE` exported).
+  - The menu is now a WhatsApp list message (one "Menu" button, 5 rows)
+    because reply buttons are limited to 3.
+  - My invoices → latest 10 sales invoices → tap one → that invoice's PDF
+    (same renderer as the manual send; free-form, so free). The row id
+    `INV:<id>` is re-checked against the sender's customers.
+  - Payment history → last 10 payments / receipts (mode, reference, receipt
+    no.) + total received.
+- **Database:** none.
+- **Decisions:** drafts are listed with other invoices (client rarely
+  updates invoice status); cancelled and purchase invoices are not. Old
+  button ids still answer. Meta cost rules written into FEATURES.md.
+- **Tested:** local throwaway PG16 + synthetic data, Meta Graph API mocked,
+  signed webhook payloads: "hi" → list menu (row lengths within Meta limits);
+  INVOICES → invoice list; own invoice → real PDF rendered (Chromium, 54 KB)
+  + document + menu; another customer's invoice id and `INV:abc` → "not
+  available", nothing sent; PAYMENTS with a direct payment and a lump-sum
+  receipt; old PENDING button; unknown number → no data. `whatsapp_messages`
+  rows checked. `npx tsc --noEmit` 0 errors.
+- **Not tested / risks:** how real WhatsApp renders the list (not testable
+  without Meta) — check on the phone after the dev deploy.
+- **Deploy status:** not pushed (owner pushes `dev_01`; the webhook points
+  at dev, so dev is where it can be tried).
+- **Follow-ups:** none new.
+
 ## 2026-10-27 — HOTFIX: production could not create new customers
 
 - **Symptom (production, crm.urjaradiant.com):** every new customer failed
