@@ -6,6 +6,32 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — WhatsApp self-service bot (Phase 1)
+
+- **Request:** customers should manage things themselves on WhatsApp by
+  picking options (order status, pending amount, ...). Owner chose Phase 1
+  inside this backend (not n8n on a second server), menu with data options
+  only, no "talk to us" option, no AI.
+- **Done by:** Claude Code (Claude Opus).
+- **Changes:** backend `51e2627`, frontend `71dac93` (docs + comment).
+  Webhook `/api/whatsapp/webhook`, bot `src/lib/whatsappBot.ts`, message log
+  `src/lib/whatsappLog.ts`, server statement PDF `src/utils/statementPdf.ts`,
+  serialised PDF rendering, invoice sends now logged. Details: FEATURES.md
+  "WhatsApp self-service bot".
+- **Database:** migration `20261027120000_whatsapp_messages` — new table only.
+- **Tested (local, synthetic data, Meta mocked, signed webhooks):**
+  verification handshake (right/wrong token), unsigned and wrongly signed
+  POSTs rejected (401), menu, all three options (numbers checked against the
+  ledger), duplicate webhook answered once, unknown number answered once per
+  day, other phone number id ignored, delivery status update, bot disabled →
+  nothing processed, invoice send logged; statement PDF rendered on the server
+  and checked visually.
+- **Not tested:** real Meta webhooks (not configured yet), native app (no app
+  changes).
+- **Deploy status:** committed on `dev_01`; owner pushes (dev deploy applies
+  the migration). Then configure the webhook — INFRASTRUCTURE_AND_DEPLOY.md
+  "WhatsApp bot webhook"; pending item KNOWN_ISSUES A.4.
+
 ## 2026-10-27 — WhatsApp Business (Meta) account setup recorded
 
 - **Done by:** owner in Meta Business Suite, guided by Claude Code.
