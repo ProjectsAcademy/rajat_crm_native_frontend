@@ -143,6 +143,39 @@ invoices, optional link to an order.
   attendance-computed net payable.
 - EPF/ESIC records are unique per employee per month.
 
+## WhatsApp self-service bot (`/api/whatsapp/webhook`)
+
+Built 2026-10-27. Decisions (owner): Phase 1 inside this backend (not n8n),
+menu with data options only — no "talk to us" option; no AI/LLM.
+
+- A customer writes anything to the business number → reply with three
+  buttons: **Pending amount**, **My orders**, **Statement PDF**. Every answer
+  repeats the buttons.
+  - Pending amount: per customer — total billed (all ledger debits), paid and
+    adjusted (all credits), balance due / advance, last payment (amount +
+    date), "unpaid since" (oldest due date). Same numbers as the ledger.
+  - My orders: latest 5 orders — number, event date, status, amount, paid,
+    due.
+  - Statement PDF: current financial year statement, rendered on the server
+    (`src/utils/statementPdf.ts`) and sent as a document with the closing
+    balance in the caption.
+- Identity: the sender's WhatsApp number must match a customer's saved phone
+  (`normalizeIndianMobile`, so `9000000001` and `+91 90000 00001` both match).
+  If several customers share the number, each is shown, skipping the ones with
+  no ledger activity. Unknown numbers get one fixed message per 24 h with the
+  business phone numbers, and no data.
+- Replies are normal (non-template) messages inside the 24-hour customer
+  service window, so no template approval is needed and Meta does not charge
+  for them.
+- Safety: webhook signature (`WHATSAPP_APP_SECRET`) is mandatory; messages for
+  other phone numbers on the app (Meta's test number) are ignored; retried
+  webhooks are answered once (`whatsapp_messages.wa_message_id` unique);
+  messages are processed one at a time; `WHATSAPP_BOT_ENABLED` must be `true`
+  on exactly one server.
+- Log: every message in and out (including invoice sends) is a row in
+  `whatsapp_messages` with delivery status (sent / delivered / read / failed).
+  No screen shows it yet.
+
 ## Dashboard and Calendar
 
 - KPI counts per module (`GET /api/dashboard`, any logged-in user).

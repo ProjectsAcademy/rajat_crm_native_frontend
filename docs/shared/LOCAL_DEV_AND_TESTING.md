@@ -91,9 +91,22 @@ upload, template payload, error messages): start the API from a small Node
 script that replaces `global.fetch` for `https://graph.facebook.com` URLs with
 canned responses (`{ id }` for `/media`, `{ messages: [{ id }] }` for
 `/messages`, or an `{ error: { code: 132001 } }` body) BEFORE requiring
-`src/app`, record the requests, and delete that record afterwards (it contains
+`src/app.ts`, record the requests, and delete that record afterwards (it contains
 the `Authorization` header). Playwright's Chromium must be installed locally
 (`npx playwright install chromium`).
+
+### Testing the WhatsApp bot webhook locally
+
+Run the API with fake credentials (`WHATSAPP_ACCESS_TOKEN=FAKE`,
+`WHATSAPP_PHONE_NUMBER_ID=PHONEID123`, `WHATSAPP_APP_SECRET=test-secret`,
+`WHATSAPP_WEBHOOK_VERIFY_TOKEN=verify-123`, `WHATSAPP_BOT_ENABLED=true`) and
+Meta's API mocked as above, then POST Meta-shaped payloads
+(`{ object, entry: [{ changes: [{ field: 'messages', value: { metadata: {
+phone_number_id }, messages: [...] } }] }] }`) to `/api/whatsapp/webhook` with
+`X-Hub-Signature-256: sha256=<HMAC-SHA256 of the exact body with the app
+secret>`. Give the mock unique message ids per run (`wa_message_id` is unique
+— reused ids silently skip logging). Check replies in the mock's record and
+rows in `whatsapp_messages`.
 
 ## 4. Verification checklist before calling a task done
 

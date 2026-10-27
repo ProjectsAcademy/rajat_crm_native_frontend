@@ -122,6 +122,31 @@ curl -s "https://graph.facebook.com/v21.0/1763205934724539/message_templates?nam
 The first must show `platform_type: CLOUD_API` and the phone number ID above;
 the second shows the template `status` (`APPROVED` before sending works).
 
+### WhatsApp bot webhook (incoming messages)
+
+Meta delivers customer messages to ONE callback URL per app. Whichever server
+it points at answers the real business number.
+
+1. Server `.env` (that server only): `WHATSAPP_WEBHOOK_VERIFY_TOKEN=<random,
+   e.g. openssl rand -hex 16>`, `WHATSAPP_APP_SECRET=<Meta app → App settings
+   → Basic → App secret>`, `WHATSAPP_BOT_ENABLED=true`; `pm2 restart <name>`.
+   All other servers keep `WHATSAPP_BOT_ENABLED=false`.
+2. Meta developer app `rajatcrmAppForWp` → WhatsApp → Configuration →
+   Webhook: Callback URL `https://dev-api.urjaradiant.com/api/whatsapp/webhook`
+   (or `prod-api...` for production), Verify token = the same random string →
+   "Verify and save". Then subscribe the webhook field **messages**.
+3. Make sure the WhatsApp Business Account sends events to the app (once):
+   ```bash
+   curl -s -X POST "https://graph.facebook.com/v21.0/1763205934724539/subscribed_apps" -H "Authorization: Bearer $TOKEN"
+   curl -s "https://graph.facebook.com/v21.0/1763205934724539/subscribed_apps" -H "Authorization: Bearer $TOKEN"
+   ```
+4. Test from a phone whose number is saved on a customer: send "hi" to the
+   business number → menu with three buttons. `pm2 logs <name>` shows
+   `[whatsapp-webhook]` / `[whatsapp-bot]` lines on problems.
+5. If nothing arrives: check the app's webhook subscription, the WABA
+   `subscribed_apps`, and whether Meta requires the app to be in **Live** mode
+   (may need a privacy policy URL in App settings → Basic).
+
 ### Releasing to production (backend)
 
 1. Everything merged and tested on `dev_01` / dev API.

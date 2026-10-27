@@ -39,9 +39,17 @@ anything older than a few weeks.
    already in use with all hosted apps running. One send at a time is fine;
    any bulk/automatic sending must be queued (one Chromium at a time) or move
    to a bigger server (every send starts its own Chromium).
-4. **Web hosting details unknown** — see INFRASTRUCTURE_AND_DEPLOY.md §3. Owner
+4. **WhatsApp bot (2026-10-27): code done, not connected yet.** To switch it
+   on (dev first): Meta app webhook URL + verify token, subscribe the
+   `messages` field, subscribe the WABA to the app, set
+   `WHATSAPP_APP_SECRET` / `WHATSAPP_WEBHOOK_VERIFY_TOKEN` /
+   `WHATSAPP_BOT_ENABLED=true` on the server — steps in
+   INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook". The webhook belongs to
+   the real number, so whichever server it points at answers real customers.
+   No admin screen for the `whatsapp_messages` log yet.
+5. **Web hosting details unknown** — see INFRASTRUCTURE_AND_DEPLOY.md §3. Owner
    to record host, branches and build process.
-5. **Not tested on physical devices**: the customer ledger (2026-10-04) and
+6. **Not tested on physical devices**: the customer ledger (2026-10-04) and
    vendor work (2026-10-22) were tested on web (desktop and 390 px width)
    with synthetic data only.
 
@@ -53,8 +61,9 @@ anything older than a few weeks.
    weakness (a clash returns HTTP 400 "code already exists").
 2. Invoice number generation exists twice: `nextInvoiceNo` (invoices.ts) and
    `nextInvoiceNoTx` (orders.ts). Keep identical or merge into one helper.
-3. Invoice PDF template exists twice (frontend `utils/invoiceHtml.ts`, backend
-   `src/utils/invoicePdf.ts`). Must be kept in sync by hand.
+3. Invoice and statement templates exist twice (frontend `utils/invoiceHtml.ts`
+   / `utils/ledgerHtml.ts`, backend `src/utils/invoicePdf.ts` /
+   `src/utils/statementPdf.ts`). Must be kept in sync by hand.
 4. `cors({ origin: '*' })` — open CORS; consider restricting to the app
    origins.
 5. No automated tests in either repository. Verification is manual

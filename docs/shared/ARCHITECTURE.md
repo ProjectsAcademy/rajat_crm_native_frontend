@@ -15,8 +15,11 @@
         |  Express app (rajat_crm_node_backend)
         |-- Prisma (ONE shared client) --> Supabase PostgreSQL (session/transaction pooler)
         |-- MinIO S3 client -----------> object storage (attachments, images)
-        |-- Playwright (Chromium) -----> server-side invoice PDF (WhatsApp only)
+        |-- Playwright (Chromium) -----> server-side invoice / statement PDFs (WhatsApp only)
         '-- fetch --------------------> Meta WhatsApp Cloud API (optional)
+
+  Meta WhatsApp Cloud API --(webhook, signed)--> POST /api/whatsapp/webhook
+        (customer messages to the business number → self-service menu bot)
 ```
 
 ## Request lifecycle (backend)
@@ -87,6 +90,7 @@ calendar dates are `@db.Date`.
 | Purchases & tax | `Purchase` → `PurchaseItem` (adds stock), `GstRecord` |
 | HR & payroll | `EmployeeAttendance`, `SalaryComponent`, `SalaryPayment`, `SalaryIncentive`, `EpfEsic` |
 | Media | `TenderMedia`, `InvoiceMedia`, `InventoryMedia`, `OrderMedia` (files live in MinIO) |
+| WhatsApp | `WhatsappMessage` (log of every message in/out) |
 
 Key relations:
 
@@ -150,6 +154,13 @@ Customer ledger balance =
   PDF on the server (`src/utils/invoicePdf.ts`, Playwright Chromium), uploads
   it to Meta's WhatsApp Cloud API and sends the approved template
   `invoice_share`. Needs `WHATSAPP_*` env vars and Meta Business setup.
+- **WhatsApp bot**: customers who message the business number get a menu
+  (pending amount, latest orders, statement PDF). Meta calls
+  `POST /api/whatsapp/webhook` (signature-checked); `src/lib/whatsappBot.ts`
+  answers inside the free 24-hour window. Statement PDFs come from
+  `src/utils/statementPdf.ts` (server copy of the app's statement layout).
+- **PDF rendering is serialised** (`renderHtmlToPdf`, one Chromium at a time)
+  because the server has ~1 GB RAM.
 
 ## Frontend structure (summary)
 

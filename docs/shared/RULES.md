@@ -74,12 +74,19 @@ If a task seems to require breaking one, stop and ask the owner first.
 7. **Payments that belong to a customer receipt** (`receipt_id` set) are
    changed only through the receipt in the ledger. Do not add code paths that
    edit them individually.
-8. **The invoice PDF template exists twice** — frontend
-   `utils/invoiceHtml.ts` and backend `src/utils/invoicePdf.ts`. Change both
-   together.
+8. **The invoice and statement templates exist twice** — frontend
+   `utils/invoiceHtml.ts` / `utils/ledgerHtml.ts` and backend
+   `src/utils/invoicePdf.ts` / `src/utils/statementPdf.ts`. Change both
+   together. Render PDFs only through `renderHtmlToPdf()` (one Chromium at a
+   time on a ~1 GB server).
 9. **Do not modify `update.sh` in git** without the owner. The server
    checkouts carry local edits to it; changing the tracked file makes
    `git pull` on the server conflict and breaks automatic deploys.
+10. **WhatsApp webhook**: keep `/api/whatsapp/webhook` mounted before
+   `express.json()` and never skip the signature check. Set
+   `WHATSAPP_BOT_ENABLED=true` on ONE server only (the one Meta's webhook URL
+   points at). Bot replies must never reveal data to a number that does not
+   match the customer's saved phone.
 
 ## 4. Frontend code
 
