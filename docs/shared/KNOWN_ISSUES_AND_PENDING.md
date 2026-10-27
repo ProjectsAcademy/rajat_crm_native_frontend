@@ -56,10 +56,11 @@ anything older than a few weeks.
 
 ## B. Tech debt and real bugs (not fixed yet)
 
-1. `purchases.ts` numbers purchases with `count()+1` (`PUR-MMMYY-NNN`) — can
-   collide after deletes (same bug class fixed for orders/invoices/estimates
-   on 2026-09-12). Customer/vendor codes (`CUST`/`VEND` + count+1) have the same
-   weakness (a clash returns HTTP 400 "code already exists").
+1. `purchases.ts` numbers purchases with `count()+1` (`PUR-MMMYY-NNN`) and
+   vendor codes are `VEND` + count+1 — both collide permanently once a record
+   has been deleted (HTTP 400 "already exists"). This exact bug stopped all
+   new customers in production on 2026-10-27 (fixed for customers, see
+   WORK_LOG); vendors and purchases still need the same fix.
 2. Invoice number generation exists twice: `nextInvoiceNo` (invoices.ts) and
    `nextInvoiceNoTx` (orders.ts). Keep identical or merge into one helper.
 3. Invoice and statement templates exist twice (frontend `utils/invoiceHtml.ts`

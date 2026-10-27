@@ -6,6 +6,25 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — HOTFIX: production could not create new customers
+
+- **Symptom (production, crm.urjaradiant.com):** every new customer failed
+  with "Customer code already exists. Use a different code."
+- **Root cause:** blank customer codes were generated as `CUST` + (number of
+  customers + 1). One customer had been deleted earlier, so with 49 customers
+  the next code was CUST050 — which already existed. Every attempt collided.
+- **Fix:** code = highest existing `CUSTnnn` + 1, retry with the next number
+  if a parallel save took it; hand-typed codes unchanged.
+- **Commits:** `687d09f` on branch `hotfix/customer-code-collision` (made from
+  `main`, for a pull request into `main` → production deploy); cherry-picked
+  to `dev_01` as `45d9b8a`. Only `src/routes/customers.ts`; no migration.
+- **Tested:** throwaway database reproducing production (49 customers,
+  highest CUST050): old code → 400 (bug reproduced); fixed code → CUST051;
+  three simultaneous saves → CUST052–054; duplicate hand-typed code → 400;
+  hand-typed VIP-1 then blank → CUST055.
+- **Follow-up:** vendors and purchases have the same count+1 numbering
+  (KNOWN_ISSUES B.1).
+
 ## 2026-10-27 — WhatsApp bot answers on dev
 
 - **Root cause of "no reply":** the app's webhook subscription had the callback

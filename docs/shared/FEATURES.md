@@ -111,7 +111,9 @@ invoices, optional link to an order.
 
 ## Customers and Vendors
 
-- Codes auto-generate (`CUST001`, `VEND001`) when left blank.
+- Codes auto-generate when left blank: customers get one past the highest
+  existing `CUSTnnn` (fixed 2026-10-27 — it used to be count+1, which broke
+  after a delete); vendors still use `VEND` + count+1 (KNOWN_ISSUES B.1).
 - Customer delete is blocked while it has orders, invoices, estimates, ledger
   receipts or adjustments. Vendor delete is blocked while it has purchases,
   invoices or order vendor work. "Deactivate" (`isActive=false`) is the normal
