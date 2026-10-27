@@ -98,6 +98,9 @@ Opened from the parent folder with both repos? See `docs/shared/WORKSPACE_GUIDE.
    reports no differences.
 5. Commit on `dev_01` (English message). If you cannot push, give the owner
    the exact push commands.
+6. `npm run verify` (checks both repos, including the backend API tests) ends
+   with `PASSED`. Fix failures with new commits; mention its warnings in your
+   report.
 
 ## Working with the owner
 

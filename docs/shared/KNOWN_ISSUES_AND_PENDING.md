@@ -62,7 +62,9 @@ anything older than a few weeks.
    (`TND-MMMYY-`). Each collides permanently once a record has been deleted
    (HTTP 400 "already exists"). This exact bug stopped all new customers in
    production on 2026-10-27 (fixed for customers, see WORK_LOG); use the same
-   "highest existing number + 1, retry on clash" fix for these.
+   "highest existing number + 1, retry on clash" fix for these. The vendor
+   case already has a test marked `todo` in `test/auth-and-codes.test.ts`:
+   remove the `todo` with the fix, and add the same test for the others.
 2. Invoice number generation exists twice: `nextInvoiceNo` (invoices.ts) and
    `nextInvoiceNoTx` (orders.ts). Keep identical or merge into one helper.
 3. Invoice and statement templates exist twice (frontend `utils/invoiceHtml.ts`
@@ -70,8 +72,11 @@ anything older than a few weeks.
    `src/utils/statementPdf.ts`). Must be kept in sync by hand.
 4. `cors({ origin: '*' })` — open CORS; consider restricting to the app
    origins.
-5. No automated tests in either repository. Verification is manual
-   (LOCAL_DEV_AND_TESTING.md).
+5. Automated tests cover only part of the backend (as of 2026-10-27, list in
+   LOCAL_DEV_AND_TESTING.md §4): not yet HR, purchases/stock, estimates,
+   invoice CRUD, tenders/projects, media, calendar, admin, RBAC enforcement
+   or PDF rendering. The frontend has no automated tests; UI is verified by
+   hand. Nothing runs the tests on push yet (no CI job).
 6. Detail screens opened from another module's stack (for example an order
    opened from a customer) may have no back button on native; the ledger
    detail screen has a fallback back button, other modules do not.

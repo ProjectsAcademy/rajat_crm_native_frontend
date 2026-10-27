@@ -18,7 +18,10 @@ Last verified against the code: 2026-10-22.
 | `.env` (git-ignored) | Local `EXPO_PUBLIC_API_URL` |
 
 Scripts: `npm start` (expo start), `npm run android`, `npm run ios`,
-`npm run web`, `npm run build:web` (`expo export --platform web` → `dist/`).
+`npm run web`, `npm run build:web` (`expo export --platform web` → `dist/`),
+`npm run verify` (`scripts/verify.js`, identical copy of the backend's:
+done-checks for both repos — tsc baseline, docs, rules, backend API tests;
+docs/shared/LOCAL_DEV_AND_TESTING.md §4).
 APK builds: `APK_BUILDS.md` and docs/shared/INFRASTRUCTURE_AND_DEPLOY.md.
 
 `EXPO_PUBLIC_*` values are inlined at build time — never put secrets in them.

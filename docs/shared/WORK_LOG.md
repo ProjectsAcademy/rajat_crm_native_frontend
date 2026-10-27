@@ -6,6 +6,43 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — Automated checks: `npm test` (backend API tests) and `npm run verify`
+
+- **Request:** the owner will continue with a free AI tool (Antigravity +
+  Gemini). A trial of it on a test branch showed it fixes bugs well but
+  forgets parts of the done-checklist (KNOWN_ISSUES not updated, tests that
+  bypass the HTTP route, leftover helper scripts). Asked for (1) one command
+  that checks a finished task and (2) automated tests.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `dev_01` `f076008`; frontend `dev_01` `b0eb803`; docs
+  in the commits after them. Key files: backend `test/run.js`,
+  `test/harness.ts`, `test/*.test.ts`, `test/package.json`,
+  `scripts/verify.js`, `package.json` (`test`, `verify`), `src/app.ts` (no
+  morgan log when `NODE_ENV=test`); frontend `scripts/verify.js` (identical
+  copy), `package.json` (`verify`).
+- **Database:** none (tests use their own throwaway PostgreSQL).
+- **Decisions:** `embedded-postgres` instead of a local PostgreSQL install,
+  so the tests run on the owner's Windows machine too; kept in
+  `test/package.json` so the small servers never download the 60–140 MB
+  binaries. Tests drive the real app over HTTP (not functions directly).
+  `verify` runs after committing and fails on uncommitted/leftover files;
+  conventional-commit subjects and `Alert.alert` are warnings only. The vendor
+  `count()+1` bug (KNOWN_ISSUES B.1) is a `todo` test, not fixed here.
+- **Tested:** `npm test` on Linux arm64 (Node 22.22): 25 pass, 1 todo. Each
+  check was proven to catch its bug by re-introducing it: "paid only when
+  paid > total" → 4 tests fail; orders sorted by `createdAt` only → paging
+  test fails (it needs newer orders mixed with an imported batch — a batch
+  alone pages correctly, found while writing it); customer codes back to
+  `count()+1` → code test fails. `verify` flagged a planted leftover file
+  with Devanagari text, `new PrismaClient()` and a Supabase-style URL, plus
+  uncommitted files and a missing WORK_LOG entry.
+- **Not tested / risks:** not run on Windows or macOS here (the trial run on
+  the owner's Windows machine used the same library successfully). Tests
+  cover only part of the backend (KNOWN_ISSUES B.5); no CI job runs them yet.
+- **Deploy status:** not pushed. No runtime change apart from the morgan line.
+- **Follow-ups:** fix B.1 with tests; a GitHub Actions job running
+  `npm run verify -- --quick` + `npm test` on push; more tests per module.
+
 ## 2026-10-27 — Orders: delete a wrong payment; 20 orders per page
 
 - **Request:** (1) a payment saved by mistake could only be edited — no way
@@ -37,7 +74,8 @@ history and are short; later entries were written at the time.
   errors. Backend `tsc` 0; frontend `tsc` 85 (baseline).
 - **Not tested / risks:** native Android/iOS (code path is shared
   `Modal`/`FlatList`, confirm uses `Alert.alert` there).
-- **Deploy status:** not pushed.
+- **Deploy status:** pushed to `dev_01` by the owner (dev auto-deploy);
+  production not yet.
 - **Follow-ups:** KNOWN_ISSUES B.8 (paging for other lists when needed).
 
 ## 2026-10-27 — WhatsApp bot: "My invoices" and "Payment history"

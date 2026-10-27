@@ -67,6 +67,10 @@ crmNative/                         <- you are here (not a git repo)
    are in `docs/shared/INFRASTRUCTURE_AND_DEPLOY.md`.
 8. Everything written into the repositories is English; talk to the owner in
    the language they use.
+9. **Finish with `npm run verify`** (in either repo, after committing). It
+   checks both repos — git state, docs, project rules, TypeScript, the backend
+   API tests — and must end with `PASSED`. A backend bug fix comes with a test
+   in `rajat_crm_node_backend/test/` (`npm test`).
 
 ## Running both locally
 

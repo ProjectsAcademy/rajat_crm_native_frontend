@@ -24,7 +24,8 @@ the steps below are done. No exceptions, including "small" fixes.
 
 ## 3. When you finish — Definition of Done
 
-1. **Verify** (LOCAL_DEV_AND_TESTING.md §4) and note what you could not test.
+1. **Verify** (LOCAL_DEV_AND_TESTING.md §5) and note what you could not test.
+   Backend bug fixes get a test in `test/` that fails without the fix.
 2. **Update the reference docs that your change made stale:**
 
    | You changed... | Update |
@@ -46,9 +47,13 @@ the steps below are done. No exceptions, including "small" fixes.
    Code and its doc updates go in the same commit or consecutive commits.
    Never amend or force-push. If you cannot push (no credentials), list the
    exact push commands for the owner.
-6. **Report** to the owner: what changed, how it was tested, what was not
-   tested, anything they must do (push, deploy, set env vars, grant
-   permissions).
+6. **Run `npm run verify`** in either repository (it checks both; see
+   LOCAL_DEV_AND_TESTING.md §4). It must end with `PASSED`. Fix every failure
+   with a new commit and run it again; read every warning and act on it or
+   say in the report why not.
+7. **Report** to the owner: what changed, how it was tested, what was not
+   tested, the `npm run verify` result, anything they must do (push, deploy,
+   set env vars, grant permissions).
 
 ## 4. WORK_LOG entry template
 

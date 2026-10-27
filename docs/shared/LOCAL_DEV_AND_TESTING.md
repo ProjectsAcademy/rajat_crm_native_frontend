@@ -108,12 +108,62 @@ secret>`. Give the mock unique message ids per run (`wa_message_id` is unique
 — reused ids silently skip logging). Check replies in the mock's record and
 rows in `whatsapp_messages`.
 
-## 4. Verification checklist before calling a task done
+## 4. Automated checks: `npm test` and `npm run verify`
 
+Added 2026-10-27 so that every change, by a person or by any AI tool, gets
+the same checks without relying on memory.
+
+**`npm test`** (backend repo) — API tests in `test/*.test.ts`:
+
+- `test/run.js` starts a throwaway PostgreSQL (`embedded-postgres`, works on
+  Windows/Linux/macOS, no PostgreSQL install needed), applies all migrations,
+  runs the tests with Node's built-in test runner, then deletes the database.
+  The first run installs it from `test/package.json` (about 60–140 MB,
+  kept out of the root `package.json` so the servers' `npm install` never
+  downloads it).
+- The real database is never touched: every variable named in `.env` /
+  `.env.example` is blanked for the test run, and `test/harness.ts` refuses to
+  start unless `DATABASE_URL` points at localhost. Outgoing requests to Meta
+  are blocked in `test/whatsapp.test.ts`.
+- Each test drives the real Express app over HTTP as a fresh superuser.
+  Covered (as of 2026-10-27): login/token checks, customer codes after a
+  delete, order totals (rental days, "also create invoice" + GST), payment
+  status after add/edit/delete (paid exactly in full, paise, overpaid),
+  payment ownership, order paging with shared `createdAt`, search across
+  pages, ledger receipts (oldest first, locked slices, delete, advance,
+  validation), WhatsApp webhook signature and "no credentials → nothing sent".
+- `npm test -- orders` runs only the files whose name contains `orders`.
+- A `todo` test documents a known bug (KNOWN_ISSUES B.1 vendor codes): it runs
+  but does not fail the suite. Remove the `todo` when the bug is fixed.
+- **Fixing a backend bug? Add a test that fails before the fix.** Copy a test
+  from the closest file; create data through the API helpers in
+  `test/harness.ts` (`createCustomer`, `createOrder`, `addPayment`, ...).
+
+**`npm run verify`** (either repo; `scripts/verify.js`, identical in both)
+checks BOTH repos against `origin/dev_01`. Run it after committing; it must
+pass before a task is reported done:
+
+- not on `main`; nothing uncommitted or left over (helper scripts, temp files);
+- code changed → `docs/shared/WORK_LOG.md` has a new entry (warns when it is
+  the only doc changed); `docs/shared/` identical in both repos;
+- added lines: no Devanagari text, no `new PrismaClient()`, nothing that
+  looks like a real connection string or Meta token; warns on `Alert.alert`
+  and on conventional-commit subjects (`fix(...)`);
+- backend `tsc --noEmit` 0 errors (also the tests); frontend error count equal
+  to the baseline in KNOWN_ISSUES C;
+- `npm test` (skip with `npm run verify -- --quick` while still working).
+
+It cannot judge whether the docs say the right thing, whether the UI looks
+right, or anything on a phone — those stay manual (§3 and the checklist).
+
+## 5. Verification checklist before calling a task done
+
+- [ ] `npm run verify` passes (after committing).
 - [ ] Backend `npx tsc --noEmit` → 0 errors.
 - [ ] Frontend `npx tsc --noEmit` error count ≤ baseline, and none in files you
       touched except the known `outlineStyle` pattern.
-- [ ] New/changed API endpoints exercised (success + failure cases).
+- [ ] New/changed API endpoints exercised (success + failure cases); backend
+      bug fixes come with a test in `test/`.
 - [ ] UI checked on web wide and phone-width; native layout branch reviewed
       (and tested on a device/emulator when possible).
 - [ ] Migration (if any) applied on a throwaway database, and `prisma migrate
