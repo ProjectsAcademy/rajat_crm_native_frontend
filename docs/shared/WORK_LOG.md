@@ -22,7 +22,11 @@ history and are short; later entries were written at the time.
   highest CUST050): old code → 400 (bug reproduced); fixed code → CUST051;
   three simultaneous saves → CUST052–054; duplicate hand-typed code → 400;
   hand-typed VIP-1 then blank → CUST055.
-- **Follow-up:** vendors and purchases have the same count+1 numbering
+- **Deployed:** merged into `main` and deployed to production by the owner on
+  2026-10-27; creating customers verified working in production.
+- **Follow-up:** the same count+1 numbering is still used for vendors
+  (`VEND`), inventory items (`ITEM`), purchases (`PUR-`), projects (`PRJ-`)
+  and tenders (`TND-`) — each can fail the same way after a delete
   (KNOWN_ISSUES B.1).
 
 ## 2026-10-27 — WhatsApp bot answers on dev
