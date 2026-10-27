@@ -26,14 +26,16 @@ anything older than a few weeks.
    no user relies on legacy access. New key `ledger` must be granted to groups
    that should see the customer ledger.
 3. **WhatsApp invoice sending** (manual button) — status as of 2026-10-27:
-   Meta app created, business number +91 97550 63737 registered, template
-   `invoice_share` submitted and under review. Still to do on each server
-   checkout (dev first): put `WHATSAPP_ACCESS_TOKEN` (permanent token) and
-   `WHATSAPP_PHONE_NUMBER_ID` in `.env`, run `npx playwright install
-   --with-deps chromium` once, restart pm2, add a payment method to the
-   WhatsApp Business Account, then test-send to the owner's own number. The
-   server has ~1 GB RAM and every send starts Chromium — fine for occasional
-   manual sends, not for bulk sending.
+   Meta setup done (IDs in INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp Business
+   (Meta) setup"): number +91 97550 63737 verified and on `CLOUD_API`,
+   permanent system-user token created, template `invoice_share` resubmitted
+   in the correct WhatsApp Business Account and under review. Still to do:
+   add a payment method to the WhatsApp Business Account; on each server
+   checkout (dev first) set the `WHATSAPP_*` values in `.env`, run `npx
+   playwright install --with-deps chromium` once, restart pm2; after
+   approval, test-send to the owner's own number. The server has ~1 GB RAM and
+   every send starts Chromium — fine for occasional manual sends, not for bulk
+   sending.
 4. **Web hosting details unknown** — see INFRASTRUCTURE_AND_DEPLOY.md §3. Owner
    to record host, branches and build process.
 5. **Not tested on physical devices**: the customer ledger (2026-10-04) and

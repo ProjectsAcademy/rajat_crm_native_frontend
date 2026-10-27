@@ -79,6 +79,37 @@ Then set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
 checkout's `.env` and `pm2 restart <name>`. Without Chromium the send button
 returns "The PDF engine (Chromium) is not installed on this server".
 
+### WhatsApp Business (Meta) setup — which account to use
+
+Recorded 2026-10-27. These IDs are not secrets; the token is (it lives only in
+the servers' `.env`).
+
+| Item | Value |
+|---|---|
+| Meta business portfolio | Rajat Electric Decoration & Power Point (business verification: Verified) |
+| WhatsApp Business Account (WABA, "Messaging account") | "Rajat Electricals", ID `1763205934724539` |
+| Business number | +91 97550 63737, display name "Rajat Electricals" |
+| `WHATSAPP_PHONE_NUMBER_ID` | `1368505093020145` |
+| Developer app | `rajatcrmAppForWp` |
+| Token | permanent token of system user `rajat_crm_api_admin` (Admin), permissions `whatsapp_business_messaging` + `whatsapp_business_management` |
+| Template | `invoice_share`, Utility, English (`en`) — lives in the WABA above |
+
+Several duplicate WABAs (and a Meta-provided +1 number) were created by
+repeated setup attempts and deleted on 2026-10-27. Meta's own "Test WhatsApp
+Business Account" with test number +1 555-675-2130 remains and is harmless.
+Do NOT use the developer app's "Register your WhatsApp phone number" wizard
+for this number — it tries to add a new number ("already registered").
+
+Read-only checks (run in a terminal, never paste the token anywhere else):
+
+```bash
+curl -s "https://graph.facebook.com/v21.0/1763205934724539/phone_numbers" -H "Authorization: Bearer $TOKEN"
+curl -s "https://graph.facebook.com/v21.0/1763205934724539/message_templates?name=invoice_share" -H "Authorization: Bearer $TOKEN"
+```
+
+The first must show `platform_type: CLOUD_API` and the phone number ID above;
+the second shows the template `status` (`APPROVED` before sending works).
+
 ### Releasing to production (backend)
 
 1. Everything merged and tested on `dev_01` / dev API.

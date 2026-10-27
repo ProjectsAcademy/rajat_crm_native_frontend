@@ -6,6 +6,20 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — WhatsApp Business (Meta) account setup recorded
+
+- **Done by:** owner in Meta Business Suite, guided by Claude Code.
+- **What happened:** repeated setup attempts had created several WhatsApp
+  Business Accounts (one with a Meta-provided +1 number); the owner deleted
+  the duplicates. The live account is WABA `1763205934724539` with
+  +91 97550 63737 (phone number ID `1368505093020145`, verified,
+  `CLOUD_API`). Template `invoice_share` resubmitted in that account. A
+  permanent token was generated for system user `rajat_crm_api_admin` (the
+  Employee-level system user could not get WhatsApp permissions).
+- **Docs:** INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp Business (Meta) setup";
+  KNOWN_ISSUES A.3 updated (payment method and server setup still pending).
+- **Code:** none.
+
 ## 2026-10-27 — WhatsApp invoice button ready for the first real send
 
 - **Request:** while the Meta template is under review, invoices must be
