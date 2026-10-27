@@ -65,6 +65,20 @@ tracked file makes `git pull` on the server fail with a conflict.
 - Verify a deploy really landed: on the server `cd <path> && git log -1
   --oneline`, and `pm2 list` / `pm2 logs <name>`.
 
+### One-time server setup for WhatsApp invoice PDFs
+
+`npm install` does not download Playwright's browser and `update.sh` does not
+install it. In each checkout that should send WhatsApp invoices, run once:
+
+```bash
+npx playwright install --with-deps chromium   # may ask for sudo (system libraries)
+```
+
+Then set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
+`WHATSAPP_TEMPLATE_NAME=invoice_share`, `WHATSAPP_TEMPLATE_LANG=en` in that
+checkout's `.env` and `pm2 restart <name>`. Without Chromium the send button
+returns "The PDF engine (Chromium) is not installed on this server".
+
 ### Releasing to production (backend)
 
 1. Everything merged and tested on `dev_01` / dev API.

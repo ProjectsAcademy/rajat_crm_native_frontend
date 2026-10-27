@@ -259,7 +259,11 @@ export const invoicesApi = {
   create: (data: InvoiceCreateInput) => api.post<InvoiceDetailResponse>('/api/invoices', data),
   update: (id: number, data: InvoiceUpdateInput) => api.put<InvoiceDetailResponse>(`/api/invoices/${id}`, data),
   remove: (id: number) => api.delete<{ success: boolean }>(`/api/invoices/${id}`),
-  sendWhatsapp: (id: number) => api.post<{ success: boolean; messageId: string; sentTo: string }>(`/api/invoices/${id}/send-whatsapp`),
+  // Renders a PDF and calls Meta on the server — can take well over the
+  // default 15 s on the small server. A client-side timeout here would report
+  // failure for a message that was actually sent, inviting a duplicate send.
+  sendWhatsapp: (id: number) =>
+    api.post<{ success: boolean; messageId: string; sentTo: string }>(`/api/invoices/${id}/send-whatsapp`, undefined, { timeout: 60000 }),
 };
 
 // ─── Purchases ────────────────────────────────────────────────────────────────

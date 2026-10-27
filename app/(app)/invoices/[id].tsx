@@ -165,7 +165,12 @@ export default function InvoiceDetailScreen() {
         setSendingWhatsapp(false);
       }
     };
-    const phone = invoice.customer.phone || '(no phone on file)';
+    const phone = invoice.customer.phone?.trim();
+    if (!phone) {
+      const msg = `${invoice.customer.customerName} has no phone number saved. Add it in the customer's profile first.`;
+      if (Platform.OS === 'web') window.alert(msg); else Alert.alert('No Phone Number', msg);
+      return;
+    }
     const prompt = `Send "${invoice.invoiceNo}" to ${invoice.customer.customerName} on WhatsApp (${phone})?`;
     if (Platform.OS === 'web') {
       if (window.confirm(prompt)) doIt();

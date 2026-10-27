@@ -82,6 +82,19 @@ PostgreSQL 16 binaries and Chromium installed).
    1280 px and 390 px widths.
 7. **Clean up**: stop the backend/Expo processes and `pg_ctl ... stop`.
 
+### Testing WhatsApp sending without sending anything
+
+Never test against the real Meta API with customer numbers. A local `.env`
+may contain the REAL WhatsApp token — dotenv loads it unless the variables
+are already set (even to an empty value). To test the full flow (PDF render,
+upload, template payload, error messages): start the API from a small Node
+script that replaces `global.fetch` for `https://graph.facebook.com` URLs with
+canned responses (`{ id }` for `/media`, `{ messages: [{ id }] }` for
+`/messages`, or an `{ error: { code: 132001 } }` body) BEFORE requiring
+`src/app`, record the requests, and delete that record afterwards (it contains
+the `Authorization` header). Playwright's Chromium must be installed locally
+(`npx playwright install chromium`).
+
 ## 4. Verification checklist before calling a task done
 
 - [ ] Backend `npx tsc --noEmit` → 0 errors.

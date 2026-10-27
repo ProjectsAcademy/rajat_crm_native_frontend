@@ -81,10 +81,26 @@ professionally". Decisions confirmed with the owner:
 - Printed layout copies the client's paper bill book (letterhead constants in
   `utils/invoiceHtml.ts`, `COMPANY`). A second copy of the template is
   `src/utils/invoicePdf.ts` in the backend — keep them identical.
-- WhatsApp: "Send via WhatsApp" for sales invoices with a customer phone
-  (Indian mobile numbers only). Needs Meta WhatsApp Business setup and an
-  approved template `invoice_share`; each message costs money and cannot be
-  recalled, so the UI confirms first.
+- WhatsApp (manual only — decided with the owner 2026-10-27; no automatic
+  sending anywhere): the "WhatsApp" button on a sales invoice that has a
+  customer sends the invoice PDF to the phone number saved in that customer's
+  profile, after a confirm dialog that shows the number. Each message costs
+  money and cannot be recalled.
+  - Flow: `POST /api/invoices/:id/send-whatsapp` → checks the customer phone
+    (Indian mobile, 10 digits or 91 + 10) → checks WhatsApp is configured →
+    renders the PDF (`src/utils/invoicePdf.ts`, Playwright Chromium) → uploads
+    it to Meta → sends template `invoice_share` (language `en`, Document
+    header, body variables: customer name, invoice no., total "11,800.00",
+    due date "DD/MM/YYYY").
+  - Template text submitted to Meta (category Utility): "Hello {{1}}, please
+    find attached your invoice {{2}} for Rs. {{3}}, due on {{4}}. Thank you
+    for choosing RAJAT Electric Decoration & Power Point."
+  - Errors are explained in plain language (missing phone → 400, server not
+    configured → 503, common Meta codes such as 190 token, 132001 template,
+    131042 payment are mapped in `src/lib/whatsapp.ts`).
+  - The app waits up to 60 s for this call (`invoicesApi.sendWhatsapp`) — the
+    default 15 s could report a failure for a message that was actually sent
+    and invite a duplicate (charged) send.
 - Standalone invoices do not create GST records; only the order form's "Also
   create an invoice" path does.
 
