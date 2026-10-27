@@ -74,6 +74,17 @@ install it. In each checkout that should send WhatsApp invoices, run once:
 npx playwright install --with-deps chromium   # may ask for sudo (system libraries)
 ```
 
+The browser is stored per Linux user in `~/.cache/ms-playwright` (done on
+the server for user `ubuntu` on 2026-10-27, Chromium build 1234 for
+Playwright 1.62). Both checkouts run as `ubuntu`, so production can use the
+same download as long as its `playwright` version matches; after a Playwright
+upgrade, run the install again. Quick check that PDFs work, without sending
+anything (in the checkout folder):
+
+```bash
+node -e "require('playwright').chromium.launch({args:['--no-sandbox']}).then(async b=>{const p=await b.newPage();await p.setContent('<h1>ok</h1>');console.log('PDF bytes:',(await p.pdf()).length);await b.close()}).catch(e=>console.error('FAILED:',e.message))"
+```
+
 Then set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
 `WHATSAPP_TEMPLATE_NAME=invoice_share`, `WHATSAPP_TEMPLATE_LANG=en` in that
 checkout's `.env` and `pm2 restart <name>`. Without Chromium the send button

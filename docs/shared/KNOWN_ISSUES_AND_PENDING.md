@@ -31,10 +31,10 @@ anything older than a few weeks.
    permanent system-user token created, template `invoice_share` resubmitted
    in the correct WhatsApp Business Account and under review; billing is a
    prepaid INR balance (₹100 loaded; Indian cards are not accepted — keep it
-   topped up). Still to do: on each server
-   checkout (dev first) set the `WHATSAPP_*` values in `.env`, run `npx
-   playwright install --with-deps chromium` once, restart pm2; after
-   approval, test-send to the owner's own number. The server has ~1 GB RAM and
+   topped up). Dev server: Chromium installed and pm2 restarted on
+   2026-10-27 (WhatsApp `.env` values to be confirmed). Still to do: template
+   approval, then test-send to the owner's own number; later the same `.env`
+   values in the production checkout. The server has ~1 GB RAM and
    every send starts Chromium — fine for occasional manual sends, not for bulk
    sending.
 4. **Web hosting details unknown** — see INFRASTRUCTURE_AND_DEPLOY.md §3. Owner
