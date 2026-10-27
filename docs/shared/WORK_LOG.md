@@ -6,6 +6,50 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — Code map (`npm run map`) and a short reading path for agents
+
+- **Request:** agents (Antigravity + Gemini) answer slowly because they read
+  every document before every task; the owner asked for an accurate,
+  easy-to-maintain index/graph of the repos so agents finish faster with
+  less context.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `dev_01` `461d69c`; frontend `dev_01` `5f3dcc1`; docs
+  in the commits after them. Key files: `scripts/code-map.js` (identical in
+  both repos), `docs/shared/CODE_MAP.md` (generated), `scripts/verify.js`
+  (map check; both scripts must be identical), `AGENTS.md` in both repos
+  (new "How to start a task"), `docs/shared/README.md`, `WORKSPACE_GUIDE.md`,
+  `DOCUMENTATION_PROTOCOL.md`, `BACKEND_REFERENCE.md` §4 and
+  `FRONTEND_REFERENCE.md` §4 (hand-written route/API tables replaced by a
+  pointer to the map plus the notes the map cannot show).
+- **Database:** none.
+- **Decisions:** the map is generated from the code (regex over this
+  project's conventions, no dependencies) and never edited by hand;
+  `npm run verify` fails when it is stale, so agents can trust it. It holds
+  no dates or commit hashes, so it changes only when the code does. The
+  mandatory reading of ~80 KB of docs before any change is replaced by:
+  RULES.md, then search CODE_MAP / KNOWN_ISSUES / FEATURES for the module,
+  plus a "the task touches → also read" table; the full reading order stays
+  in README.md for whole-system questions. The hand-written route tables
+  were removed because they duplicated the map and had to be edited on every
+  API change.
+- **Tested:** the map covers 131 endpoints, 124 app API functions (every one
+  matched to a backend route), 112 frontend files, 40 models. Rows for
+  orders, ledger, calendar (permission keys from constants), media (in-file
+  permission middleware) and dashboard checked against the code. A route
+  added without regenerating → `code-map.js --check` exits 1. The same map is
+  produced from either repo. The "payment → order status" trace that took
+  the Antigravity trial ~25 tool calls is one search (`recalcOrderPaid`).
+- **Not tested / risks:** the parser follows the current conventions
+  (`router.get('...')` with single quotes, `api.get(...)` calls inside the
+  `xxxApi` objects of `services/api.ts`, `prisma.<model>.<op>(`); tables
+  reached through a dynamic delegate (`media.ts` `getModel`) are not shown.
+  A new convention needs a parser change — missing rows or entries in map §7
+  are the symptom. The speed-up with Antigravity is not measured yet.
+- **Deploy status:** not pushed. No runtime change.
+- **Follow-ups:** give Antigravity the same prompt as in its trial and
+  compare time and tool calls. Map §7 lists 7 `services/api.ts` functions
+  that no app file calls (candidates for removal).
+
 ## 2026-10-27 — Automated checks: `npm test` (backend API tests) and `npm run verify`
 
 - **Request:** the owner will continue with a free AI tool (Antigravity +

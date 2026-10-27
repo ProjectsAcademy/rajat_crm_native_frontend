@@ -89,24 +89,10 @@ docs/                              this file, FRONTEND_UI_RULES.md, shared/ (mir
 Axios instance (`timeout 15000`, JSON) with a request interceptor that adds
 `Authorization: Bearer <token>`. 401s are not intercepted globally.
 
-| Export | Backend | Methods |
-|---|---|---|
-| `authApi` | `/api/auth` | login, me, logout |
-| `adminApi` | `/api/admin` | features, users.*, groups.* (super admin) |
-| `dashboardApi` | `/api/dashboard` | getSummary, getRevenue, getCollectedByCustomer, getOutstandingByCustomer |
-| `calendarApi` | `/api/calendar` | list, create, update, remove |
-| `customersApi` | `/api/customers` | list, detail, create, update, deactivate (calls DELETE = hard delete with guards) |
-| `ledgerApi` | `/api/ledger` | receivables, customer, setOpeningBalance, dueOrders, createReceipt, deleteReceipt, createEntry, updateEntry, deleteEntry |
-| `vendorsApi` | `/api/vendors` | list, detail (includes `orderWorks`), create, update, delete |
-| `employeesApi` | `/api/employees` | list, detail, create, update, deactivate, reactivate, permanentDelete |
-| `tendersApi`, `projectsApi`, `estimatesApi`, `purchasesApi`, `gstApi` | matching `/api/*` | list, detail, create, update, remove |
-| `inventoryApi` | `/api/inventory` | list, detail, create, update, deactivate, permanentDelete, categories |
-| `stockApi` | `/api/stock` | list, create, update, remove |
-| `ordersApi` | `/api/orders` | list (`page`, `limit`), detail, create, update, remove, addPayment, updatePayment, removePayment (create/update accept `vendorWorks`) |
-| `invoicesApi` | `/api/invoices` | list, detail, create, update, remove, sendWhatsapp |
-| `hrApi` | `/api/hr` | attendance.*, salaryComponents.*, salaryPayments.*, incentives.*, epfEsic.* |
-| `vehiclesApi` | `/api/vehicles` | list, detail (read-only API) |
-| `maintenanceApi` | `/api/maintenance` | list, fdAlerts (read-only API) |
+Every API object and function, its URL, the backend handler it reaches and
+the app files that call it are in the GENERATED `docs/shared/CODE_MAP.md`
+§2–4 (search e.g. `ordersApi.addPayment`; `npm run map`). Section 7 there
+lists functions with no backend route and functions nothing calls.
 
 Types for every request/response live at the bottom of `services/api.ts`.
 They are maintained by hand — update them whenever the backend shape changes.

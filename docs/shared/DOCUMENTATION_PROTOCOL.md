@@ -6,10 +6,11 @@ the steps below are done. No exceptions, including "small" fixes.
 
 ## 1. Before you start
 
-1. Read `AGENTS.md`, `docs/shared/RULES.md`,
-   `docs/shared/KNOWN_ISSUES_AND_PENDING.md`, and the docs for the area you
-   will touch (FEATURES.md section, BACKEND_REFERENCE / FRONTEND_REFERENCE).
-2. Read the last entries of `docs/shared/WORK_LOG.md`.
+1. Follow "How to start a task" in `AGENTS.md`: `docs/shared/RULES.md`, then
+   search `docs/shared/CODE_MAP.md`, `KNOWN_ISSUES_AND_PENDING.md` and
+   `FEATURES.md` for the module, and read only what the task needs.
+2. Read the top two entries of `docs/shared/WORK_LOG.md` (search it for the
+   module if you need more).
 3. `git status -sb` in both repos: be on `dev_01`, know what is uncommitted
    and whether you are ahead/behind `origin`.
 4. If the docs and the code disagree, trust the code, and fix the doc as part
@@ -30,9 +31,10 @@ the steps below are done. No exceptions, including "small" fixes.
 
    | You changed... | Update |
    |---|---|
-   | API route, request/response shape, permission key | `docs/BACKEND_REFERENCE.md` (backend repo) and the API table in `docs/FRONTEND_REFERENCE.md` (frontend repo) |
-   | Prisma schema / migration | `docs/BACKEND_REFERENCE.md` models section; `docs/shared/ARCHITECTURE.md` if relations or money flow changed |
-   | Screen, component, store, navigation | `docs/FRONTEND_REFERENCE.md` |
+   | API route, screen, component, Prisma model (what exists, where, who calls it) | nothing by hand: `npm run map` regenerates `docs/shared/CODE_MAP.md` (verify fails until you do) |
+   | Request/response shape, permission key | `services/api.ts` types (frontend repo); `docs/BACKEND_REFERENCE.md` §4 for request bodies and the notes the map cannot show |
+   | Prisma schema / migration | `docs/BACKEND_REFERENCE.md` §5 notes; `docs/shared/ARCHITECTURE.md` if relations or money flow changed |
+   | Folder structure, a new pattern, store, navigation | `docs/FRONTEND_REFERENCE.md` |
    | Business rule or behaviour users see | `docs/shared/FEATURES.md` |
    | Server, deploy, env vars, database setup | `docs/shared/INFRASTRUCTURE_AND_DEPLOY.md`, `.env.example` |
    | Found a bug / left something unfinished / finished a pending item | `docs/shared/KNOWN_ISSUES_AND_PENDING.md` |

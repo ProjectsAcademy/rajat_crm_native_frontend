@@ -19,22 +19,39 @@ The documentation in `docs/shared/` describes the WHOLE system (including
 the backend, server and database) and is mirrored identically in both
 repositories, so this repo alone is enough to understand everything.
 
-## Mandatory reading order (before any change)
+## How to start a task (read little, search a lot)
 
-1. `docs/shared/PROJECT_OVERVIEW.md` — what, who, why, environments.
-2. `docs/shared/RULES.md` — non-negotiable rules.
-3. `docs/shared/KNOWN_ISSUES_AND_PENDING.md` — open work, known bugs, the
-   TypeScript error baseline, things that look wrong on purpose.
-4. `docs/shared/ARCHITECTURE.md` — how the system works.
-5. `docs/FRONTEND_REFERENCE.md` — this repo: structure, routing, API layer,
-   components, patterns.
-6. `docs/FRONTEND_UI_RULES.md` — the owner's mandatory UI engineering rules.
-7. The section of `docs/shared/FEATURES.md` for the module you will touch.
-8. Before testing or releasing: `docs/shared/LOCAL_DEV_AND_TESTING.md`,
-   `docs/shared/INFRASTRUCTURE_AND_DEPLOY.md`, `APK_BUILDS.md`.
-9. Before finishing: `docs/shared/DOCUMENTATION_PROTOCOL.md`.
+Reading every document before every task wastes time and context. Instead:
 
-Index of all docs: `docs/shared/README.md`. History: `docs/shared/WORK_LOG.md`.
+1. Read `docs/shared/RULES.md` (always — breaking it has caused outages) and
+   the rule summary below.
+2. Search `docs/shared/CODE_MAP.md` for the module, endpoint, screen,
+   component or table. It is generated from the code and `npm run verify`
+   fails when it is stale, so trust it. Open only the files and line ranges
+   it names.
+3. Search `docs/shared/KNOWN_ISSUES_AND_PENDING.md` and
+   `docs/shared/FEATURES.md` for the module; read only the matching sections.
+4. Read more only when the task needs it:
+
+   | The task touches | Also read |
+   |---|---|
+   | How a screen or component looks or behaves | `docs/FRONTEND_UI_RULES.md`, `docs/FRONTEND_REFERENCE.md` §9 "Layout patterns" and §10 "Gotchas" |
+   | API calls and types | only the API object you need in `services/api.ts` (CODE_MAP gives its line) |
+   | Printing, PDFs / uploads | `docs/FRONTEND_REFERENCE.md` §6 / §7 |
+   | Money screens: orders, payments, invoices, ledger | `docs/shared/ARCHITECTURE.md` "Money flow" |
+   | Permissions, a new module | `docs/shared/ARCHITECTURE.md` "Permissions (RBAC)", "Common tasks" below |
+   | Releasing (APK, web) | `docs/shared/INFRASTRUCTURE_AND_DEPLOY.md` §3, `APK_BUILDS.md` |
+   | Running the app locally | `docs/shared/LOCAL_DEV_AND_TESTING.md` §2–3 |
+
+5. History: the top two entries of `docs/shared/WORK_LOG.md`, or search it
+   for the module — do not read it whole.
+6. In any file longer than ~300 lines, search first and read only the range
+   you need.
+7. Finish with `docs/shared/DOCUMENTATION_PROTOCOL.md` §3 and `npm run verify`
+   (it tells you when to run `npm run map`).
+
+To understand the whole system (new developer, or a "how does it work"
+question): `docs/shared/README.md` has the full reading order.
 Opened from the parent folder with both repos? See `docs/shared/WORKSPACE_GUIDE.md`
 (and run `scripts/setup-workspace-root.sh` to write the workspace guide files).
 
@@ -62,6 +79,7 @@ Opened from the parent folder with both repos? See `docs/shared/WORKSPACE_GUIDE.
 
 | Need | Look at |
 |---|---|
+| Which screen calls which API, which component is used where | `docs/shared/CODE_MAP.md` (search it) |
 | Routes / screens | `app/(app)/<module>/` (`_layout.tsx`, `index.tsx`, `[id].tsx`) |
 | Tabs and hidden stacks | `app/(app)/_layout.tsx` |
 | API calls and types | `services/api.ts` |

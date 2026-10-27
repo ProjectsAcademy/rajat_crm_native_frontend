@@ -30,10 +30,13 @@ crmNative/                         <- you are here (not a git repo)
 
 ## Start here
 
-1. Read the whole-system docs ONCE from either repo — `docs/shared/` is
-   identical in both. Start with `rajat_crm_node_backend/docs/shared/README.md`
-   (reading order) and `docs/shared/RULES.md`.
-2. Then read the `AGENTS.md` of every repo you will change:
+1. For a task, do not read every document: follow "How to start a task" in
+   the `AGENTS.md` of the repo you will change — `docs/shared/RULES.md`, then
+   search `docs/shared/CODE_MAP.md` (generated from the code of both repos)
+   for the files and lines to open. For a whole-system overview:
+   `rajat_crm_node_backend/docs/shared/README.md` (reading order).
+   `docs/shared/` is identical in both repos.
+2. The `AGENTS.md` of every repo you will change:
    - `rajat_crm_node_backend/AGENTS.md`
    - `rajat_crm_native_frontend/AGENTS.md`
 3. Check both repos before you start:

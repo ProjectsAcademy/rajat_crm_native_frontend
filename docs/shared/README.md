@@ -12,7 +12,13 @@
 > mirror is that a reader who has only ONE of the two repos still gets the
 > full picture of the whole system.
 
-## Read in this order
+## Doing a task? Use the fast path
+
+Do not read everything. `AGENTS.md` ("How to start a task") says what to read
+for each kind of task, and [CODE_MAP.md](CODE_MAP.md) — generated from the
+code, checked by `npm run verify` — tells you which files and lines to open.
+
+## Read in this order (first time, or to understand the whole system)
 
 | # | File | What it gives you | When |
 |---|---|---|---|
@@ -26,6 +32,7 @@
 | 8 | [DOCUMENTATION_PROTOCOL.md](DOCUMENTATION_PROTOCOL.md) | How to record your work so the next person/AI can continue | Before finishing ANY task |
 | 9 | [WORK_LOG.md](WORK_LOG.md) | Chronological history of what was built, when and why | When you need context on past decisions |
 | 10 | [WORKSPACE_GUIDE.md](WORKSPACE_GUIDE.md) | Working with both repos from their parent folder; source of the workspace-root `AGENTS.md` | When your tool opens the parent folder, or on a new machine |
+| 11 | [CODE_MAP.md](CODE_MAP.md) | GENERATED index: every API endpoint (handler line, permission, tables, app files calling it), screens, components, models, helpers | Search it at the start of every task; never edit it — `npm run map` |
 
 Repository-specific references (not mirrored):
 
