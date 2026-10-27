@@ -6,6 +6,20 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — Home dashboard redesign & responsive navigation
+
+- **Request:** Redesign the Home dashboard of the app (`rajat_crm_native_frontend`) with a new visual design, fully responsive on web and native, keeping all logic, data fetching, features, permissions and existing color tokens. In follow-up, make `WebTopNav` responsive with a mobile hamburger menu on narrow viewports.
+- **Done by:** Antigravity (Gemini 2.5)
+- **Changes:** frontend `ag/dashboard-redesign`. Key files: `app/(app)/index.tsx`, `components/DashboardCalendar.tsx`, `components/RevenueChart.tsx`, `components/dashboard/ModuleCard.tsx`, `components/WebTopNav.tsx`, `docs/FRONTEND_REFERENCE.md`.
+- **Database:** none.
+- **Decisions:** Responsive layout driven by `useWindowDimensions()` with adaptive column counts (2 cols on phone, 3 on tablet, 4-5 on desktop); side-by-side Calendar and Revenue widgets when width >= 960px, cleanly stacked on narrower screens with independent gating; created reusable presentational `ModuleCard` supporting both compact (horizontal) and full (vertical) cards; unified design system tokens from `constants/colors.ts`; replaced `Alert.alert` with `utils/dialogs.ts` for cross-platform compliance; upgraded `WebTopNav` with mobile hamburger drawer at `< 768px` so web users on phones get full navigation without horizontal overflow.
+- **Tested:** Tested on Chrome web at 1440px, 768px, and 390px widths with BEFORE and AFTER screenshots (including closed and open hamburger drawer states); all 10 feature checklist items verified; TypeScript error count strictly preserved at 85 baseline; `npm run verify` passed.
+- **Not tested / risks:** Physical Android and iOS devices could not be directly tested in this environment; verified through Expo web responsive viewports.
+- **Deploy status:** Committed on branch `ag/dashboard-redesign` in `rajat_crm_native_frontend`. Not pushed.
+- **Follow-ups:** Test on real Android APK build.
+
+---
+
 ## 2026-10-27 — Code map (`npm run map`) and a short reading path for agents
 
 - **Request:** agents (Antigravity + Gemini) answer slowly because they read
