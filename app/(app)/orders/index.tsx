@@ -1,5 +1,5 @@
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Platform } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +23,10 @@ const PAY_COLORS: Record<string, { text: string }> = {
   paid:    { text: Colors.success },
 };
 
+// Was one request with limit 100, so orders past the newest 100 were only
+// reachable through search. Search still runs on the server over all orders.
+const PAGE_SIZE = 20;
+
 function fmtAmount(val: string) {
   const n = parseFloat(val || '0');
   if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
@@ -36,26 +40,47 @@ export default function OrdersScreen() {
   const { customerId, customerName } = useLocalSearchParams<{ customerId?: string; customerName?: string }>();
   const [items, setItems]         = useState<OrderSummary[]>([]);
   const [search, setSearch]       = useState('');
+  const [query, setQuery]         = useState('');  // search text once typing pauses
+  const [page, setPage]           = useState(1);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [total, setTotal]         = useState(0);
   const [showForm, setShowForm]   = useState(false);
+  const requestNo = useRef(0);
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // A new search or customer filter always starts again at page 1.
+  useEffect(() => {
+    const t = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+  useEffect(() => { setPage(1); }, [customerId]);
 
   const fetchItems = useCallback(async (silent = false) => {
+    // Only the latest request may update the list (fast page taps can
+    // otherwise show an older page's response last).
+    const req = ++requestNo.current;
     if (!silent) setLoading(true);
     try {
       const { data } = await ordersApi.list({
-        search: search.trim() || undefined,
+        search: query || undefined,
         customerId: customerId ? parseInt(customerId) : undefined,
-        limit: 100,
+        page,
+        limit: PAGE_SIZE,
       });
+      if (req !== requestNo.current) return;
+      // The last page can empty out (orders deleted elsewhere) — step back.
+      if (data.orders.length === 0 && page > 1) {
+        setPage(Math.max(1, Math.ceil(data.total / PAGE_SIZE)));
+        return;
+      }
       setItems(data.orders);
       setTotal(data.total);
-    } catch { setItems([]); }
-    finally { setLoading(false); setRefreshing(false); }
-  }, [search, customerId]);
+    } catch { if (req === requestNo.current) setItems([]); }
+    finally { if (req === requestNo.current) { setLoading(false); setRefreshing(false); } }
+  }, [query, customerId, page]);
 
-  useEffect(() => { const t = setTimeout(() => fetchItems(), 350); return () => clearTimeout(t); }, [fetchItems]);
+  useEffect(() => { fetchItems(); }, [fetchItems]);
 
   // Silent refresh whenever this screen regains focus (e.g. after deleting an order in detail view)
   useFocusEffect(useCallback(() => { fetchItems(true); }, [fetchItems]));
@@ -110,6 +135,26 @@ export default function OrdersScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchItems(true); }} tintColor={Colors.accent} />}
           contentContainerStyle={styles.list} ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           ListEmptyComponent={<View style={styles.center}><Ionicons name="receipt-outline" size={48} color={Colors.textMuted} /><Text style={styles.emptyText}>No orders found</Text></View>}
+          ListFooterComponent={total > PAGE_SIZE ? (
+            <View style={styles.pager}>
+              <TouchableOpacity style={[styles.pageBtn, page <= 1 && styles.pageBtnOff]} disabled={page <= 1}
+                onPress={() => setPage((p) => p - 1)} activeOpacity={0.75}>
+                <Ionicons name="chevron-back" size={16} color={Colors.textPrimary} />
+                <Text style={styles.pageBtnText}>Prev</Text>
+              </TouchableOpacity>
+              <View style={styles.pageInfo}>
+                <Text style={styles.pageInfoMain}>Page {page} of {pages}</Text>
+                <Text style={styles.pageInfoSub}>
+                  {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+                </Text>
+              </View>
+              <TouchableOpacity style={[styles.pageBtn, page >= pages && styles.pageBtnOff]} disabled={page >= pages}
+                onPress={() => setPage((p) => p + 1)} activeOpacity={0.75}>
+                <Text style={styles.pageBtnText}>Next</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+          ) : null}
         />
       )}
 
@@ -154,6 +199,17 @@ const styles = StyleSheet.create({
   date: { fontSize: 11, color: Colors.textMuted, marginLeft: 'auto' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 10 },
   emptyText: { color: Colors.textSecondary, fontSize: 14 },
+  // Bottom padding keeps Next clear of the floating + button.
+  pager: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, marginBottom: 72 },
+  pageBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40, paddingHorizontal: 14,
+    borderRadius: 8, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface,
+  },
+  pageBtnOff: { opacity: 0.4 },
+  pageBtnText: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  pageInfo: { flex: 1, alignItems: 'center' },
+  pageInfoMain: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  pageInfoSub: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
   fab: {
     position: 'absolute', bottom: 24, right: 20,
     width: 56, height: 56, borderRadius: 28,

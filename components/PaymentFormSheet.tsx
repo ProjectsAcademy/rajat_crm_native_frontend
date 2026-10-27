@@ -1,11 +1,12 @@
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Modal,
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert,
+  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { ordersApi, OrderPayment } from '../services/api';
 import { Colors } from '../constants/colors';
+import { confirmAsync, notify } from '../utils/dialogs';
 
 interface Props {
   visible: boolean;
@@ -51,6 +52,8 @@ export default function PaymentFormSheet({ visible, orderId, payment, onClose, o
   const [date,   setDate]   = useState('');
   const [refNo,  setRefNo]  = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const busy = saving || deleting;
 
   useEffect(() => {
     if (!visible) return;
@@ -66,11 +69,11 @@ export default function PaymentFormSheet({ visible, orderId, payment, onClose, o
 
   const handleSave = async () => {
     if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert('Invalid amount', 'Please enter a valid payment amount');
+      notify('Invalid amount', 'Please enter a valid payment amount');
       return;
     }
     const isoDate = displayToIso(date);
-    if (!isoDate) { Alert.alert('Invalid date', 'Enter date as DD/MM/YYYY'); return; }
+    if (!isoDate) { notify('Invalid date', 'Enter date as DD/MM/YYYY'); return; }
 
     setSaving(true);
     try {
@@ -83,8 +86,29 @@ export default function PaymentFormSheet({ visible, orderId, payment, onClose, o
       onSaved();
       onClose();
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error || 'Could not save payment.');
+      notify('Error', e?.response?.data?.error || 'Could not save payment.');
     } finally { setSaving(false); }
+  };
+
+  // For a payment saved by mistake — editing could not remove it.
+  const handleDelete = async () => {
+    if (!payment) return;
+    const amountText = `₹${parseFloat(payment.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+    const ok = await confirmAsync(
+      'Delete payment?',
+      `${amountText} (${payment.paymentMode.toUpperCase()}, ${isoToDisplay(payment.paymentDate)}) will be removed. The order's paid amount and the customer's ledger update automatically. This cannot be undone.`,
+      'Delete',
+      true,
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await ordersApi.removePayment(orderId, payment.id);
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      notify('Error', e?.response?.data?.error || 'Could not delete payment.');
+    } finally { setDeleting(false); }
   };
 
   return (
@@ -154,16 +178,28 @@ export default function PaymentFormSheet({ visible, orderId, payment, onClose, o
 
           {/* Actions */}
           <View style={s.actions}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose} disabled={saving}>
+            <TouchableOpacity style={s.cancelBtn} onPress={onClose} disabled={busy}>
               <Text style={s.cancelText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
+            <TouchableOpacity style={[s.saveBtn, busy && { opacity: 0.6 }]} onPress={handleSave} disabled={busy}>
               {saving
                 ? <ActivityIndicator size="small" color="#111" />
                 : <Text style={s.saveText}>{isEdit ? 'Update Payment' : 'Save Payment'}</Text>
               }
             </TouchableOpacity>
           </View>
+
+          {isEdit && (
+            <TouchableOpacity style={[s.deleteBtn, busy && { opacity: 0.6 }]} onPress={handleDelete} disabled={busy}>
+              {deleting
+                ? <ActivityIndicator size="small" color={Colors.error} />
+                : <>
+                    <Ionicons name="trash-outline" size={16} color={Colors.error} />
+                    <Text style={s.deleteText}>Delete Payment</Text>
+                  </>
+              }
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -208,4 +244,10 @@ const s = StyleSheet.create({
   cancelText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
   saveBtn:    { flex: 2, paddingVertical: 14, borderRadius: 8, backgroundColor: Colors.accent, alignItems: 'center' },
   saveText:   { fontSize: 15, fontWeight: '700', color: '#111' },
+  deleteBtn:  {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
+    marginTop: 12, paddingVertical: 14, borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.error, backgroundColor: Colors.errorLight,
+  },
+  deleteText: { fontSize: 15, fontWeight: '700', color: Colors.error },
 });

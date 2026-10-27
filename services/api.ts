@@ -240,7 +240,7 @@ export interface OrderPaymentInput {
 }
 
 export const ordersApi = {
-  list: (params?: { search?: string; status?: string; paymentStatus?: string; customerId?: number; limit?: number }) =>
+  list: (params?: { search?: string; status?: string; paymentStatus?: string; customerId?: number; page?: number; limit?: number }) =>
     api.get<OrderListResponse>('/api/orders', { params }),
   detail:     (id: number) => api.get<OrderDetailResponse>(`/api/orders/${id}`),
   create:     (data: OrderCreateInput) => api.post<{ order: OrderSummary }>('/api/orders', data),
@@ -248,6 +248,7 @@ export const ordersApi = {
   remove:     (id: number) => api.delete<{ success: boolean }>(`/api/orders/${id}`),
   addPayment:    (id: number, data: OrderPaymentInput) => api.post<{ payment: OrderPayment }>(`/api/orders/${id}/payments`, data),
   updatePayment: (id: number, paymentId: number, data: OrderPaymentInput) => api.put<{ success: boolean }>(`/api/orders/${id}/payments/${paymentId}`, data),
+  removePayment: (id: number, paymentId: number) => api.delete<{ success: boolean }>(`/api/orders/${id}/payments/${paymentId}`),
 };
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────
