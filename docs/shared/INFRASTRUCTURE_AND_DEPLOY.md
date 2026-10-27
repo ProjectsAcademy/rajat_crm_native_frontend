@@ -101,7 +101,7 @@ the servers' `.env`).
 | WhatsApp Business Account (WABA, "Messaging account") | "Rajat Electricals", ID `1763205934724539` |
 | Business number | +91 97550 63737, display name "Rajat Electricals" |
 | `WHATSAPP_PHONE_NUMBER_ID` | `1368505093020145` |
-| Developer app | `rajatcrmAppForWp` |
+| Developer app | `rajatcrmAppForWp`, App ID `1990145641680838` |
 | Token | permanent token of system user `rajat_crm_api_admin` (Admin), permissions `whatsapp_business_messaging` + `whatsapp_business_management` |
 | Template | `invoice_share`, Utility, English (`en`) — lives in the WABA above |
 | Billing | **Prepaid "Available funds" in INR**, topped up manually (Meta Business Suite → Billing & payments → Accounts → Rajat Electricals → Add funds). Indian-issued credit/debit cards are rejected by Meta ("India credit cards are currently not supported", 2026-10-27). Meta deducts about once a day; when the balance runs out, sends fail with code 131042. First top-up ₹100 on 2026-10-27 |
@@ -147,7 +147,16 @@ it points at answers the real business number.
    - After every restart `pm2 logs` prints `[whatsapp-webhook] bot ENABLED/disabled;
      app secret set/MISSING; ...` — fix anything MISSING/disabled first.
    - No `POST /api/whatsapp/webhook` lines at all when you send a message →
-     Meta is not delivering: check the **messages** field is subscribed, use
+     Meta is not delivering. First ask Meta what the app is subscribed to:
+     ```bash
+     curl -s "https://graph.facebook.com/v21.0/1990145641680838/subscriptions?access_token=1990145641680838|$APP_SECRET"
+     ```
+     The entry must list `"fields": [{"name": "messages", ...}]`. On
+     2026-10-27 it showed the callback URL and `active: true` but NO fields —
+     Meta then sends nothing. Subscribe the field (UI: WhatsApp → Configuration
+     → Webhook fields → messages → Subscribe, or `POST
+     /1990145641680838/subscriptions` with `object=whatsapp_business_account`,
+     `callback_url`, `fields=messages`, `verify_token`, app access token). Also use
      the field's **Test** button (a test POST must appear in the logs; it is
      ignored by the bot because its phone number id differs), check
      `subscribed_apps`, and put the app in **Live** mode (may need a privacy
