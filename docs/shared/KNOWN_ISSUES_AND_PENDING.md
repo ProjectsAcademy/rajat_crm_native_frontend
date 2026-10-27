@@ -80,7 +80,9 @@ anything older than a few weeks.
 6. Detail screens opened from another module's stack (for example an order
    opened from a customer) may have no back button on native; the ledger
    detail screen has a fallback back button, other modules do not.
-7. `WebTopNav` overflows horizontally when the web app is used at phone width.
+7. `WebTopNav` previously overflowed horizontally when the web app was used
+   at phone width; resolved on 2026-10-27 with a responsive hamburger drawer
+   when width < 768px.
 8. List screens other than Orders load one request with `limit: 100` (or
    200) and have no paging, so rows past the newest 100 are only reachable
    through search (customers, invoices, estimates, vendors, stock movements,
