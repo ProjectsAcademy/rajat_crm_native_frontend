@@ -31,12 +31,14 @@ anything older than a few weeks.
    permanent system-user token created, template `invoice_share` resubmitted
    in the correct WhatsApp Business Account and under review; billing is a
    prepaid INR balance (₹100 loaded; Indian cards are not accepted — keep it
-   topped up). Dev server: Chromium installed and pm2 restarted on
-   2026-10-27 (WhatsApp `.env` values to be confirmed). Still to do: template
-   approval, then test-send to the owner's own number; later the same `.env`
-   values in the production checkout. The server has ~1 GB RAM and
-   every send starts Chromium — fine for occasional manual sends, not for bulk
-   sending.
+   topped up). Dev server (2026-10-27): WhatsApp `.env` values set and
+   checked, Chromium installed, no-send PDF test passed, pm2 restarted. Still
+   to do: template approval, then test-send to the owner's own number; later
+   the same `.env` values in the production checkout.
+   Server memory: ~954 MB RAM, only ~320–440 MB available and ~1 GB of swap
+   already in use with all hosted apps running. One send at a time is fine;
+   any bulk/automatic sending must be queued (one Chromium at a time) or move
+   to a bigger server (every send starts its own Chromium).
 4. **Web hosting details unknown** — see INFRASTRUCTURE_AND_DEPLOY.md §3. Owner
    to record host, branches and build process.
 5. **Not tested on physical devices**: the customer ledger (2026-10-04) and
