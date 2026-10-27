@@ -39,14 +39,15 @@ anything older than a few weeks.
    already in use with all hosted apps running. One send at a time is fine;
    any bulk/automatic sending must be queued (one Chromium at a time) or move
    to a bigger server (every send starts its own Chromium).
-4. **WhatsApp bot (2026-10-27): code done, not connected yet.** To switch it
-   on (dev first): Meta app webhook URL + verify token, subscribe the
-   `messages` field, subscribe the WABA to the app, set
-   `WHATSAPP_APP_SECRET` / `WHATSAPP_WEBHOOK_VERIFY_TOKEN` /
-   `WHATSAPP_BOT_ENABLED=true` on the server — steps in
-   INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook". The webhook belongs to
-   the real number, so whichever server it points at answers real customers.
-   No admin screen for the `whatsapp_messages` log yet.
+4. **WhatsApp bot — live on the DEV server since 2026-10-27.** The Meta
+   webhook points at `dev-api.urjaradiant.com` (messages field subscribed,
+   WABA subscribed to the app, bot enabled on dev only). First real test:
+   "hi" → menu delivered and read. Still to verify: the three buttons
+   (pending amount, orders, statement PDF) with real data. Because the webhook
+   belongs to the real number, the DEV server currently answers real
+   customers; for production, point the webhook at `prod-api`, enable the bot
+   there and disable it on dev (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot
+   webhook"). No admin screen for the `whatsapp_messages` log yet.
 5. **Web hosting details unknown** — see INFRASTRUCTURE_AND_DEPLOY.md §3. Owner
    to record host, branches and build process.
 6. **Not tested on physical devices**: the customer ledger (2026-10-04) and

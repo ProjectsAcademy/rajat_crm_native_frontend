@@ -6,6 +6,18 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-27 — WhatsApp bot answers on dev
+
+- **Root cause of "no reply":** the app's webhook subscription had the callback
+  URL and `active: true` but no `fields` — Meta delivered nothing. Fixed by
+  subscribing the `messages` field (Meta set it to v26.0). Also
+  `WHATSAPP_BOT_ENABLED` set correctly on dev.
+- **Result:** first real message ("hi") → `whatsapp_messages` row in
+  (`text`, received) and out (`menu`, status `read`). Button flows to be
+  verified next.
+- **Note:** the webhook currently points at the DEV server (see KNOWN_ISSUES
+  A.4).
+
 ## 2026-10-27 — WhatsApp bot: first dev test, two problems found
 
 - **Symptom:** a test message to the business number got no reply.
