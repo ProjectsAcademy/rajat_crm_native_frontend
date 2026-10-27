@@ -160,8 +160,9 @@ for (const [name, r] of Object.entries(repos)) {
     const at = `${file}:${line}`;
     if (DEVANAGARI.test(text)) problems.hindi.push(at);
     if (NON_LOCAL_DB_URL.test(text) || META_TOKEN.test(text)) problems.secret.push(at);
-    if (name === BACKEND && /new PrismaClient\s*\(/.test(text) && file !== 'src/lib/prisma.ts') problems.prisma.push(at);
-    if (name === FRONTEND && /\bAlert\.alert\s*\(/.test(text)) problems.alert.push(at);
+    const isCode = /\.(ts|tsx|js)$/.test(file) && !file.startsWith('docs/');
+    if (isCode && name === BACKEND && /new PrismaClient\s*\(/.test(text) && file !== 'src/lib/prisma.ts') problems.prisma.push(at);
+    if (isCode && name === FRONTEND && /\bAlert\.alert\s*\(/.test(text)) problems.alert.push(at);
   }
   if (problems.hindi.length) fail(`${name}: Hindi (Devanagari) text added — repo content is English only: ${list(problems.hindi)}`);
   if (problems.secret.length) fail(`${name}: looks like a real connection string or access token: ${list(problems.secret)}`);
@@ -172,7 +173,7 @@ for (const [name, r] of Object.entries(repos)) {
   for (const c of r.commits) {
     const subject = c.slice(c.indexOf(' ') + 1);
     if (DEVANAGARI.test(subject)) fail(`${name}: commit message not in English: ${c}`);
-    else if (/^(feat|fix|docs|chore|refactor|test|style|perf|build|ci)(\(.+\))?!?:/i.test(subject)) {
+    else if (/^(feat|fix|docs|chore|refactor|test|style|perf|build|ci)(\(.+\))?!?:/.test(subject)) {
       warn(`${name}: commit "${c}" — repo style is "<Area>: <what changed>", e.g. "Vendors: next code after a delete"`);
     }
   }
