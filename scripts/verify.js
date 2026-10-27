@@ -89,9 +89,10 @@ for (const [name, r] of Object.entries(repos)) {
   const code = r.changed.filter((f) => !isDoc(f));
   if (code.length === 0) continue;
   const docs = r.changed.filter(isDoc);
+  const written = docs.filter((f) => f !== 'docs/shared/CODE_MAP.md'); // generated, not written
   if (!docs.includes('docs/shared/WORK_LOG.md')) {
     fail(`${name}: code changed (${list(code, 4)}) but docs/shared/WORK_LOG.md has no new entry`);
-  } else if (docs.length === 1) {
+  } else if (written.length === 1) {
     warn(`${name}: WORK_LOG.md is the only doc changed — check FEATURES.md, KNOWN_ISSUES_AND_PENDING.md and the reference doc are not stale now (DOCUMENTATION_PROTOCOL.md §3)`);
   } else {
     ok(`${name}: docs updated (${list(docs, 4)})`);
@@ -121,10 +122,16 @@ const sharedDiffs = compareTrees(path.join(BE, 'docs/shared'), path.join(FE, 'do
 if (sharedDiffs.length) fail(`docs/shared differs between the repos: ${list(sharedDiffs)} — copy the edited files to the other repo`);
 else ok('docs/shared is identical in both repos');
 
-const verifyCopies = [BE, FE].map((d) => path.join(d, 'scripts/verify.js'));
-if (!verifyCopies.every((f) => fs.existsSync(f)) || readText(verifyCopies[0]) !== readText(verifyCopies[1])) {
-  fail('scripts/verify.js differs between the repos — keep both copies identical');
+for (const script of ['scripts/verify.js', 'scripts/code-map.js']) {
+  const copies = [BE, FE].map((d) => path.join(d, script));
+  if (!copies.every((f) => fs.existsSync(f)) || readText(copies[0]) !== readText(copies[1])) {
+    fail(`${script} differs between the repos — keep both copies identical`);
+  }
 }
+
+const map = run(process.execPath, [path.join(HERE, 'scripts/code-map.js'), '--check']);
+if (map.status === 0) ok('docs/shared/CODE_MAP.md matches the code');
+else fail('docs/shared/CODE_MAP.md is out of date — run `npm run map` and commit the result in both repos');
 
 // ─── 3. Rules on the added lines and commit messages ─────────────────────────
 
