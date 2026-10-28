@@ -32,12 +32,13 @@ history and are short; later entries were written at the time.
   → 403 with nothing sent to the fake Meta, bot menu for a listed number,
   "test number" reply once a day for others). Mutation checks: with the limit
   removed tests 3 and 5 fail; without the once-a-day check test 5 fails.
-- **Not tested / risks:** on the real dev server — the owner sets the
-  variable and restarts after the push.
-- **Deploy status:** on `dev_01` (dev deploys on push); production gets it
-  with the next release and needs nothing (variable empty).
-- **Follow-ups:** dev `.env`: `WHATSAPP_ALLOWED_RECIPIENTS=…` then
-  `pm2 restart dev-crm-backend`.
+  On the dev server (owner, after the push and setting the variable): a
+  listed number got the menu, an unlisted one the "test number" reply.
+- **Not tested / risks:** a refused template send from the dev app (covered
+  by the tests only).
+- **Deploy status:** on `dev_01`, live on dev; production gets it with the
+  next release and needs nothing (variable empty).
+- **Follow-ups:** none for this change.
 
 ---
 

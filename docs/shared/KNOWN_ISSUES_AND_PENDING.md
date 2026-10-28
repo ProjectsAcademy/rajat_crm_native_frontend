@@ -59,8 +59,9 @@ anything older than a few weeks.
    URL → `dev-api`) for tests with dev data; real customers must be given the
    production number (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook").
    The dev server sends from a real number, so its `.env` must set
-   `WHATSAPP_ALLOWED_RECIPIENTS` (built 2026-10-28; the owner sets it on the
-   server after the push). First production test
+   `WHATSAPP_ALLOWED_RECIPIENTS` (set on the dev server 2026-10-28 with three
+   test numbers; checked by the owner: a listed number gets the menu, another
+   number gets the "test number" reply). First production test
    ("hi" from a number saved on a production customer): pending. Still to
    verify with real data on a phone: the list menu (pending amount, orders,
    invoices → PDF, payment history, statement PDF, our items). No admin
