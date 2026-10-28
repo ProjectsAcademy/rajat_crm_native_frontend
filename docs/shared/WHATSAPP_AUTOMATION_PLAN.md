@@ -16,7 +16,7 @@ menu bot with "Our items".
 
 | Step | What | Side | Status |
 |---|---|---|---|
-| 0.1 | Release to production; move the bot to production | both | waiting for the owner |
+| 0.1 | Release to production; move the bot to production | both | in progress (production backup taken 2026-10-28) |
 | 0.2 | Switch RBAC from shadow mode to enforced | both | waiting for the owner |
 | 0.3 | Staff WhatsApp identity (`users.phone`) | client | not started |
 | 0.4 | Customer opt-out (STOP / START) | customer | done (2026-10-28, backend `063e79d`, app `20a79e6`) |
@@ -68,10 +68,11 @@ menu bot with "Our items".
 ### 0.1 Release to production and move the bot
 
 - **Why first:** today the real business number is answered by the DEV
-  server, and dev and prod may share one database.
-- **Owner actions:** release backend first (merge `dev_01` → `main`, run the
-  production deploy; migrations `20261028120000_payment_reminders` and
-  `20261028130000_inventory_show_on_whatsapp` are additive), then the app.
+  server, which has its own (dev) database — real customers get dev data.
+- **Owner actions:** back up the production database (done 2026-10-28,
+  INFRASTRUCTURE_AND_DEPLOY.md §4); release backend first (merge `dev_01` →
+  `main`, run the production deploy; the five pending migrations are listed
+  in KNOWN_ISSUES A.1, all additive), then the app.
   Production `.env`: the `WHATSAPP_*` values, `WHATSAPP_BOT_ENABLED=true`
   (and `false` on dev), Chromium installed, `pm2 restart`. Point the Meta
   webhook at `prod-api…` (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot

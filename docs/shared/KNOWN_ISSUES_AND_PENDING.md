@@ -6,16 +6,20 @@ anything older than a few weeks.
 
 ## A. Pending work (status as of 2026-10-22)
 
-1. **Production is behind development.** From the last known remote refs:
-   - Backend `main` does NOT yet have: invoice order details (`157244a`),
-     customer ledger (`0fc421a`, migration `20261004120000_customer_ledger`),
-     vendor work (`9355321`, migration `20261022120000_order_vendor_work`).
-   - Frontend `main` DOES have the ledger screens (merged PR #8) but not the
-     dashboard-to-ledger link, vendor work or the English text fix.
-   - Risk: a production web/APK build from frontend `main` shows ledger
-     screens that call `/api/ledger/*`, which production does not serve
-     (404). Release backend first: merge backend `dev_01` → `main`, run the
-     production deploy workflow, then build the production frontend.
+1. **Production is behind development** (as of 2026-10-28, release in
+   progress — WHATSAPP_AUTOMATION_PLAN.md step 0.1):
+   - Backend `main` lacks 37 commits: vendor work, WhatsApp invoice hardening,
+     bot, templates, automatic reminders, "Our items", STOP / START, tests and
+     tooling. Migrations to apply (all additive): `20261022120000_order_vendor_work`,
+     `20261027120000_whatsapp_messages`, `20261028120000_payment_reminders`,
+     `20261028130000_inventory_show_on_whatsapp`,
+     `20261028140000_customer_whatsapp_opt_out`.
+   - Frontend `main` lacks the dashboard redesign, vendor work, the WhatsApp
+     buttons, the inventory "Show on WhatsApp" switch and the phone-width
+     fixes.
+   - Production database backup taken 2026-10-28 (INFRASTRUCTURE_AND_DEPLOY.md
+     §4). Release backend first (merge `dev_01` → `main`, run the production
+     deploy workflow), then the app.
    - Verify with `git fetch && git log --oneline origin/main..origin/dev_01`
      in each repo before acting; these refs may be stale.
 2. **RBAC is in shadow mode.** `RBAC_ENFORCE=false` (denials only logged as

@@ -94,8 +94,8 @@ Automatic payment reminders: `WHATSAPP_REMINDERS_ENABLED=true` in the `.env`
 of ONE server (production once it is live; never on two servers), then
 `pm2 restart <name>`. The log shows `[payment-reminders] automatic reminders
 ENABLED` at start. Reminders go only to customers someone switched them on
-for in the ledger screen. Dev and prod may share one database, so switching
-a customer on in the dev app counts for production too.
+for in the ledger screen. Dev and prod have separate databases, so a
+customer switched on in the dev app concerns dev data only.
 
 ### WhatsApp Business (Meta) setup — which account to use
 
@@ -211,12 +211,31 @@ account's `crm-mobile` project. More: `rajat_crm_native_frontend/APK_BUILDS.md`.
 - `DATABASE_URL`: pooled connection (port 6543, `pgbouncer=true`) used by the
   app. `DIRECT_URL`: direct/session connection (port 5432) used by
   `prisma migrate`.
-- The Supabase pooler allows **15 connections total**, shared by dev and
-  prod. `src/lib/prisma.ts` adds `connection_limit=5&pool_timeout=10` unless
-  the URL sets its own limit.
-- Dev and prod draw from the same Supabase project and **may use the same
-  database** (not confirmed). Treat every migration as if it lands on
-  production data.
+- The Supabase pooler allows **15 connections total** (per Supabase project;
+  whether dev and prod are in one project is not recorded).
+  `src/lib/prisma.ts` adds `connection_limit=5&pool_timeout=10` unless the URL
+  sets its own limit.
+- Dev and prod use **different databases** — confirmed 2026-10-28: their
+  `DIRECT_URL`s differ, and a backup of each showed production without the
+  three tables that the not-yet-released migrations create (80 vs 77 tables).
+  A migration still reaches production data at the next release: keep
+  migrations additive.
+- **Backup before a production release.** Supabase runs PostgreSQL 17 and
+  `pg_dump` 16 refuses it ("server version mismatch"). Once per machine:
+  `sudo apt install -y postgresql-common`,
+  `sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y`,
+  `sudo apt install -y postgresql-client-17`. Then, without writing the URL
+  to a file or the shell history:
+  ```bash
+  read -rs DB_URL      # paste the production DIRECT_URL (without quotes); nothing is shown
+  /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" -Fc -f ~/crm-prod-$(date +%F).dump
+  unset DB_URL
+  /usr/lib/postgresql/17/bin/pg_restore --list ~/crm-prod-$(date +%F).dump | grep -c "TABLE DATA"
+  ```
+  Use the PRODUCTION URL (server checkout `backend/.env`) — a developer
+  machine's `.env` points at the dev database. Keep dump files outside the
+  repositories (they contain customer data). Last backup: 2026-10-28
+  (554 KB, 77 tables), before the release of 37 backend commits.
 - Migrations: create with `prisma migrate diff` / `migrate dev --create-only`
   against a local throwaway database (LOCAL_DEV_AND_TESTING.md), commit the
   SQL, and let `update.sh` apply it with `prisma migrate deploy`.

@@ -6,6 +6,30 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — Production backup; dev and prod databases are separate
+
+- **Request:** step-by-step release to production, moving the bot and RBAC
+  (plan steps 0.1 / 0.2); first, a backup of the production database.
+- **Done by:** the owner, with steps from Claude Code (Opus 5.5)
+- **Changes:** docs only — INFRASTRUCTURE_AND_DEPLOY.md §4 (backup recipe,
+  databases confirmed separate), KNOWN_ISSUES A.1 (current release gap),
+  plan step 0.1 status.
+- **Database:** none changed. Backups: dev database 80 tables, production
+  554 KB / 77 tables — the difference is exactly the three tables the
+  unreleased migrations create, which also confirms dev and prod are
+  different databases (the docs had said "may be the same").
+- **Decisions:** backups need `pg_dump` 17 (Supabase runs PostgreSQL 17;
+  Ubuntu 24.04's 16 refuses) and must use the production `DIRECT_URL`; a
+  developer machine's `.env` points at the dev database (the first attempt
+  backed up dev by mistake).
+- **Tested:** `pg_restore --list` on both dumps.
+- **Not tested / risks:** a test restore of the production dump.
+- **Deploy status:** nothing deployed yet; next is the backend release (A3).
+- **Follow-ups:** plan 0.1 release and bot move, 0.2 RBAC — RBAC groups must
+  be set up in BOTH apps (separate databases).
+
+---
+
 ## 2026-10-28 — WhatsApp automation plan; step 0.4 customer opt-out (STOP / START)
 
 - **Request:** the owner wants every WhatsApp automation idea discussed the
