@@ -25,16 +25,20 @@ anything older than a few weeks.
    `pm2 logs`, then set `RBAC_ENFORCE=true`, and `RBAC_STRICT=true` only when
    no user relies on legacy access. New key `ledger` must be granted to groups
    that should see the customer ledger.
-3. **WhatsApp invoice sending** (manual button) — status as of 2026-10-27:
-   Meta setup done (IDs in INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp Business
-   (Meta) setup"): number +91 97550 63737 verified and on `CLOUD_API`,
-   permanent system-user token created, template `invoice_share` resubmitted
-   in the correct WhatsApp Business Account and under review; billing is a
-   prepaid INR balance (₹100 loaded; Indian cards are not accepted — keep it
-   topped up). Dev server (2026-10-27): WhatsApp `.env` values set and
-   checked, Chromium installed, no-send PDF test passed, pm2 restarted. Still
-   to do: template approval, then test-send to the owner's own number; later
-   the same `.env` values in the production checkout.
+3. **WhatsApp invoice sending** (manual button) — status as of 2026-10-28:
+   **working on the dev server.** Template `invoice_share` is APPROVED
+   (Utility, `en`, Document header + 4 body variables — matches
+   `sendInvoiceTemplate`); number +91 97550 63737 is `CONNECTED`, quality
+   GREEN, messaging limit `TIER_250` (IDs in INFRASTRUCTURE_AND_DEPLOY.md
+   "WhatsApp Business (Meta) setup"). The owner sent a real invoice from the
+   dev app to their own number on 2026-10-28 and confirmed the PDF and text.
+   Billing is a prepaid INR balance (₹100 loaded; Indian cards are not
+   accepted — keep it topped up). Still to do for production (backend `main`
+   already has the send route): install Chromium in the production checkout,
+   set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
+   `WHATSAPP_TEMPLATE_NAME`, `WHATSAPP_TEMPLATE_LANG` in its `.env` (NOT
+   `WHATSAPP_BOT_ENABLED` — the bot runs on one server only, now dev), pm2
+   restart, then one test send from the production app.
    Server memory: ~954 MB RAM, only ~320–440 MB available and ~1 GB of swap
    already in use with all hosted apps running. One send at a time is fine;
    any bulk/automatic sending must be queued (one Chromium at a time) or move

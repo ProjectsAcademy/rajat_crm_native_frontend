@@ -6,6 +6,34 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — WhatsApp template `invoice_share` approved; first real send on dev
+
+- **Request:** Meta approved the `invoice_share` template; check it against
+  the code and test the invoice "WhatsApp" button for real.
+- **Done by:** Claude Code (Opus 5.5) for the checks and docs; the owner did
+  the test send.
+- **Changes:** docs only (this entry, KNOWN_ISSUES A.3,
+  INFRASTRUCTURE_AND_DEPLOY.md template row); commits on `dev_01` in both
+  repos after this entry. No code change was needed.
+- **Database:** none (the owner's test customer and invoice were created on
+  the dev app).
+- **Decisions:** none new; sending stays manual.
+- **Tested:** read-only Graph API calls with the dev token: template
+  `APPROVED`, `UTILITY`, language `en`, components HEADER `DOCUMENT` + BODY
+  with exactly 4 variables (same text as FEATURES.md) — matches the payload
+  of `sendInvoiceTemplate` and the `WHATSAPP_TEMPLATE_*` values; number
+  `CONNECTED`, quality GREEN, `TIER_250`, ID equals `WHATSAPP_PHONE_NUMBER_ID`.
+  The owner then sent an invoice from the dev app to their own number: it
+  arrived with the PDF and the expected text.
+- **Not tested / risks:** production — its `.env` has no WhatsApp values yet
+  and Chromium is not confirmed there (KNOWN_ISSUES A.3).
+- **Deploy status:** dev server already had the code and configuration;
+  nothing deployed.
+- **Follow-ups:** production setup (KNOWN_ISSUES A.3); keep the prepaid
+  balance topped up (sends fail with Meta code 131042 when it is empty).
+
+---
+
 ## 2026-10-27 — Home dashboard redesign & responsive navigation
 
 - **Request:** Redesign the Home dashboard of the app (`rajat_crm_native_frontend`) with a new visual design, fully responsive on web and native, keeping all logic, data fetching, features, permissions and existing color tokens. In follow-up, make `WebTopNav` responsive with a mobile hamburger menu on narrow viewports.
@@ -15,7 +43,7 @@ history and are short; later entries were written at the time.
 - **Decisions:** Responsive layout driven by `useWindowDimensions()` with adaptive column counts (2 cols on phone, 3 on tablet, 4-5 on desktop); side-by-side Calendar and Revenue widgets when width >= 960px, cleanly stacked on narrower screens with independent gating; created reusable presentational `ModuleCard` supporting both compact (horizontal) and full (vertical) cards; unified design system tokens from `constants/colors.ts`; replaced `Alert.alert` with `utils/dialogs.ts` for cross-platform compliance; upgraded `WebTopNav` with mobile hamburger drawer at `< 768px` so web users on phones get full navigation without horizontal overflow.
 - **Tested:** Tested on Chrome web at 1440px, 768px, and 390px widths with BEFORE and AFTER screenshots (including closed and open hamburger drawer states); all 10 feature checklist items verified; TypeScript error count strictly preserved at 85 baseline; `npm run verify` passed.
 - **Not tested / risks:** Physical Android and iOS devices could not be directly tested in this environment; verified through Expo web responsive viewports.
-- **Deploy status:** Committed on branch `ag/dashboard-redesign` in `rajat_crm_native_frontend`. Not pushed.
+- **Deploy status:** Committed on branch `ag/dashboard-redesign` in `rajat_crm_native_frontend`; merged into frontend `dev_01` by the owner (PR #9, merge `db09cbf`). `docs/shared` was mirrored to the backend on 2026-10-28.
 - **Follow-ups:** Test on real Android APK build.
 
 ---
