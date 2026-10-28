@@ -7,6 +7,10 @@ import { isoToDisplay, todayIso } from './ledgerFormat';
 // with running balance, totals, closing balance and the ageing summary.
 // Standalone HTML (inline <style>, no external assets) so it works for
 // Print.printToFileAsync on native and a blob: tab on web, like invoices.
+//
+// A second copy of this layout lives in the backend at
+// rajat_crm_node_backend/src/utils/statementPdf.ts (statement PDFs sent on
+// WhatsApp). Keep both in sync when the design changes.
 
 function amt(n: number): string {
   return Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

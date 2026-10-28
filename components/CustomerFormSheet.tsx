@@ -408,6 +408,7 @@ const w = StyleSheet.create({
   },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexWrap: 'wrap', rowGap: 10, // phone-width web: the buttons go under the title
     paddingHorizontal: 24, paddingVertical: 14,
     backgroundColor: Colors.primary, borderBottomWidth: 1, borderBottomColor: Colors.primaryLight,
   },

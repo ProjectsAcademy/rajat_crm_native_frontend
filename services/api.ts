@@ -103,6 +103,17 @@ export const ledgerApi = {
   createEntry: (id: number, data: LedgerEntryInput) => api.post(`/api/ledger/customers/${id}/entries`, data),
   updateEntry: (entryId: number, data: LedgerEntryInput) => api.put(`/api/ledger/entries/${entryId}`, data),
   deleteEntry: (entryId: number) => api.delete(`/api/ledger/entries/${entryId}`),
+  updateReminder: (id: number, data: { enabled: boolean; everyDays: number }) =>
+    api.put<{ reminder: PaymentReminderInfo }>(`/api/ledger/customers/${id}/reminder`, data),
+  // WhatsApp template sends (see invoicesApi.sendWhatsapp for the 60 s timeout).
+  sendReminder: (id: number) =>
+    api.post<WhatsappSendResult>(`/api/ledger/customers/${id}/send-reminder`, undefined, { timeout: 60000 }),
+  sendStatement: (id: number, data: { from: string | null; to: string | null }) =>
+    api.post<WhatsappSendResult>(`/api/ledger/customers/${id}/send-statement`, data, { timeout: 60000 }),
+  sendReceiptWhatsapp: (receiptId: number) =>
+    api.post<WhatsappSendResult>(`/api/ledger/receipts/${receiptId}/send-whatsapp`, undefined, { timeout: 60000 }),
+  sendPaymentWhatsapp: (paymentId: number) =>
+    api.post<WhatsappSendResult>(`/api/ledger/payments/${paymentId}/send-whatsapp`, undefined, { timeout: 60000 }),
 };
 
 // ─── Tenders ──────────────────────────────────────────────────────────────────
@@ -224,19 +235,23 @@ export interface OrderCreateInput {
   status?: string; notes?: string;
   items?: OrderItemInput[];
   invoice?: OrderInvoiceInput;
+  vendorWorks?: OrderVendorWorkInput[];
 }
 export interface OrderUpdateInput {
   customerId?: number | null; projectId?: number | null;
   orderDate?: string; deliveryDate?: string | null;
   status?: string; notes?: string;
   items?: OrderItemInput[];
+  vendorWorks?: OrderVendorWorkInput[];
 }
+// Work on an order given to a third party (vendor) — what and for how much
+export interface OrderVendorWorkInput { vendorId: number; description: string; amount: number }
 export interface OrderPaymentInput {
   amount: string; paymentMode: string; paymentDate: string; referenceNo?: string;
 }
 
 export const ordersApi = {
-  list: (params?: { search?: string; status?: string; paymentStatus?: string; customerId?: number; limit?: number }) =>
+  list: (params?: { search?: string; status?: string; paymentStatus?: string; customerId?: number; page?: number; limit?: number }) =>
     api.get<OrderListResponse>('/api/orders', { params }),
   detail:     (id: number) => api.get<OrderDetailResponse>(`/api/orders/${id}`),
   create:     (data: OrderCreateInput) => api.post<{ order: OrderSummary }>('/api/orders', data),
@@ -244,6 +259,12 @@ export const ordersApi = {
   remove:     (id: number) => api.delete<{ success: boolean }>(`/api/orders/${id}`),
   addPayment:    (id: number, data: OrderPaymentInput) => api.post<{ payment: OrderPayment }>(`/api/orders/${id}/payments`, data),
   updatePayment: (id: number, paymentId: number, data: OrderPaymentInput) => api.put<{ success: boolean }>(`/api/orders/${id}/payments/${paymentId}`, data),
+  removePayment: (id: number, paymentId: number) => api.delete<{ success: boolean }>(`/api/orders/${id}/payments/${paymentId}`),
+  // WhatsApp templates order_confirmation / payment_received (60 s: see invoicesApi.sendWhatsapp).
+  sendWhatsapp: (id: number) =>
+    api.post<WhatsappSendResult>(`/api/orders/${id}/send-whatsapp`, undefined, { timeout: 60000 }),
+  sendPaymentWhatsapp: (id: number, paymentId: number) =>
+    api.post<WhatsappSendResult>(`/api/orders/${id}/payments/${paymentId}/send-whatsapp`, undefined, { timeout: 60000 }),
 };
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────
@@ -255,7 +276,11 @@ export const invoicesApi = {
   create: (data: InvoiceCreateInput) => api.post<InvoiceDetailResponse>('/api/invoices', data),
   update: (id: number, data: InvoiceUpdateInput) => api.put<InvoiceDetailResponse>(`/api/invoices/${id}`, data),
   remove: (id: number) => api.delete<{ success: boolean }>(`/api/invoices/${id}`),
-  sendWhatsapp: (id: number) => api.post<{ success: boolean; messageId: string; sentTo: string }>(`/api/invoices/${id}/send-whatsapp`),
+  // Renders a PDF and calls Meta on the server — can take well over the
+  // default 15 s on the small server. A client-side timeout here would report
+  // failure for a message that was actually sent, inviting a duplicate send.
+  sendWhatsapp: (id: number) =>
+    api.post<{ success: boolean; messageId: string; sentTo: string }>(`/api/invoices/${id}/send-whatsapp`, undefined, { timeout: 60000 }),
 };
 
 // ─── Purchases ────────────────────────────────────────────────────────────────
@@ -458,6 +483,7 @@ export interface Customer {
   id: number; customerCode: string; customerName: string; businessName: string;
   email: string; phone: string; address: string; gstin: string;
   isActive: boolean; createdAt: string; updatedAt?: string;
+  whatsappOptOutAt?: string | null;   // sent STOP on WhatsApp: no automatic messages
   _count?: { orders: number; invoices: number; estimates: number; gstRecords: number };
 }
 export interface CustomerListResponse { customers: Customer[]; total: number; page: number; limit: number; }
@@ -510,7 +536,11 @@ export interface Vendor extends VendorSummary {
   ifscCode: string; updatedAt: string;
 }
 export interface VendorListResponse { vendors: VendorSummary[]; total: number; page: number; limit: number; }
-export interface VendorDetailResponse { vendor: Vendor; }
+export interface VendorOrderWork {
+  id: number; description: string; amount: string; createdAt: string;
+  order: { id: number; orderNo: string; orderDate: string; status: string; customer: { id: number; customerName: string } | null };
+}
+export interface VendorDetailResponse { vendor: Vendor & { orderWorks?: VendorOrderWork[] }; }
 export interface VendorPayload {
   vendorCode?: string;
   name: string;
@@ -542,6 +572,7 @@ export interface InventoryItem {
   id: number; itemCode: string; name: string; category: string;
   unit: string; unitPrice: string; reorderLevel: string;
   isActive: boolean; currentStock: number;
+  showOnWhatsapp: boolean;      // listed under "Our items" in the WhatsApp menu
   primaryImage: { id: number; fileType: string } | null;
 }
 export interface StockMovement {
@@ -569,6 +600,7 @@ export interface InventoryPayload {
   unitPrice: number | string;
   reorderLevel?: number | string;
   isActive?: boolean;
+  showOnWhatsapp?: boolean;
   // Create-only: seeds an initial stock movement
   initialStock?: number | string;
   initialLocation?: string;
@@ -607,11 +639,17 @@ export interface OrderPayment {
   receipt?: { id: number; receiptNo: string } | null;
 }
 export interface OrderDetail extends OrderSummary {
+  customer: { id: number; customerName: string; customerCode: string; phone: string; email: string; whatsappOptOutAt: string | null } | null;
   notes: string | null; createdAt: string;
   items: OrderItem[];
   payments: OrderPayment[];
   mediaFiles: MediaFile[];
   invoices: { id: number; invoiceNo: string; invoiceDate: string; totalAmount: string; status: string }[];
+  vendorWorks?: OrderVendorWork[];
+}
+export interface OrderVendorWork {
+  id: number; description: string; amount: string;
+  vendor: { id: number; name: string; vendorCode: string; phone: string };
 }
 export interface OrderListResponse { orders: OrderSummary[]; total: number; }
 export interface OrderDetailResponse { order: OrderDetail; }
@@ -973,7 +1011,20 @@ export interface CustomerLedgerResponse {
     closingBalance: number;
   };
   position: LedgerPosition;
+  reminder: PaymentReminderInfo;
 }
+// Automatic WhatsApp payment reminder of one customer.
+export interface PaymentReminderInfo {
+  optedOutAt: string | null;    // the customer sent STOP: no automatic messages
+  enabled: boolean;
+  everyDays: number;            // 7, 15 or 30
+  lastSentAt: string | null;
+  lastResult: string;           // 'sent' | 'skipped: …' | 'failed: …' | ''
+  nextDue: string | null;       // YYYY-MM-DD, when enabled
+  schedulerOn: boolean;         // the server sends automatically at all
+  minDue: number;               // rupees; less than this due → no reminder
+}
+export interface WhatsappSendResult { success: boolean; messageId: string; sentTo: string }
 export interface ReceivableRow extends LedgerPosition {
   id: number; customerCode: string; customerName: string; businessName: string; phone: string; isActive: boolean;
 }

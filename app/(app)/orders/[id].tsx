@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ordersApi, OrderDetail, OrderPayment } from '../../../services/api';
@@ -10,6 +10,7 @@ import OrderFormSheet from '../../../components/OrderFormSheet';
 import PaymentFormSheet from '../../../components/PaymentFormSheet';
 import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
 import { useAuthStore, userHasFeature } from '../../../store/auth';
+import { confirmAndSendWhatsapp } from '../../../utils/whatsappSend';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: '#FFF8E1', text: '#F57F17' },
@@ -29,11 +30,15 @@ const MODE_ICONS: Record<string, any> = {
   check: 'document-outline', other: 'ellipsis-horizontal-outline',
 };
 
+// A dialog opened while a sheet is still closing can be lost on iOS.
+const AFTER_SHEET_MS = 400;
+
 function fmtAmt(v: string) { const n = parseFloat(v||'0'); if(n>=100000) return `₹${(n/100000).toFixed(2)}L`; return `₹${n.toLocaleString('en-IN',{minimumFractionDigits:2})}`; }
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
 
 export default function OrderDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // offerWhatsapp=1: opened right after "New order" (orders list).
+  const { id, offerWhatsapp } = useLocalSearchParams<{ id: string; offerWhatsapp?: string }>();
   const [order,       setOrder]       = useState<OrderDetail | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
@@ -52,6 +57,43 @@ export default function OrderDetailScreen() {
   }, [id]);
 
   useEffect(() => { loadOrder(); }, [loadOrder]);
+
+  // WhatsApp templates. Each message may be charged; confirmAndSendWhatsapp
+  // asks first and shows the number.
+  const sendConfirmation = (afterSave = false) => {
+    if (!order?.customer) return;
+    const orderId = order.id;
+    confirmAndSendWhatsapp({
+      title: afterSave ? `Order ${order.orderNo} saved` : undefined,
+      afterSave,
+      what: 'the order confirmation',
+      customerName: order.customer.customerName,
+      phone: order.customer.phone,
+      optedOut: !!order.customer.whatsappOptOutAt,
+      send: () => ordersApi.sendWhatsapp(orderId),
+    });
+  };
+  const sendPaymentReceipt = (p: OrderPayment, afterSave = false) => {
+    if (!order?.customer) return;
+    const orderId = order.id;
+    confirmAndSendWhatsapp({
+      title: afterSave ? 'Payment saved' : undefined,
+      afterSave,
+      what: `a payment receipt for ₹${parseFloat(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+      customerName: order.customer.customerName,
+      phone: order.customer.phone,
+      optedOut: !!order.customer.whatsappOptOutAt,
+      send: () => ordersApi.sendPaymentWhatsapp(orderId, p.id),
+    });
+  };
+
+  const offered = useRef(false);
+  useEffect(() => {
+    if (!order || offerWhatsapp !== '1' || offered.current) return;
+    offered.current = true;
+    router.setParams({ offerWhatsapp: '' }); // not again after a web reload
+    if (order.status !== 'cancelled') setTimeout(() => sendConfirmation(true), AFTER_SHEET_MS);
+  }, [order, offerWhatsapp]);
 
   const handleDelete = () => {
     const msg = `Delete order "${order?.orderNo}"? This will also remove all items, payments and attachments. This cannot be undone.`;
@@ -117,6 +159,12 @@ export default function OrderDetailScreen() {
               <TouchableOpacity style={styles.editBtn} onPress={() => setShowInvoice(true)}>
                 <Ionicons name="document-text-outline" size={14} color={Colors.accent} />
                 <Text style={styles.editBtnText}>Make Invoice</Text>
+              </TouchableOpacity>
+            )}
+            {order.customer && order.status !== 'cancelled' && (
+              <TouchableOpacity style={styles.whatsappBtn} onPress={() => sendConfirmation()}>
+                <Ionicons name="logo-whatsapp" size={14} color="#fff" />
+                <Text style={styles.whatsappBtnText}>WhatsApp</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
@@ -214,19 +262,71 @@ export default function OrderDetailScreen() {
                       <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
                     </View>
                   ) : (
-                    <TouchableOpacity
-                      style={styles.payEditBtn}
-                      onPress={() => { setEditPayment(p); setShowPayment(true); }}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
-                    </TouchableOpacity>
+                    <>
+                      {order.customer && (
+                        <TouchableOpacity
+                          style={styles.payEditBtn}
+                          onPress={() => sendPaymentReceipt(p)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          accessibilityLabel="Send payment receipt on WhatsApp"
+                        >
+                          <Ionicons name="logo-whatsapp" size={15} color={Colors.whatsapp} />
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={styles.payEditBtn}
+                        onPress={() => { setEditPayment(p); setShowPayment(true); }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+                      </TouchableOpacity>
+                    </>
                   )}
                 </View>
               ))}
             </View>
           )}
         </View>
+
+        {/* Vendor Work — parts of this order done by a third party (set in Edit) */}
+        {(order.vendorWorks?.length ?? 0) > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Vendor Work ({order.vendorWorks!.length})</Text>
+            <View style={styles.card}>
+              {order.vendorWorks!.map((vw, i) => {
+                const canOpen = userHasFeature(user, 'vendors');
+                return (
+                  <TouchableOpacity
+                    key={vw.id}
+                    style={[styles.payRow, i > 0 && styles.itemBorder]}
+                    disabled={!canOpen}
+                    onPress={() => router.push(`/(app)/vendors/${vw.vendor.id}` as any)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.payIconBox}>
+                      <Ionicons name="business-outline" size={16} color={Colors.textSecondary} />
+                    </View>
+                    <View style={styles.payBody}>
+                      <Text style={styles.payMode}>{vw.vendor.name}</Text>
+                      {vw.description ? <Text style={styles.payRef}>{vw.description}</Text> : null}
+                      {vw.vendor.phone ? <Text style={styles.payDate}>{vw.vendor.phone}</Text> : null}
+                    </View>
+                    <Text style={[styles.payAmt, { color: Colors.textPrimary }]}>{parseFloat(vw.amount) ? fmtAmt(vw.amount) : '—'}</Text>
+                    {canOpen && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />}
+                  </TouchableOpacity>
+                );
+              })}
+              {order.vendorWorks!.some(vw => parseFloat(vw.amount) > 0) && (
+                <View style={[styles.payRow, styles.itemBorder, { justifyContent: 'flex-end' }]}>
+                  <Text style={styles.payDate}>Total vendor cost  </Text>
+                  <Text style={[styles.payAmt, { color: Colors.textPrimary }]}>
+                    {fmtAmt(String(order.vendorWorks!.reduce((sum, vw) => sum + (parseFloat(vw.amount) || 0), 0)))}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Invoices — created together with the order via "Also create an invoice" */}
         {order.invoices.length > 0 && (
@@ -286,7 +386,10 @@ export default function OrderDetailScreen() {
         orderId={order.id}
         payment={editPayment}
         onClose={() => { setShowPayment(false); setEditPayment(null); }}
-        onSaved={loadOrder}
+        onSaved={(created) => {
+          loadOrder();
+          if (created) setTimeout(() => sendPaymentReceipt(created, true), AFTER_SHEET_MS);
+        }}
       />
     </SafeAreaView>
   );
@@ -309,7 +412,9 @@ const styles = StyleSheet.create({
   projectName:   { fontSize: 12, color: Colors.accent, marginTop: 2, fontWeight: '600' },
   dateText:      { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 6 },
 
-  headerActions: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  headerActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+  whatsappBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.whatsapp, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: Colors.whatsapp },
+  whatsappBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   editBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,153,0,0.15)', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: Colors.accent },
   editBtnText:   { fontSize: 13, fontWeight: '600', color: Colors.accent },
   deleteBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(209,50,18,0.12)', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: Colors.error },

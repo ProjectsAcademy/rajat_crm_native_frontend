@@ -6,7 +6,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { vendorsApi, Vendor } from '../../../services/api';
+import { vendorsApi, VendorDetailResponse } from '../../../services/api';
+import { useAuthStore, userHasFeature } from '../../../store/auth';
 import { Colors } from '../../../constants/colors';
 import VendorFormSheet from '../../../components/VendorFormSheet';
 
@@ -22,7 +23,8 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 export default function VendorDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [vendor, setVendor]         = useState<Vendor | null>(null);
+  const [vendor, setVendor]         = useState<VendorDetailResponse['vendor'] | null>(null);
+  const canOpenOrders = userHasFeature(useAuthStore((st) => st.user), 'orders');
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [showEdit, setShowEdit]     = useState(false);
@@ -198,6 +200,42 @@ export default function VendorDetailScreen() {
           </View>
         ) : null}
 
+        {/* Order Work — jobs this vendor did on orders (order form "Vendor Work") */}
+        {(vendor.orderWorks?.length ?? 0) > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Order Work ({vendor.orderWorks!.length})</Text>
+            <View style={styles.card}>
+              {vendor.orderWorks!.map((w) => (
+                <TouchableOpacity
+                  key={w.id}
+                  style={styles.workRow}
+                  disabled={!canOpenOrders}
+                  onPress={() => router.push(`/(app)/orders/${w.order.id}` as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.workOrderNo}>
+                      {w.order.orderNo}  ·  {new Date(w.order.orderDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </Text>
+                    {w.order.customer ? <Text style={styles.workCustomer} numberOfLines={1}>{w.order.customer.customerName}</Text> : null}
+                    {w.description ? <Text style={styles.workDesc}>{w.description}</Text> : null}
+                  </View>
+                  <Text style={styles.workAmt}>
+                    {parseFloat(w.amount) ? `₹${parseFloat(w.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '—'}
+                  </Text>
+                  {canOpenOrders && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />}
+                </TouchableOpacity>
+              ))}
+              <View style={[styles.workRow, { justifyContent: 'flex-end', borderBottomWidth: 0 }]}>
+                <Text style={styles.workCustomer}>Total  </Text>
+                <Text style={styles.workAmt}>
+                  ₹{vendor.orderWorks!.reduce((sum, w) => sum + (parseFloat(w.amount) || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
       </ScrollView>
 
       {/* Edit form sheet */}
@@ -266,4 +304,13 @@ const styles = StyleSheet.create({
   },
   infoLabel: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500', flex: 1 },
   infoValue: { fontSize: 13, color: Colors.textPrimary, fontWeight: '600', textAlign: 'right', flex: 1.5, flexShrink: 1 },
+  workRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  workOrderNo:  { fontSize: 12, fontWeight: '700', color: '#1565C0' },
+  workCustomer: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary, marginTop: 2 },
+  workDesc:     { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  workAmt:      { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
 });

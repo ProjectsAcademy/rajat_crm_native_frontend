@@ -213,6 +213,7 @@ export default function InventoryFormSheet({ visible, onClose, onSaved, item }: 
   const [unitPrice,    setUnitPrice]    = useState('');
   const [reorderLevel, setReorderLevel] = useState('0');
   const [isActive,     setIsActive]     = useState(true);
+  const [showOnWhatsapp, setShowOnWhatsapp] = useState(false);
 
   // Initial stock (create only)
   const [initialStock,     setInitialStock]     = useState('');
@@ -245,10 +246,11 @@ export default function InventoryFormSheet({ visible, onClose, onSaved, item }: 
       setUnitPrice(String(parseFloat(item.unitPrice)));
       setReorderLevel(String(parseFloat(item.reorderLevel)));
       setIsActive(item.isActive);
+      setShowOnWhatsapp(!!item.showOnWhatsapp);
     } else {
       setName(''); setDescription(''); setCategory('');
       setUnit('pcs'); setCustomUnit('');
-      setUnitPrice(''); setReorderLevel('0'); setIsActive(true);
+      setUnitPrice(''); setReorderLevel('0'); setIsActive(true); setShowOnWhatsapp(false);
       setInitialStock(''); setInitialLocation(''); setInitialReference('Opening Stock');
     }
     setError('');
@@ -271,6 +273,7 @@ export default function InventoryFormSheet({ visible, onClose, onSaved, item }: 
         unitPrice: parseFloat(unitPrice),
         reorderLevel: parseFloat(reorderLevel) || 0,
         isActive,
+        showOnWhatsapp,
       };
       if (isEdit) {
         await inventoryApi.update(item!.id, payload);
@@ -396,6 +399,14 @@ export default function InventoryFormSheet({ visible, onClose, onSaved, item }: 
           </Field>
         </>
       )}
+
+      <View style={s.toggleRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.toggleLabel}>Show on WhatsApp</Text>
+          <Text style={s.toggleSub}>Customers see this item with its description and rate under "Our items" in the WhatsApp menu</Text>
+        </View>
+        <Switch value={showOnWhatsapp} onValueChange={setShowOnWhatsapp} trackColor={{ true: Colors.success, false: Colors.border }} thumbColor="#fff" />
+      </View>
 
       {/* Status toggle — edit only */}
       {isEdit && (
@@ -616,6 +627,7 @@ const w = StyleSheet.create({
   },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexWrap: 'wrap', rowGap: 10, // phone-width web: the buttons go under the title
     paddingHorizontal: 24, paddingVertical: 14,
     backgroundColor: Colors.primary, borderBottomWidth: 1, borderBottomColor: Colors.primaryLight,
   },

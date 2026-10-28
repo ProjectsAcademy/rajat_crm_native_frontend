@@ -6,7 +6,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ledgerApi, CustomerLedgerResponse, LedgerLine, LedgerEntryType } from '../../../services/api';
+import { ledgerApi, CustomerLedgerResponse, LedgerLine, LedgerEntryType, PaymentReminderInfo } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import ReceiptFormSheet from '../../../components/ReceiptFormSheet';
 import LedgerEntrySheet, { EditableEntry } from '../../../components/LedgerEntrySheet';
@@ -15,8 +15,15 @@ import { fmtDay, fmtDrCr, fmtMoney, fyRange, periodLabel } from '../../../utils/
 import { buildLedgerHtml } from '../../../utils/ledgerHtml';
 import { printOrShareHtml, previewHtml } from '../../../utils/printHtml';
 import { confirmAsync, notify } from '../../../utils/dialogs';
+import { confirmAndSendWhatsapp } from '../../../utils/whatsappSend';
 
 type PeriodKey = 'fy' | 'lastfy' | 'all' | 'custom';
+type Busy = 'print' | 'preview' | 'reminder' | 'statement' | null;
+
+// [days, label]; 0 = off.
+const REMINDER_OPTIONS: [number, string][] = [[0, 'Off'], [7, 'Every 7 days'], [15, 'Every 15 days'], [30, 'Every 30 days']];
+// A dialog opened while a sheet is still closing can be lost on iOS.
+const AFTER_SHEET_MS = 400;
 
 const AGE_COLORS = { d0_30: Colors.success, d31_60: '#F9A825', d61_90: '#EF6C00', d90_plus: Colors.error };
 
@@ -34,7 +41,7 @@ export default function CustomerLedgerScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]     = useState('');
-  const [busy, setBusy]       = useState<'print' | 'preview' | null>(null);
+  const [busy, setBusy]       = useState<Busy>(null);
 
   const [showReceipt, setShowReceipt] = useState(false);
   const [entrySheet, setEntrySheet] = useState<{ mode: 'entry' | 'opening'; entry?: EditableEntry | null } | null>(null);
@@ -103,6 +110,64 @@ export default function CustomerLedgerScreen() {
     }
   };
 
+  // ── WhatsApp (each message may be charged; confirmAndSendWhatsapp asks first) ──
+
+  const sendLineWhatsapp = (l: LedgerLine) => {
+    if (!data || !l.refId) return;
+    const refId = l.refId;
+    confirmAndSendWhatsapp({
+      what: `a payment receipt for ${fmtMoney(l.credit)}${l.date ? ` (${fmtDay(l.date)})` : ''}`,
+      customerName: data.customer.customerName,
+      phone: data.customer.phone,
+      optedOut: !!data.reminder.optedOutAt,
+      send: () => (l.type === 'receipt' ? ledgerApi.sendReceiptWhatsapp(refId) : ledgerApi.sendPaymentWhatsapp(refId)),
+    });
+  };
+
+  const onReceiptSaved = (created: { id: number; receiptNo: string; summary: string }) => {
+    load();
+    if (!data) return;
+    const { customerName, phone } = data.customer;
+    const optedOut = !!data.reminder.optedOutAt;
+    setTimeout(() => confirmAndSendWhatsapp({
+      optedOut,
+      title: `Receipt ${created.receiptNo} saved`,
+      intro: created.summary,
+      afterSave: true,
+      what: 'a payment receipt',
+      customerName,
+      phone,
+      send: () => ledgerApi.sendReceiptWhatsapp(created.id),
+    }), AFTER_SHEET_MS);
+  };
+
+  const sendNow = async (kind: 'reminder' | 'statement') => {
+    if (!data) return;
+    setBusy(kind);
+    const sent = await confirmAndSendWhatsapp({
+      what: kind === 'reminder'
+        ? `a payment reminder for ${fmtMoney(data.position.balance)} with the full statement PDF`
+        : `the statement PDF (${periodLabel(data.statement.from, data.statement.to)})`,
+      customerName: data.customer.customerName,
+      phone: data.customer.phone,
+      optedOut: !!data.reminder.optedOutAt,
+      send: () => (kind === 'reminder'
+        ? ledgerApi.sendReminder(customerId)
+        : ledgerApi.sendStatement(customerId, { from: data.statement.from, to: data.statement.to })),
+    });
+    setBusy(null);
+    if (sent && kind === 'reminder') load();
+  };
+
+  const setReminder = async (enabled: boolean, everyDays: number) => {
+    try {
+      const { data: r } = await ledgerApi.updateReminder(customerId, { enabled, everyDays });
+      setData((d) => (d ? { ...d, reminder: r.reminder } : d));
+    } catch (e: any) {
+      notify('Payment reminder', e?.response?.data?.error ?? 'Could not save the reminder setting.');
+    }
+  };
+
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
   if (error && !data) {
     return (
@@ -115,7 +180,7 @@ export default function CustomerLedgerScreen() {
   }
   if (!data) return null;
 
-  const { customer, statement, position } = data;
+  const { customer, statement, position, reminder } = data;
   const bal = position.balance;
   const balLabel = bal > 0.005 ? 'Balance Due' : bal < -0.005 ? 'Advance' : 'Settled';
   const balColor = bal > 0.005 ? Colors.accent : bal < -0.005 ? '#7FD1FF' : '#9BE3C6';
@@ -153,6 +218,10 @@ export default function CustomerLedgerScreen() {
               <ActionBtn icon="flag-outline" label="Opening Balance" busy={busy} onPress={() => setEntrySheet({ mode: 'opening' })} />
               <ActionBtn icon={Platform.OS === 'web' ? 'print-outline' : 'share-social-outline'} label={Platform.OS === 'web' ? 'Print' : 'Share PDF'} busy={busy} loadingKey="print" onPress={() => runHtml('print')} />
               <ActionBtn icon="eye-outline" label="Preview" busy={busy} loadingKey="preview" onPress={() => runHtml('preview')} />
+              {bal > 0.005 && (
+                <ActionBtn icon="logo-whatsapp" label="Send Reminder" busy={busy} loadingKey="reminder" onPress={() => sendNow('reminder')} />
+              )}
+              <ActionBtn icon="logo-whatsapp" label="WhatsApp Statement" busy={busy} loadingKey="statement" onPress={() => sendNow('statement')} />
             </View>
           </View>
 
@@ -185,12 +254,44 @@ export default function CustomerLedgerScreen() {
                 </View>
                 <Text style={styles.ageFoot}>
                   {position.oldestDueDate ? `Oldest unpaid since ${fmtDay(position.oldestDueDate)}` : ''}
-                  {position.oldestDueDate && position.lastReceiptDate ? '   ·   ' : ''}
+                  {position.oldestDueDate ? '   ·   ' : ''}
                   {position.lastReceiptDate ? `Last payment ${fmtDay(position.lastReceiptDate)}` : 'No payment received yet'}
                 </Text>
               </View>
             </View>
           )}
+
+          {/* Automatic WhatsApp payment reminder */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Automatic Payment Reminder</Text>
+            <View style={[styles.card, styles.reminderCard]}>
+              <View style={styles.pills}>
+                {REMINDER_OPTIONS.map(([days, label]) => {
+                  const active = days === 0 ? !reminder.enabled : reminder.enabled && reminder.everyDays === days;
+                  return (
+                    <TouchableOpacity
+                      key={days}
+                      style={[styles.pill, active && styles.pillActive]}
+                      onPress={() => { if (!active) setReminder(days !== 0, days || reminder.everyDays); }}
+                    >
+                      <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Text style={styles.reminderText}>{reminderText(reminder)}</Text>
+              {reminder.optedOutAt && (
+                <Text style={styles.reminderWarn}>
+                  This customer sent STOP on WhatsApp on {fmtDay(reminder.optedOutAt.slice(0, 10))}: no automatic messages. They can send START to turn them back on.
+                </Text>
+              )}
+              {reminder.enabled && !reminder.schedulerOn && (
+                <Text style={styles.reminderWarn}>
+                  Automatic sending is not switched on on this server yet, so nothing goes out automatically.
+                </Text>
+              )}
+            </View>
+          </View>
 
           {/* Period */}
           <View style={styles.section}>
@@ -242,7 +343,13 @@ export default function CustomerLedgerScreen() {
               {statement.lines.length === 0 ? (
                 <Text style={styles.emptyText}>No transactions in this period.</Text>
               ) : statement.lines.map((l) => (
-                <LineRow key={l.key} line={l} wide={wide} onPress={() => openLine(l)} />
+                <LineRow
+                  key={l.key}
+                  line={l}
+                  wide={wide}
+                  onPress={() => openLine(l)}
+                  onWhatsapp={(l.type === 'receipt' || l.type === 'payment') && l.refId ? () => sendLineWhatsapp(l) : undefined}
+                />
               ))}
 
               <View style={[styles.tRow, styles.totalRow]}>
@@ -264,7 +371,7 @@ export default function CustomerLedgerScreen() {
               <SummaryLine wide={wide} label="Closing Balance" balance={statement.closingBalance} strong />
             </View>
             <Text style={styles.legend}>
-              Tap an order or payment to open the order · tap an adjustment to edit it · tap a receipt to delete it
+              Tap an order or payment to open the order · tap an adjustment to edit it · tap a receipt to delete it · tap the WhatsApp icon to send the customer a payment receipt
             </Text>
           </View>
         </View>
@@ -275,7 +382,7 @@ export default function CustomerLedgerScreen() {
         customerId={customerId}
         customerName={customer.customerName}
         onClose={() => setShowReceipt(false)}
-        onSaved={load}
+        onSaved={onReceiptSaved}
       />
       <LedgerEntrySheet
         visible={!!entrySheet}
@@ -302,9 +409,23 @@ export default function CustomerLedgerScreen() {
   );
 }
 
+function reminderText(r: PaymentReminderInfo): string {
+  const parts: string[] = [];
+  if (r.enabled && r.optedOutAt) {
+    parts.push('Paused while the customer has WhatsApp messages stopped.');
+  } else if (r.enabled) {
+    parts.push(`Next on ${fmtDay(r.nextDue)} after 10 AM, if at least ${fmtMoney(r.minDue)} is due. The full statement PDF is attached.`);
+  } else {
+    parts.push('Off. Choose how often this customer gets a WhatsApp payment reminder with the statement PDF.');
+  }
+  if (r.lastSentAt) parts.push(`Last sent ${new Date(r.lastSentAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}.`);
+  if (r.lastResult.startsWith('skipped') || r.lastResult.startsWith('failed')) parts.push(`Last check: ${r.lastResult}`);
+  return parts.join(' ');
+}
+
 function ActionBtn({ icon, label, onPress, primary, busy, loadingKey }: {
   icon: React.ComponentProps<typeof Ionicons>['name']; label: string; onPress: () => void;
-  primary?: boolean; busy: 'print' | 'preview' | null; loadingKey?: 'print' | 'preview';
+  primary?: boolean; busy: Busy; loadingKey?: Exclude<Busy, null>;
 }) {
   return (
     <TouchableOpacity style={[styles.actionBtn, primary && styles.actionBtnPrimary]} onPress={onPress} disabled={!!busy} activeOpacity={0.8}>
@@ -363,9 +484,14 @@ const LINE_ICONS: Record<string, any> = {
   order: 'receipt-outline', payment: 'cash-outline', receipt: 'wallet-outline', adjustment: 'create-outline', opening: 'flag-outline',
 };
 
-function LineRow({ line: l, wide, onPress }: { line: LedgerLine; wide: boolean; onPress: () => void }) {
+function LineRow({ line: l, wide, onPress, onWhatsapp }: { line: LedgerLine; wide: boolean; onPress: () => void; onWhatsapp?: () => void }) {
   const trailing = l.type === 'receipt' ? 'trash-outline' : l.type === 'adjustment' || l.type === 'opening' ? 'pencil-outline' : 'chevron-forward';
   const trailingColor = l.type === 'receipt' ? Colors.error : Colors.textMuted;
+  const whatsapp = onWhatsapp ? (
+    <TouchableOpacity onPress={onWhatsapp} hitSlop={8} accessibilityLabel="Send payment receipt on WhatsApp">
+      <Ionicons name="logo-whatsapp" size={15} color={Colors.whatsapp} />
+    </TouchableOpacity>
+  ) : null;
   if (wide) {
     return (
       <TouchableOpacity style={[styles.tRow, styles.lineRow]} onPress={onPress} activeOpacity={0.7}>
@@ -377,7 +503,7 @@ function LineRow({ line: l, wide, onPress }: { line: LedgerLine; wide: boolean; 
         <Text style={[styles.td, styles.cAmt]}>{l.debit ? fmtMoney(l.debit) : ''}</Text>
         <Text style={[styles.td, styles.cAmt, { color: Colors.success }]}>{l.credit ? fmtMoney(l.credit) : ''}</Text>
         <Text style={[styles.td, styles.cBal]}>{fmtDrCr(l.balance)}</Text>
-        <View style={styles.cIcon}><Ionicons name={trailing} size={14} color={trailingColor} /></View>
+        <View style={styles.cIcon}>{whatsapp}<Ionicons name={trailing} size={14} color={trailingColor} /></View>
       </TouchableOpacity>
     );
   }
@@ -398,6 +524,7 @@ function LineRow({ line: l, wide, onPress }: { line: LedgerLine; wide: boolean; 
         </Text>
         <Text style={styles.mBal}>Bal {fmtDrCr(l.balance)}</Text>
       </View>
+      {whatsapp}
       <Ionicons name={trailing} size={14} color={trailingColor} />
     </TouchableOpacity>
   );
@@ -454,6 +581,9 @@ const styles = StyleSheet.create({
   pillActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   pillText:  { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   pillTextActive: { color: '#111' },
+  reminderCard: { padding: 12, gap: 10 },
+  reminderText: { fontSize: 12, color: Colors.textSecondary, lineHeight: 17 },
+  reminderWarn: { fontSize: 12, color: Colors.error, lineHeight: 17 },
   customRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' },
   dateBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
   dateBtnText: { fontSize: 13, color: Colors.textPrimary },
@@ -467,7 +597,7 @@ const styles = StyleSheet.create({
   cPart:    { flex: 1 },
   cAmt:     { width: 120, textAlign: 'right' },
   cBal:     { width: 140, textAlign: 'right' },
-  cIcon:    { width: 18, alignItems: 'flex-end' },
+  cIcon:    { width: 44, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 10 },
   lineRow:  { borderTopWidth: 1, borderTopColor: Colors.border, alignItems: 'flex-start' },
   bfRow:    { backgroundColor: Colors.surfaceAlt, borderTopWidth: 1, borderTopColor: Colors.border },
   totalRow: { backgroundColor: Colors.surfaceAlt, borderTopWidth: 1, borderTopColor: Colors.border },

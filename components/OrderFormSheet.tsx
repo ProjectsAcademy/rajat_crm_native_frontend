@@ -1,11 +1,11 @@
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Modal,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, useWindowDimensions,
   FlatList, ActivityIndicator, KeyboardAvoidingView, Platform,
   ScrollView, Alert, Dimensions,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { ordersApi, customersApi, projectsApi, inventoryApi, OrderDetail } from '../services/api';
+import { ordersApi, customersApi, projectsApi, inventoryApi, vendorsApi, OrderDetail } from '../services/api';
 import { Colors } from '../constants/colors';
 
 // ── Types ───────────────────────────────────────────────────────────────────────
@@ -81,6 +81,9 @@ function lineTotal(item: LocalItem): number {
 
 // ── Invoice + GST (optional, "also create an invoice for this order") ────────────
 interface LocalInvoiceItem { key: string; description: string; quantity: string; unitPrice: string }
+
+// ── Vendor work (part of the order done by a third party) ────────────────────────
+interface LocalVendorWork { key: string; vendorId: number; vendorName: string; description: string; amount: string }
 function makeInvoiceItem(): LocalInvoiceItem {
   return { key: `${Date.now()}-${Math.random()}`, description: '', quantity: '1', unitPrice: '' };
 }
@@ -148,6 +151,10 @@ const sp = StyleSheet.create({
 export default function OrderFormSheet({ visible, onClose, onSaved, order }: Props) {
   const isEdit = !!order;
   const isWeb  = Platform.OS === 'web';
+  // Vendor Work rows: one line on a wide web dialog, stacked card otherwise
+  // (native always, and web on a phone-width window).
+  const { width: windowWidth } = useWindowDimensions();
+  const stackVendorRows = !isWeb || windowWidth < 700;
 
   // Order fields
   const [customerId,   setCustomerId]   = useState<number | null>(null);
@@ -176,6 +183,12 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
   const [gstRate,       setGstRate]       = useState('18');
   const [isInterstate,  setIsInterstate]  = useState(false);
   const [gstNo,         setGstNo]         = useState('');
+
+  // Vendor work — rows are only created once a vendor is picked (like items)
+  const [vendorWorks,      setVendorWorks]      = useState<LocalVendorWork[]>([]);
+  const [vendors,          setVendors]          = useState<SearchItem[]>([]);
+  const [loadingVendors,   setLoadingVendors]   = useState(false);
+  const [vendorPickerKey,  setVendorPickerKey]  = useState<string | null>(null);
 
   // Pickers
   const [customers,        setCustomers]        = useState<SearchItem[]>([]);
@@ -209,12 +222,20 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
         isRental:       it.isRental,
         rentalDays:     String(it.rentalDays ?? 1),
       })));
+      setVendorWorks((order.vendorWorks ?? []).map(vw => ({
+        key:         String(vw.id),
+        vendorId:    vw.vendor.id,
+        vendorName:  vw.vendor.name,
+        description: vw.description ?? '',
+        amount:      parseFloat(vw.amount) ? parseFloat(vw.amount).toString() : '',
+      })));
     } else {
       setCustomerId(null); setCustomerName('');
       setProjectId(null);  setProjectName('');
       setOrderDate(today()); setDeliveryDate('');
       setStatus('pending'); setNotes('');
       setItems([]);
+      setVendorWorks([]);
     }
     // Invoice section only applies to new orders — always reset, whichever mode.
     setCreateInvoice(false);
@@ -281,6 +302,20 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
     }
     setShowProjectPicker(true);
   };
+  const openVendorPicker = (key: string) => {
+    if (!vendors.length) {
+      setLoadingVendors(true);
+      vendorsApi.list({ limit: 500, active: true })
+        .then(({ data }) => setVendors(data.vendors.map(v => ({ id: v.id, label: v.name, sub: [v.contactPerson, v.phone].filter(Boolean).join(' · ') }))))
+        .catch(() => {}).finally(() => setLoadingVendors(false));
+    }
+    setVendorPickerKey(key);
+  };
+  const updateVendorWork = (key: string, patch: Partial<LocalVendorWork>) =>
+    setVendorWorks(p => p.map(vw => vw.key === key ? { ...vw, ...patch } : vw));
+  const removeVendorWork = (key: string) => setVendorWorks(p => p.filter(vw => vw.key !== key));
+  const vendorWorkTotal = vendorWorks.reduce((sum, vw) => sum + (parseFloat(vw.amount || '0') || 0), 0);
+
   const openInventoryPicker = (key: string) => {
     setEditingItemKey(key);
     if (!inventoryList.length) {
@@ -338,6 +373,13 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
       rentalDays:  it.isRental ? (parseInt(it.rentalDays || '1') || 1) : 1,
     }));
 
+    const vendorWorkPayload = vendorWorks.map(vw => ({
+      vendorId:    vw.vendorId,
+      description: vw.description.trim(),
+      amount:      parseFloat(vw.amount || '0') || 0,
+    }));
+    if (vendorWorkPayload.some(vw => vw.amount < 0)) { Alert.alert('Invalid amount', 'Vendor work amount cannot be negative.'); return; }
+
     let invoicePayload: import('../services/api').OrderInvoiceInput | undefined;
     if (!isEdit && createInvoice) {
       const isoInvoiceDate = displayToIso(invoiceDate);
@@ -356,10 +398,10 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
     setSaving(true);
     try {
       if (isEdit) {
-        await ordersApi.update(order!.id, { customerId: customerId ?? null, projectId: projectId ?? null, orderDate: isoDate, deliveryDate: isoDelivery, status, notes, items: itemPayload });
+        await ordersApi.update(order!.id, { customerId: customerId ?? null, projectId: projectId ?? null, orderDate: isoDate, deliveryDate: isoDelivery, status, notes, items: itemPayload, vendorWorks: vendorWorkPayload });
         onSaved();
       } else {
-        const { data } = await ordersApi.create({ customerId: customerId ?? undefined, projectId: projectId ?? undefined, orderDate: isoDate, deliveryDate: isoDelivery ?? undefined, status, notes, items: itemPayload, invoice: invoicePayload });
+        const { data } = await ordersApi.create({ customerId: customerId ?? undefined, projectId: projectId ?? undefined, orderDate: isoDate, deliveryDate: isoDelivery ?? undefined, status, notes, items: itemPayload, invoice: invoicePayload, vendorWorks: vendorWorkPayload });
         onSaved(data.order.id);
       }
       onClose();
@@ -375,6 +417,17 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
         onSelect={item => { if (item) { setCustomerId(item.id); setCustomerName(item.label); } setShowCustomerPicker(false); }} />
       <SearchPickerModal visible={showProjectPicker} title="Select Project" items={projects} loading={loadingProjects}
         onSelect={item => { if (item) { setProjectId(item.id); setProjectName(`${item.sub} · ${item.label}`); } setShowProjectPicker(false); }} />
+      <SearchPickerModal visible={vendorPickerKey !== null} title="Select Vendor" items={vendors} loading={loadingVendors}
+        onSelect={item => {
+          if (item && vendorPickerKey) {
+            if (vendorPickerKey === '__new__') {
+              setVendorWorks(p => [...p, { key: `${Date.now()}-${Math.random()}`, vendorId: item.id, vendorName: item.label, description: '', amount: '' }]);
+            } else {
+              updateVendorWork(vendorPickerKey, { vendorId: item.id, vendorName: item.label });
+            }
+          }
+          setVendorPickerKey(null);
+        }} />
       <SearchPickerModal visible={showInventoryPicker} title="Select Inventory Item" items={inventoryList} loading={loadingInventory}
         onSelect={item => {
           if (item && editingItemKey) {
@@ -390,6 +443,79 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
           setShowInventoryPicker(false); setEditingItemKey(null);
         }} />
     </>
+  );
+
+  // ── Vendor Work section — shared between web and mobile layouts ─────────────────
+  // Records which third party (vendor) did part of this order's work, what
+  // they did, and what they charge us. One row per vendor job; web shows each
+  // row on one line, mobile stacks vendor above description + amount.
+  const vendorWorkSectionJsx = (
+    <View style={vw.section}>
+      <View style={vw.header}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="people-outline" size={16} color={Colors.textSecondary} />
+            <Text style={vw.title}>Vendor Work</Text>
+          </View>
+          <Text style={vw.sub}>Work done by a third party (vendor) on this order: what they did and what it cost.</Text>
+        </View>
+        <TouchableOpacity style={vw.addBtn} onPress={() => openVendorPicker('__new__')}>
+          <Ionicons name="add" size={14} color="#111" />
+          <Text style={vw.addBtnText}>Add Vendor</Text>
+        </TouchableOpacity>
+      </View>
+
+      {vendorWorks.length === 0 ? (
+        <View style={vw.empty}><Text style={vw.emptyText}>No vendor work on this order</Text></View>
+      ) : vendorWorks.map(row => {
+        const vendorBtn = (
+          <TouchableOpacity style={[vw.vendorBtn, !stackVendorRows && { flex: 1.1 }]} onPress={() => openVendorPicker(row.key)} activeOpacity={0.7}>
+            <Ionicons name="business-outline" size={14} color={Colors.textSecondary} />
+            <Text style={vw.vendorName} numberOfLines={1}>{row.vendorName}</Text>
+            <Ionicons name="chevron-down" size={13} color={Colors.textMuted} />
+          </TouchableOpacity>
+        );
+        const descInput = (
+          <TextInput
+            style={[vw.input, { flex: stackVendorRows ? 1 : 1.6 }]} value={row.description}
+            onChangeText={t => updateVendorWork(row.key, { description: t })}
+            placeholder="Work done, e.g. Generator on rent, lighting labour" placeholderTextColor={Colors.textMuted}
+            autoComplete="off" textContentType="none" importantForAutofill="no"
+          />
+        );
+        const amountBox = (
+          <View style={vw.amountBox}>
+            <Text style={vw.rupee}>₹</Text>
+            <TextInput
+              style={vw.amountInput} value={row.amount} keyboardType="decimal-pad"
+              onChangeText={t => updateVendorWork(row.key, { amount: t })}
+              placeholder="0" placeholderTextColor={Colors.textMuted}
+              autoComplete="off" textContentType="none" importantForAutofill="no"
+            />
+          </View>
+        );
+        const removeBtn = (
+          <TouchableOpacity onPress={() => removeVendorWork(row.key)} hitSlop={8} style={vw.removeBtn}>
+            <Ionicons name="trash-outline" size={16} color={Colors.error} />
+          </TouchableOpacity>
+        );
+        return !stackVendorRows ? (
+          <View key={row.key} style={vw.row}>{vendorBtn}{descInput}{amountBox}{removeBtn}</View>
+        ) : (
+          <View key={row.key} style={vw.card}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>{vendorBtn}{removeBtn}</View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>{descInput}{amountBox}</View>
+          </View>
+        );
+      })}
+
+      {vendorWorks.length > 0 && (
+        <View style={vw.totalRow}>
+          <Text style={vw.totalLabel}>Vendor cost</Text>
+          <Text style={vw.totalValue}>{fmtCurrency(vendorWorkTotal)}</Text>
+        </View>
+      )}
+    </View>
   );
 
   // ── Invoice + GST section — shared between web and mobile layouts (see below) ────
@@ -763,6 +889,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
                 </View>
               </View>
 
+              {vendorWorkSectionJsx}
               {invoiceSectionJsx}
             </ScrollView>
           </View>
@@ -887,6 +1014,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
             </View>
           )}
 
+          {vendorWorkSectionJsx}
           {invoiceSectionJsx}
 
           <Text style={[s.label, { marginTop: 16 }]}>Status</Text>
@@ -922,7 +1050,7 @@ const w = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   dialog:   { width: '100%', maxWidth: 960, backgroundColor: Colors.background, borderRadius: 12, overflow: 'hidden', elevation: 32, ...Platform.select({ web: { boxShadow: '0 12px 32px rgba(0,0,0,0.35)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 32 } }) },
 
-  header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 14, backgroundColor: Colors.primary, borderBottomWidth: 1, borderBottomColor: Colors.primaryLight },
+  header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 10, paddingHorizontal: 24, paddingVertical: 14, backgroundColor: Colors.primary, borderBottomWidth: 1, borderBottomColor: Colors.primaryLight },
   headerLeft:    { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerTitle:   { fontSize: 17, fontWeight: '700', color: '#fff' },
   headerSub:     { fontSize: 12, color: Colors.accent, fontWeight: '600', marginLeft: 4 },
@@ -1125,4 +1253,28 @@ const inv = StyleSheet.create({
   gstPreviewTotalRow: { borderTopWidth: 1, borderTopColor: Colors.border, marginTop: 4, paddingTop: 8 },
   gstPreviewTotalLabel: { fontSize: 13, color: Colors.textPrimary, fontWeight: '700' },
   gstPreviewTotalValue: { fontSize: 15, color: Colors.accentDark, fontWeight: '800' },
+});
+
+// ── Vendor Work section styles — shared by web and mobile layouts ────────────────
+const vw = StyleSheet.create({
+  section:   { marginTop: 20, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 16 },
+  header:    { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
+  title:     { fontSize: 13, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sub:       { fontSize: 12, color: Colors.textMuted, marginTop: 3 },
+  addBtn:    { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7 },
+  addBtnText: { fontSize: 13, fontWeight: '700', color: '#111' },
+  empty:     { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', paddingVertical: 14 },
+  emptyText: { fontSize: 13, color: Colors.textMuted },
+  row:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 8, marginBottom: 8 },
+  card:      { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 10, marginBottom: 8 },
+  vendorBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 8 },
+  vendorName: { flex: 1, fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  input:     { minWidth: 0, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 8, fontSize: 13, color: Colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' as any } }) },
+  amountBox: { width: 110, flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, paddingHorizontal: 7 },
+  rupee:     { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
+  amountInput: { flex: 1, minWidth: 0, textAlign: 'right', fontSize: 13, fontWeight: '600', color: Colors.textPrimary, paddingVertical: 8, paddingLeft: 4, ...Platform.select({ web: { outlineStyle: 'none' as any } }) },
+  removeBtn: { padding: 4 },
+  totalRow:  { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 12, paddingTop: 4 },
+  totalLabel: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 },
+  totalValue: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
 });

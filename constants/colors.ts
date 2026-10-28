@@ -32,4 +32,6 @@ export const Colors = {
   kpi4: '#7B61FF',   // Purple
   kpi5: '#D13212',   // AWS Red
   kpi6: '#00A0B0',   // Teal
+
+  whatsapp: '#25D366', // WhatsApp's own green: WhatsApp buttons and icons only
 };
