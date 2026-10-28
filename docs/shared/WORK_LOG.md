@@ -6,6 +6,43 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — WhatsApp automation plan; step 0.4 customer opt-out (STOP / START)
+
+- **Request:** the owner wants every WhatsApp automation idea discussed the
+  same day (customer side and the business's own team), planned and built one
+  by one — faster, without people, and secure.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** new `docs/shared/WHATSAPP_AUTOMATION_PLAN.md` (17 steps,
+  security rules, templates, status; linked from README and KNOWN_ISSUES
+  A.4). Step 0.4: backend `dev_01` `063e79d`; frontend `dev_01` `20a79e6`;
+  docs in the commits after them. Key files: `src/lib/whatsappBot.ts`
+  (`STOP_WORDS`, `setOptOut`), `src/lib/customerMessages.ts` (`automatic`),
+  `src/lib/paymentReminders.ts`, `src/routes/ledger.ts`; app
+  `utils/whatsappSend.ts` (`optedOut`), ledger, order and customer screens.
+- **Database:** migration `20261028140000_customer_whatsapp_opt_out` — one
+  nullable column `customers.whatsapp_opt_out_at` (additive).
+- **Decisions:** 0.4 first because automatic reminders already exist and must
+  be stoppable before they are switched on; only the customer changes the
+  opt-out (STOP / START), staff cannot; manual sends stay possible with a
+  note in the confirm dialog. Steps 0.1 and 0.2 are the owner's server work.
+- **Tested:** `npm test` 50 pass + 1 todo; `test/whatsapp-opt-out.test.ts`
+  (5 tests through signed webhook messages: greeting, STOP for every customer
+  with the number, scheduler skips them while a manual send works, no
+  switching reminders on, START). Fails as expected without the opt-out
+  check. The scheduler tests now switch off reminders left by other test
+  files (they had started to count each other's rows). Frontend tsc 85 =
+  baseline.
+- **Not tested / risks:** the app screens were not opened in a browser this
+  time — port 3001 on this machine was taken by the owner's own
+  `npm run dev`, so the local UI stack could not start (changes are a text
+  line on three screens and a note in the confirm dialog). On a real phone
+  after deploy: send STOP and START to the business number.
+- **Deploy status:** not pushed.
+- **Follow-ups:** plan step 0.3 next (staff WhatsApp identity); submit the
+  three templates of steps 1.1–1.3 now (texts in the plan).
+
+---
+
 ## 2026-10-28 — Web at phone width: header buttons no longer cut off
 
 - **Request:** fix KNOWN_ISSUES B.9 — at 390 px the Inventory list's "Add"

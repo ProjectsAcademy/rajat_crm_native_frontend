@@ -52,7 +52,9 @@ anything older than a few weeks.
    already in use with all hosted apps running. One send at a time is fine;
    any bulk/automatic sending must be queued (one Chromium at a time) or move
    to a bigger server (every send starts its own Chromium).
-4. **WhatsApp bot — live on the DEV server since 2026-10-27.** The Meta
+4. **WhatsApp automation plan** (agreed 2026-10-28): 17 steps, built one at a
+   time — status and open decisions in WHATSAPP_AUTOMATION_PLAN.md.
+5. **WhatsApp bot — live on the DEV server since 2026-10-27.** The Meta
    webhook points at `dev-api.urjaradiant.com` (messages field subscribed,
    WABA subscribed to the app, bot enabled on dev only). First real test:
    "hi" → menu delivered and read. Still to verify with real data on a phone:
@@ -62,9 +64,9 @@ anything older than a few weeks.
    customers; for production, point the webhook at `prod-api`, enable the bot
    there and disable it on dev (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot
    webhook"). No admin screen for the `whatsapp_messages` log yet.
-5. **Web hosting details unknown** — see INFRASTRUCTURE_AND_DEPLOY.md §3. Owner
+6. **Web hosting details unknown** — see INFRASTRUCTURE_AND_DEPLOY.md §3. Owner
    to record host, branches and build process.
-6. **Not tested on physical devices**: the customer ledger (2026-10-04) and
+7. **Not tested on physical devices**: the customer ledger (2026-10-04) and
    vendor work (2026-10-22) were tested on web (desktop and 390 px width)
    with synthetic data only.
 
@@ -126,5 +128,5 @@ anything older than a few weeks.
 ## D. Open questions for the owner
 
 - Do dev and prod use the same Supabase database or two databases?
-- Current web hosting (see A.4).
+- Current web hosting (see A.6).
 - Should vendor work costs feed a vendor payable / profit report later?

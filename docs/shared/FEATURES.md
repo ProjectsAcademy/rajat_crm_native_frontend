@@ -226,6 +226,16 @@ a second tap while a send is running is ignored). Senders and variable order:
     twice. Skipped (less than ₹500 due, no phone) and failed sends are tried
     again the next day; the card shows the next date and the last skip/failure.
   - The card warns when the server does not send automatically.
+- **STOP / START** (2026-10-28, WHATSAPP_AUTOMATION_PLAN.md step 0.4): a
+  customer who writes STOP (also "STOP ALL", UNSUBSCRIBE; any case, a
+  trailing "." or "!" is ignored) to the business number gets no automatic
+  WhatsApp messages; START / SUBSCRIBE turns them back on. It applies to every
+  customer saved with that number (`customers.whatsapp_opt_out_at`) and is
+  confirmed by a reply. Automatic senders skip them (reminder card: "Last
+  check: skipped: … sent STOP"); automatic reminders cannot be switched on
+  for them. A person can still send by hand — the confirm dialog says the
+  customer sent STOP. The customer profile and the ledger card show the
+  date. Only the customer can change it (no switch in the app).
 
 ## WhatsApp self-service bot (`/api/whatsapp/webhook`)
 

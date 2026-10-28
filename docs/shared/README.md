@@ -33,6 +33,7 @@ code, checked by `npm run verify` — tells you which files and lines to open.
 | 9 | [WORK_LOG.md](WORK_LOG.md) | Chronological history of what was built, when and why | When you need context on past decisions |
 | 10 | [WORKSPACE_GUIDE.md](WORKSPACE_GUIDE.md) | Working with both repos from their parent folder; source of the workspace-root `AGENTS.md` | When your tool opens the parent folder, or on a new machine |
 | 11 | [CODE_MAP.md](CODE_MAP.md) | GENERATED index: every API endpoint (handler line, permission, tables, app files calling it), screens, components, models, helpers | Search it at the start of every task; never edit it — `npm run map` |
+| 12 | [WHATSAPP_AUTOMATION_PLAN.md](WHATSAPP_AUTOMATION_PLAN.md) | The agreed step-by-step plan for WhatsApp automation (customer and staff side), its security rules, templates and status | Before any WhatsApp work; update the step's status when you finish it |
 
 Repository-specific references (not mirrored):
 

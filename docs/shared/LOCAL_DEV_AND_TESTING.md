@@ -135,8 +135,11 @@ the same checks without relying on memory.
   WhatsApp templates against a fake Meta (`test/whatsapp-templates.test.ts`:
   the variables of every template, receipts vs their order slices, no phone,
   Meta errors, reminder settings, the reminder scheduler's hours, ₹500 limit
-  and once-a-day claim), the bot's "Our items" through signed webhook
-  messages (`test/whatsapp-bot-items.test.ts`). The PDF tests are skipped when Playwright's Chromium
+  and once-a-day claim), the bot's "Our items" and STOP / START through
+  signed webhook messages (`test/whatsapp-bot-items.test.ts`,
+  `test/whatsapp-opt-out.test.ts`). All test files share one throwaway
+  database, run one after another: a scheduler test switches off every
+  reminder but its own first. The PDF tests are skipped when Playwright's Chromium
   is not installed (`npx playwright install chromium`).
 - `npm test -- orders` runs only the files whose name contains `orders`.
 - A `todo` test documents a known bug (KNOWN_ISSUES B.1 vendor codes): it runs
