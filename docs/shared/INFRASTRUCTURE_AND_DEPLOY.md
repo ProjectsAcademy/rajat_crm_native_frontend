@@ -159,10 +159,15 @@ one (a "webhook override"), otherwise to the app's callback URL. Set up on
 | Number | Messages go to | Server `.env` |
 |---|---|---|
 | Production +91 96859 03733 | override on the number → `https://prod-api.urjaradiant.com/api/whatsapp/webhook` | production: that number's ID, `WHATSAPP_BOT_ENABLED=true` |
-| Development +91 97550 63737 | the app's callback URL → `https://dev-api.urjaradiant.com/api/whatsapp/webhook` | dev: that number's ID, `WHATSAPP_BOT_ENABLED=true` |
+| Development +91 97550 63737 | the app's callback URL → `https://dev-api.urjaradiant.com/api/whatsapp/webhook` | dev: that number's ID, `WHATSAPP_BOT_ENABLED=true`, `WHATSAPP_ALLOWED_RECIPIENTS=<test numbers>` |
 
 Both servers use the same token and app secret. Never put the production
 number's ID in the dev `.env`: dev would send from the production number.
+The dev `.env` also sets `WHATSAPP_ALLOWED_RECIPIENTS` (the owner's and the
+team's numbers, comma-separated, 10 digits or with +91): dev then sends only
+to them, and its bot tells anyone else to use the production number. The
+startup line in `pm2 logs` ends with `recipients 3 test number(s) only` on dev
+and `recipients all` on production.
 
 1. Server `.env`: `WHATSAPP_WEBHOOK_VERIFY_TOKEN=<random, e.g. openssl rand
    -hex 16 — a different one per server>`, `WHATSAPP_APP_SECRET=<Meta app →

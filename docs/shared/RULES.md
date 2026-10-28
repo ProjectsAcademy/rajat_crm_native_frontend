@@ -86,7 +86,8 @@ If a task seems to require breaking one, stop and ask the owner first.
    `express.json()` and never skip the signature check. Production and dev
    use DIFFERENT WhatsApp numbers; each server answers only the number in its
    `WHATSAPP_PHONE_NUMBER_ID` — never put the production number's ID in a
-   dev `.env`. Bot replies must never reveal data to a number that does not
+   dev `.env`. A test server (dev) sets `WHATSAPP_ALLOWED_RECIPIENTS`;
+   production leaves it empty. Bot replies must never reveal data to a number that does not
    match the customer's saved phone. `WHATSAPP_REMINDERS_ENABLED=true`
    (automatic payment reminders, each one charged) also on ONE server only.
    Never send a WhatsApp message to a customer automatically except these

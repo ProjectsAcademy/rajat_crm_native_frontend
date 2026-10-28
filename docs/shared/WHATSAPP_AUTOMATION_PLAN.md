@@ -78,7 +78,8 @@ menu bot with "Our items".
   and production never answer each other's customers
   (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook").
 - **Still to do:** "hi" to the production number from a number saved on a
-  production customer; app release; one send of each template from the
+  production customer; `WHATSAPP_ALLOWED_RECIPIENTS` in the dev `.env`; app
+  release; one send of each template from the
   production app; `WHATSAPP_REMINDERS_ENABLED=true` on production when
   automatic reminders should start.
 - **Done when:** the production number answers from production and template

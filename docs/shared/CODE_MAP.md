@@ -43,8 +43,8 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 25 | public | — | — | not called by the app |
-| POST / | 36 | public | — | verifyWebhookSignature, enqueueWebhook | not called by the app |
+| GET / | 26 | public | — | — | not called by the app |
+| POST / | 37 | public | — | verifyWebhookSignature, enqueueWebhook | not called by the app |
 
 ### auth — `/api/auth` — src/routes/auth.ts
 
@@ -162,10 +162,10 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 |---|---|---|---|---|---|
 | GET / | 107 | invoices | Invoice | — | invoicesApi.list (api.ts:273) ← app/(app)/invoices/index.tsx |
 | GET /:id | 134 | invoices | Invoice | — | invoicesApi.detail (api.ts:275) ← app/(app)/invoices/[id].tsx |
-| POST /:id/send-whatsapp | 151 | invoices | Invoice | whatsappConfigError, normalizeIndianMobile, uploadMedia, sendTemplate, logWhatsapp, renderInvoicePdf | invoicesApi.sendWhatsapp (api.ts:282) ← app/(app)/invoices/[id].tsx |
-| POST / | 205 | invoices | Invoice (w), Order | nextInvoiceNo, calcItems, invalidDiscountPercentError, applyDiscount, invalidInventoryIdsError | invoicesApi.create (api.ts:276) ← components/InvoiceFormSheet.tsx |
-| PUT /:id | 263 | invoices | Invoice (w), InvoiceItem (w), Order | calcItems, invalidDiscountPercentError, applyDiscount, invalidInventoryIdsError | invoicesApi.update (api.ts:277) ← components/InvoiceFormSheet.tsx |
-| DELETE /:id | 342 | invoices | Invoice (w), InvoiceMedia | deleteFromMinio | invoicesApi.remove (api.ts:278) ← app/(app)/invoices/[id].tsx |
+| POST /:id/send-whatsapp | 151 | invoices | Invoice | recipientRefusal, whatsappConfigError, normalizeIndianMobile, uploadMedia, sendTemplate, logWhatsapp, renderInvoicePdf | invoicesApi.sendWhatsapp (api.ts:282) ← app/(app)/invoices/[id].tsx |
+| POST / | 207 | invoices | Invoice (w), Order | nextInvoiceNo, calcItems, invalidDiscountPercentError, applyDiscount, invalidInventoryIdsError | invoicesApi.create (api.ts:276) ← components/InvoiceFormSheet.tsx |
+| PUT /:id | 265 | invoices | Invoice (w), InvoiceItem (w), Order | calcItems, invalidDiscountPercentError, applyDiscount, invalidInventoryIdsError | invoicesApi.update (api.ts:277) ← components/InvoiceFormSheet.tsx |
+| DELETE /:id | 344 | invoices | Invoice (w), InvoiceMedia | deleteFromMinio | invoicesApi.remove (api.ts:278) ← app/(app)/invoices/[id].tsx |
 
 ### purchases — `/api/purchases` — src/routes/purchases.ts
 
@@ -457,15 +457,15 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | currentFy | src/lib/customerMessages.ts:54 | — | todayKey | lib/whatsappBot.ts |
 | variable | src/lib/customerMessages.ts:63 | — | — | not called |
 | modeText | src/lib/customerMessages.ts:67 | — | — | lib/customerMessages.ts |
-| send | src/lib/customerMessages.ts:79 | — | whatsappConfigError, normalizeIndianMobile, uploadMedia, sendTemplate, logWhatsapp | lib/customerMessages.ts |
-| ledgerOf | src/lib/customerMessages.ts:122 | — | loadLedgerData | lib/customerMessages.ts |
-| sendOrderConfirmation | src/lib/customerMessages.ts:127 | Order | amountText, day, send, dayKey | routes/orders.ts |
-| sendPaymentReceived | src/lib/customerMessages.ts:146 | — | amountText, day, balanceText, modeText, send, ledgerOf, dayKey, buildPosition | lib/customerMessages.ts |
-| sendPaymentReceivedForPayment | src/lib/customerMessages.ts:156 | OrderPayment | amountText, sendPaymentReceived | routes/ledger.ts, routes/orders.ts |
-| sendPaymentReceivedForReceipt | src/lib/customerMessages.ts:174 | CustomerReceipt | sendPaymentReceived | routes/ledger.ts |
-| sendPaymentReminder | src/lib/customerMessages.ts:187 | PaymentReminder (w), Customer | amountText, rs, day, balanceText, send, ledgerOf, buildStatement, buildPosition, renderStatementPdf | lib/paymentReminders.ts, routes/ledger.ts |
-| periodText | src/lib/customerMessages.ts:214 | — | day, todayKey | lib/customerMessages.ts |
-| sendAccountStatement | src/lib/customerMessages.ts:222 | Customer | balanceText, send, ledgerOf, periodText, buildStatement, buildPosition, renderStatementPdf | routes/ledger.ts |
+| send | src/lib/customerMessages.ts:79 | — | recipientRefusal, whatsappConfigError, normalizeIndianMobile, uploadMedia, sendTemplate, logWhatsapp | lib/customerMessages.ts |
+| ledgerOf | src/lib/customerMessages.ts:124 | — | loadLedgerData | lib/customerMessages.ts |
+| sendOrderConfirmation | src/lib/customerMessages.ts:129 | Order | amountText, day, send, dayKey | routes/orders.ts |
+| sendPaymentReceived | src/lib/customerMessages.ts:148 | — | amountText, day, balanceText, modeText, send, ledgerOf, dayKey, buildPosition | lib/customerMessages.ts |
+| sendPaymentReceivedForPayment | src/lib/customerMessages.ts:158 | OrderPayment | amountText, sendPaymentReceived | routes/ledger.ts, routes/orders.ts |
+| sendPaymentReceivedForReceipt | src/lib/customerMessages.ts:176 | CustomerReceipt | sendPaymentReceived | routes/ledger.ts |
+| sendPaymentReminder | src/lib/customerMessages.ts:189 | PaymentReminder (w), Customer | amountText, rs, day, balanceText, send, ledgerOf, buildStatement, buildPosition, renderStatementPdf | lib/paymentReminders.ts, routes/ledger.ts |
+| periodText | src/lib/customerMessages.ts:216 | — | day, todayKey | lib/customerMessages.ts |
+| sendAccountStatement | src/lib/customerMessages.ts:224 | Customer | balanceText, send, ledgerOf, periodText, buildStatement, buildPosition, renderStatementPdf | routes/ledger.ts |
 | dayKey | src/lib/ledger.ts:33 | — | — | lib/customerMessages.ts, lib/ledger.ts, lib/paymentReminders.ts |
 | todayKey | src/lib/ledger.ts:36 | — | dayKey | lib/customerMessages.ts, lib/ledger.ts, routes/ledger.ts, utils/statementPdf.ts |
 | emptyData | src/lib/ledger.ts:62 | — | — | lib/ledger.ts |
@@ -486,36 +486,39 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | runReminderPass | src/lib/paymentReminders.ts:44 | PaymentReminder (w) | sendPaymentReminder, dayKey, nextReminderDay | lib/paymentReminders.ts |
 | startPaymentReminders | src/lib/paymentReminders.ts:82 | — | runReminderPass | not called |
 | buildUrl | src/lib/prisma.ts:19 | — | — | not called |
-| whatsappConfigError | src/lib/whatsapp.ts:49 | — | — | lib/customerMessages.ts, lib/whatsapp.ts, routes/invoices.ts |
-| requireConfig | src/lib/whatsapp.ts:56 | — | whatsappConfigError | lib/whatsapp.ts |
-| normalizeIndianMobile | src/lib/whatsapp.ts:88 | — | — | lib/customerMessages.ts, lib/whatsappBot.ts, routes/invoices.ts, routes/ledger.ts |
-| metaFetch | src/lib/whatsapp.ts:95 | — | requireConfig | lib/whatsapp.ts |
-| uploadMedia | src/lib/whatsapp.ts:116 | — | metaFetch | lib/customerMessages.ts, lib/whatsappBot.ts, routes/invoices.ts |
-| sendMessage | src/lib/whatsapp.ts:125 | — | metaFetch | lib/whatsapp.ts |
-| sendTemplate | src/lib/whatsapp.ts:139 | — | sendMessage | lib/customerMessages.ts, routes/invoices.ts |
-| sendText | src/lib/whatsapp.ts:161 | — | sendMessage | lib/whatsappBot.ts |
-| sendButtons | src/lib/whatsapp.ts:166 | — | sendMessage | not called |
-| sendList | src/lib/whatsapp.ts:179 | — | sendMessage | lib/whatsappBot.ts |
-| sendDocument | src/lib/whatsapp.ts:205 | — | sendMessage | lib/whatsappBot.ts |
-| verifyWebhookSignature | src/lib/whatsapp.ts:211 | — | — | routes/whatsappWebhook.ts |
-| enqueueWebhook | src/lib/whatsappBot.ts:59 | — | processWebhook | routes/whatsappWebhook.ts |
-| processWebhook | src/lib/whatsappBot.ts:65 | — | applyStatus, handleMessage | lib/whatsappBot.ts |
-| applyStatus | src/lib/whatsappBot.ts:84 | WhatsappMessage (w) | — | lib/whatsappBot.ts |
-| findCustomersByPhone | src/lib/whatsappBot.ts:103 | Customer | normalizeIndianMobile | lib/whatsappBot.ts |
-| handleMessage | src/lib/whatsappBot.ts:117 | WhatsappMessage | sendText, sendList, findCustomersByPhone, sendMenu, reply, setOptOut, bookingHint, categoryRows, categoryItemsText, pendingSummary, ordersSummary, invoiceRows, sendInvoicePdf, paymentsSummary, sendStatements, logWhatsapp | lib/whatsappBot.ts |
-| sendMenu | src/lib/whatsappBot.ts:213 | — | sendList, reply | lib/whatsappBot.ts |
-| reply | src/lib/whatsappBot.ts:217 | — | logWhatsapp | lib/whatsappBot.ts |
-| setOptOut | src/lib/whatsappBot.ts:230 | Customer (w) | normalizeIndianMobile | lib/whatsappBot.ts |
-| bookingHint | src/lib/whatsappBot.ts:239 | — | — | lib/whatsappBot.ts |
-| categoryRows | src/lib/whatsappBot.ts:246 | Inventory | — | lib/whatsappBot.ts |
-| categoryItemsText | src/lib/whatsappBot.ts:265 | Inventory | rs | lib/whatsappBot.ts |
-| withActivity | src/lib/whatsappBot.ts:298 | — | — | lib/whatsappBot.ts |
-| pendingSummary | src/lib/whatsappBot.ts:308 | — | rs, day, loadLedgerData, buildStatement, buildPosition, withActivity | lib/whatsappBot.ts |
-| ordersSummary | src/lib/whatsappBot.ts:328 | Order | rs, day | lib/whatsappBot.ts |
-| invoiceRows | src/lib/whatsappBot.ts:353 | Invoice | rs, day | lib/whatsappBot.ts |
-| sendInvoicePdf | src/lib/whatsappBot.ts:369 | Invoice | rs, day, uploadMedia, sendDocument, reply, renderInvoicePdf | lib/whatsappBot.ts |
-| paymentsSummary | src/lib/whatsappBot.ts:388 | — | rs, day, loadLedgerData, buildStatement, withActivity | lib/whatsappBot.ts |
-| sendStatements | src/lib/whatsappBot.ts:408 | — | balanceText, currentFy, loadLedgerData, buildStatement, buildPosition, uploadMedia, sendDocument, reply, withActivity, renderStatementPdf | lib/whatsappBot.ts |
+| parseRecipientList | src/lib/whatsapp.ts:52 | — | normalizeIndianMobile | not called |
+| recipientRefusal | src/lib/whatsapp.ts:58 | — | — | lib/customerMessages.ts, lib/whatsapp.ts, lib/whatsappBot.ts, routes/invoices.ts |
+| whatsappConfigError | src/lib/whatsapp.ts:68 | — | — | lib/customerMessages.ts, lib/whatsapp.ts, routes/invoices.ts |
+| requireConfig | src/lib/whatsapp.ts:75 | — | whatsappConfigError | lib/whatsapp.ts |
+| normalizeIndianMobile | src/lib/whatsapp.ts:107 | — | — | lib/customerMessages.ts, lib/whatsapp.ts, lib/whatsappBot.ts, routes/invoices.ts, routes/ledger.ts |
+| metaFetch | src/lib/whatsapp.ts:114 | — | requireConfig | lib/whatsapp.ts |
+| uploadMedia | src/lib/whatsapp.ts:135 | — | metaFetch | lib/customerMessages.ts, lib/whatsappBot.ts, routes/invoices.ts |
+| sendMessage | src/lib/whatsapp.ts:144 | — | metaFetch | lib/whatsapp.ts |
+| sendTemplate | src/lib/whatsapp.ts:158 | — | recipientRefusal, sendMessage | lib/customerMessages.ts, routes/invoices.ts |
+| sendText | src/lib/whatsapp.ts:184 | — | sendMessage | lib/whatsappBot.ts |
+| sendButtons | src/lib/whatsapp.ts:189 | — | sendMessage | not called |
+| sendList | src/lib/whatsapp.ts:202 | — | sendMessage | lib/whatsappBot.ts |
+| sendDocument | src/lib/whatsapp.ts:228 | — | sendMessage | lib/whatsappBot.ts |
+| verifyWebhookSignature | src/lib/whatsapp.ts:234 | — | — | routes/whatsappWebhook.ts |
+| enqueueWebhook | src/lib/whatsappBot.ts:62 | — | processWebhook | routes/whatsappWebhook.ts |
+| processWebhook | src/lib/whatsappBot.ts:68 | — | applyStatus, handleMessage | lib/whatsappBot.ts |
+| applyStatus | src/lib/whatsappBot.ts:87 | WhatsappMessage (w) | — | lib/whatsappBot.ts |
+| findCustomersByPhone | src/lib/whatsappBot.ts:106 | Customer | normalizeIndianMobile | lib/whatsappBot.ts |
+| handleMessage | src/lib/whatsappBot.ts:120 | WhatsappMessage | recipientRefusal, sendText, sendList, findCustomersByPhone, repliedToday, sendMenu, reply, setOptOut, bookingHint, categoryRows, categoryItemsText, pendingSummary, ordersSummary, invoiceRows, sendInvoicePdf, paymentsSummary, sendStatements, logWhatsapp | lib/whatsappBot.ts |
+| repliedToday | src/lib/whatsappBot.ts:222 | WhatsappMessage | — | lib/whatsappBot.ts |
+| sendMenu | src/lib/whatsappBot.ts:230 | — | sendList, reply | lib/whatsappBot.ts |
+| reply | src/lib/whatsappBot.ts:234 | — | logWhatsapp | lib/whatsappBot.ts |
+| setOptOut | src/lib/whatsappBot.ts:247 | Customer (w) | normalizeIndianMobile | lib/whatsappBot.ts |
+| bookingHint | src/lib/whatsappBot.ts:256 | — | — | lib/whatsappBot.ts |
+| categoryRows | src/lib/whatsappBot.ts:263 | Inventory | — | lib/whatsappBot.ts |
+| categoryItemsText | src/lib/whatsappBot.ts:282 | Inventory | rs | lib/whatsappBot.ts |
+| withActivity | src/lib/whatsappBot.ts:315 | — | — | lib/whatsappBot.ts |
+| pendingSummary | src/lib/whatsappBot.ts:325 | — | rs, day, loadLedgerData, buildStatement, buildPosition, withActivity | lib/whatsappBot.ts |
+| ordersSummary | src/lib/whatsappBot.ts:345 | Order | rs, day | lib/whatsappBot.ts |
+| invoiceRows | src/lib/whatsappBot.ts:370 | Invoice | rs, day | lib/whatsappBot.ts |
+| sendInvoicePdf | src/lib/whatsappBot.ts:386 | Invoice | rs, day, uploadMedia, sendDocument, reply, renderInvoicePdf | lib/whatsappBot.ts |
+| paymentsSummary | src/lib/whatsappBot.ts:405 | — | rs, day, loadLedgerData, buildStatement, withActivity | lib/whatsappBot.ts |
+| sendStatements | src/lib/whatsappBot.ts:425 | — | balanceText, currentFy, loadLedgerData, buildStatement, buildPosition, uploadMedia, sendDocument, reply, withActivity, renderStatementPdf | lib/whatsappBot.ts |
 | logWhatsapp | src/lib/whatsappLog.ts:5 | WhatsappMessage (w) | — | lib/customerMessages.ts, lib/whatsappBot.ts, routes/invoices.ts |
 | requireAuth | src/middleware/auth.ts:14 | — | — | route middleware |
 | requireStaff | src/middleware/auth.ts:40 | — | — | route middleware |

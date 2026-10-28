@@ -58,8 +58,9 @@ anything older than a few weeks.
    first number +91 97550 63737 stays on the dev server (the app's callback
    URL → `dev-api`) for tests with dev data; real customers must be given the
    production number (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook").
-   The dev server still sends from a real number: a dev database holding a
-   real customer's phone would message that customer. First production test
+   The dev server sends from a real number, so its `.env` must set
+   `WHATSAPP_ALLOWED_RECIPIENTS` (built 2026-10-28; the owner sets it on the
+   server after the push). First production test
    ("hi" from a number saved on a production customer): pending. Still to
    verify with real data on a phone: the list menu (pending amount, orders,
    invoices → PDF, payment history, statement PDF, our items). No admin

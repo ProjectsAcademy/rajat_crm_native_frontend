@@ -6,6 +6,41 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — Test servers message only their test numbers (`WHATSAPP_ALLOWED_RECIPIENTS`)
+
+- **Request:** the dev server sends from a real number (+91 97550 63737) and
+  its database may hold real customers' phones — make sure dev can never
+  message a real customer.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend: `src/lib/whatsapp.ts` (`parseRecipientList`,
+  `recipientRefusal`, backstop in `sendTemplate`), `src/lib/customerMessages.ts`
+  and `src/routes/invoices.ts` (403 before a PDF is rendered),
+  `src/lib/whatsappBot.ts` (other senders get the production number, once a
+  day; `repliedToday` shared with the "not registered" reply),
+  `src/routes/whatsappWebhook.ts` (startup line shows `recipients …`),
+  `.env.example`, new `test/whatsapp-allowed-recipients.test.ts`. Docs:
+  FEATURES, INFRASTRUCTURE_AND_DEPLOY, RULES 10, KNOWN_ISSUES A.5, plan 0.1,
+  LOCAL_DEV_AND_TESTING, BACKEND_REFERENCE. Frontend: docs mirror only (the
+  app already shows the server's error text).
+- **Database:** none.
+- **Decisions:** owner, 2026-10-28 — the dev `.env` lists the owner's and two
+  team numbers. Empty or unset = no limit (production); a list that is set
+  but mistyped limits to its valid entries, never to "everyone". Bot replies
+  to a listed number are unchanged.
+- **Tested:** `npm test` (new file: no-limit/mistyped parsing, a template to
+  a listed number, order confirmation / reminder / invoice to another number
+  → 403 with nothing sent to the fake Meta, bot menu for a listed number,
+  "test number" reply once a day for others). Mutation checks: with the limit
+  removed tests 3 and 5 fail; without the once-a-day check test 5 fails.
+- **Not tested / risks:** on the real dev server — the owner sets the
+  variable and restarts after the push.
+- **Deploy status:** on `dev_01` (dev deploys on push); production gets it
+  with the next release and needs nothing (variable empty).
+- **Follow-ups:** dev `.env`: `WHATSAPP_ALLOWED_RECIPIENTS=…` then
+  `pm2 restart dev-crm-backend`.
+
+---
+
 ## 2026-10-28 — Backend released; separate WhatsApp numbers for production and dev
 
 - **Request:** continue the release (plan step 0.1); keep dev and production

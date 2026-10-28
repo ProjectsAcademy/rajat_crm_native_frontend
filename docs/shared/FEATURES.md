@@ -236,6 +236,13 @@ a second tap while a send is running is ignored). Senders and variable order:
   for them. A person can still send by hand — the confirm dialog says the
   customer sent STOP. The customer profile and the ledger card show the
   date. Only the customer can change it (no switch in the app).
+- **Test servers** (2026-10-28): a server with `WHATSAPP_ALLOWED_RECIPIENTS`
+  set — the dev server — sends templates and invoices only to the numbers on
+  that list. A send to anyone else is refused before anything reaches Meta
+  (403 "This server sends WhatsApp messages only to the test numbers…";
+  automatic reminders count it as skipped). Production leaves it empty.
+  Reason: dev sends from a real number, and a dev database may hold a real
+  customer's phone.
 
 ## WhatsApp self-service bot (`/api/whatsapp/webhook`)
 
@@ -302,7 +309,10 @@ menu with data options only — no "talk to us" option; no AI/LLM.
   test number) are ignored; retried
   webhooks are answered once (`whatsapp_messages.wa_message_id` unique);
   messages are processed one at a time; production and dev each answer their
-  own number (production +91 96859 03733 since 2026-10-28).
+  own number (production +91 96859 03733 since 2026-10-28). On a test
+  server, a number not in `WHATSAPP_ALLOWED_RECIPIENTS` gets no data, only
+  "This is a test number … please message us on WhatsApp at +91 96859 03733"
+  (once a day).
 - Log: every message in and out (including invoice sends) is a row in
   `whatsapp_messages` with delivery status (sent / delivered / read / failed).
   No screen shows it yet.
