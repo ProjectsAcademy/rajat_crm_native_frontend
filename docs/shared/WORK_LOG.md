@@ -6,6 +6,42 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — Backend released; separate WhatsApp numbers for production and dev
+
+- **Request:** continue the release (plan step 0.1); keep dev and production
+  WhatsApp apart, because their databases hold different customers.
+- **Done by:** the owner (server and Meta), with steps from Claude Code (Opus 5.5)
+- **Changes:** docs and comments only (this commit): INFRASTRUCTURE_AND_DEPLOY.md
+  (both numbers, adding and registering a number, webhook override),
+  RULES 10, FEATURES (bot safety), KNOWN_ISSUES A.1 / A.3 / A.5 and new B.9,
+  plan step 0.1, BACKEND_REFERENCE env table, `.env.example`,
+  `src/routes/whatsappWebhook.ts` comment. No behaviour change.
+- **Production:** backend `main` at `750c73b` (PR #15); `prisma migrate
+  status` up to date (27 migrations); Chromium PDF check passed; `.env` got
+  the WhatsApp values with number ID `1436335366229383`, bot on, reminders
+  off, its own verify token.
+- **Meta:** second number +91 96859 03733 added to the "Rajat Electricals"
+  WABA and registered for the Cloud API (PIN kept by the owner); webhook
+  override on it → `prod-api`. The app's callback URL stays `dev-api`, used
+  by the first number +91 97550 63737, now the dev number.
+- **Decisions:** the new number is production's (owner's choice), the first
+  one stays on dev; each server answers only its own number (the bot already
+  ignored other phone number ids), so the bot runs on both.
+- **Tested:** startup log `bot ENABLED; app secret set; verify token set;
+  phone number id set`; webhook handshake on `prod-api` → `ok`; Meta shows
+  the override (`webhook_configuration.phone_number`).
+- **Not tested / risks:** "hi" to the production number (owner testing);
+  template sends from production need the app release. The dev server still
+  sends from a real number — a dev database holding real customers' phones
+  could message them (a recipient allow-list for dev is proposed, not built).
+- **Found:** tender title over 200 characters → 500 (KNOWN_ISSUES B.9), from
+  an old entry in the production error log.
+- **Deploy status:** backend released; app release next.
+- **Follow-ups:** app release, template test sends on production,
+  `WHATSAPP_REMINDERS_ENABLED=true` on production when wanted, RBAC (0.2).
+
+---
+
 ## 2026-10-28 — Production backup; dev and prod databases are separate
 
 - **Request:** step-by-step release to production, moving the bot and RBAC

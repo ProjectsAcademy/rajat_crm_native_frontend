@@ -76,7 +76,8 @@ npx playwright install --with-deps chromium   # may ask for sudo (system librari
 
 The browser is stored per Linux user in `~/.cache/ms-playwright` (done on
 the server for user `ubuntu` on 2026-10-27, Chromium build 1234 for
-Playwright 1.62). Both checkouts run as `ubuntu`, so production can use the
+Playwright 1.62; the production checkout passed the check below on
+2026-10-28). Both checkouts run as `ubuntu`, so production can use the
 same download as long as its `playwright` version matches; after a Playwright
 upgrade, run the install again. Quick check that PDFs work, without sending
 anything (in the checkout folder):
@@ -106,11 +107,12 @@ the servers' `.env`).
 |---|---|
 | Meta business portfolio | Rajat Electric Decoration & Power Point (business verification: Verified) |
 | WhatsApp Business Account (WABA, "Messaging account") | "Rajat Electricals", ID `1763205934724539` |
-| Business number | +91 97550 63737, display name "Rajat Electricals" |
-| `WHATSAPP_PHONE_NUMBER_ID` | `1368505093020145` |
+| Production number | +91 96859 03733, display name "Rajat Electricals", `WHATSAPP_PHONE_NUMBER_ID` `1436335366229383`. Added and registered 2026-10-28; its two-step verification PIN is kept by the owner (never in the repos). The number customers are given |
+| Development number | +91 97550 63737, display name "Rajat Electricals", `WHATSAPP_PHONE_NUMBER_ID` `1368505093020145`. The first number (2026-10-27); dev server only since 2026-10-28 — do not give it to customers |
+| Messaging limit | Set for the whole business portfolio, shared by both numbers (`TIER_250` = 250 different people per 24 h on 2026-10-28) |
 | Developer app | `rajatcrmAppForWp`, App ID `1990145641680838` |
 | Token | permanent token of system user `rajat_crm_api_admin` (Admin), permissions `whatsapp_business_messaging` + `whatsapp_business_management` |
-| Templates | All Utility, English (`en`), in the WABA above. `invoice_share` APPROVED (checked 2026-10-28); `order_confirmation`, `payment_received`, `payment_reminder` in review (2026-10-28); `account_statement_pdf` to be submitted; `account_statement` (no Document header) unused. Texts and variables: FEATURES.md "WhatsApp messages to customers" |
+| Templates | All Utility, English (`en`), in the WABA above. `invoice_share` APPROVED (checked 2026-10-28); `order_confirmation`, `payment_received`, `payment_reminder` approved (owner, 2026-10-28); `account_statement_pdf` to be submitted; `account_statement` (no Document header) unused. Texts and variables: FEATURES.md "WhatsApp messages to customers" |
 | Billing | **Prepaid "Available funds" in INR**, topped up manually (Meta Business Suite → Billing & payments → Accounts → Rajat Electricals → Add funds). Indian-issued credit/debit cards are rejected by Meta ("India credit cards are currently not supported", 2026-10-27). Meta deducts about once a day; when the balance runs out, sends fail with code 131042. First top-up ₹100 on 2026-10-27 |
 
 Several duplicate WABAs (and a Meta-provided +1 number) were created by
@@ -122,33 +124,76 @@ for this number — it tries to add a new number ("already registered").
 Read-only checks (run in a terminal, never paste the token anywhere else):
 
 ```bash
+TOKEN=$(grep '^WHATSAPP_ACCESS_TOKEN=' .env | cut -d= -f2- | tr -d '"')   # in a checkout folder; prints nothing
 curl -s "https://graph.facebook.com/v21.0/1763205934724539/phone_numbers" -H "Authorization: Bearer $TOKEN"
 curl -s "https://graph.facebook.com/v21.0/1763205934724539/message_templates?name=invoice_share" -H "Authorization: Bearer $TOKEN"
 ```
 
-The first must show `platform_type: CLOUD_API` and the phone number ID above;
+The first must show `platform_type: CLOUD_API` for both numbers above;
 the second shows the template `status` (`APPROVED` before sending works).
+
+Adding a number (done 2026-10-28 for the production number): WhatsApp
+Manager → Phone numbers → **Add phone number** (not "Connect WhatsApp
+account") in the "Rajat Electricals" account → display name → OTP by SMS or
+call (the SIM must not be active in a WhatsApp app). The number then shows
+"Pending" until it is registered for the Cloud API with a six-digit PIN the
+owner chooses — it becomes the number's two-step verification PIN; keep it
+safe, re-registering needs it:
+
+```bash
+curl -s -X POST "https://graph.facebook.com/v21.0/<PHONE_NUMBER_ID>/register" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"messaging_product":"whatsapp","pin":"<PIN>"}'
+```
+
+Templates belong to the WhatsApp Business Account, so every approved template
+works from every number in it.
 
 ### WhatsApp bot webhook (incoming messages)
 
-Meta delivers customer messages to ONE callback URL per app. Whichever server
-it points at answers the real business number.
+Production and dev have separate databases, so each has its own number and
+answers only that number: the bot ignores messages whose
+`metadata.phone_number_id` is not the server's `WHATSAPP_PHONE_NUMBER_ID`.
+Meta sends a number's messages to the number's own callback URL when it has
+one (a "webhook override"), otherwise to the app's callback URL. Set up on
+2026-10-28:
 
-1. Server `.env` (that server only): `WHATSAPP_WEBHOOK_VERIFY_TOKEN=<random,
-   e.g. openssl rand -hex 16>`, `WHATSAPP_APP_SECRET=<Meta app → App settings
-   → Basic → App secret>`, `WHATSAPP_BOT_ENABLED=true`; `pm2 restart <name>`.
-   All other servers keep `WHATSAPP_BOT_ENABLED=false`.
-2. Meta developer app `rajatcrmAppForWp` → WhatsApp → Configuration →
-   Webhook: Callback URL `https://dev-api.urjaradiant.com/api/whatsapp/webhook`
-   (or `prod-api...` for production), Verify token = the same random string →
-   "Verify and save". Then subscribe the webhook field **messages**.
+| Number | Messages go to | Server `.env` |
+|---|---|---|
+| Production +91 96859 03733 | override on the number → `https://prod-api.urjaradiant.com/api/whatsapp/webhook` | production: that number's ID, `WHATSAPP_BOT_ENABLED=true` |
+| Development +91 97550 63737 | the app's callback URL → `https://dev-api.urjaradiant.com/api/whatsapp/webhook` | dev: that number's ID, `WHATSAPP_BOT_ENABLED=true` |
+
+Both servers use the same token and app secret. Never put the production
+number's ID in the dev `.env`: dev would send from the production number.
+
+1. Server `.env`: `WHATSAPP_WEBHOOK_VERIFY_TOKEN=<random, e.g. openssl rand
+   -hex 16 — a different one per server>`, `WHATSAPP_APP_SECRET=<Meta app →
+   App settings → Basic → App secret>`, `WHATSAPP_BOT_ENABLED=true`;
+   `pm2 restart <name>`. Check from outside, in that checkout's folder (prints
+   `ok`; `Forbidden` = wrong token, for example read from the other
+   checkout's `.env`):
+   ```bash
+   VT=$(grep '^WHATSAPP_WEBHOOK_VERIFY_TOKEN=' .env | cut -d= -f2-)
+   curl -s "https://prod-api.urjaradiant.com/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=$VT&hub.challenge=ok"
+   ```
+2. Point the number at its server:
+   - App callback URL (the dev number today): Meta developer app
+     `rajatcrmAppForWp` → WhatsApp → Configuration → Webhook: Callback URL,
+     Verify token = that server's token → "Verify and save". Then subscribe
+     the webhook field **messages** (set on the app; overrides use it too).
+   - A number's override (the production number today), with `TOKEN` and
+     `VT` read from the production `.env`:
+     ```bash
+     curl -s -X POST "https://graph.facebook.com/v21.0/1436335366229383" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"webhook_configuration\":{\"override_callback_uri\":\"https://prod-api.urjaradiant.com/api/whatsapp/webhook\",\"verify_token\":\"$VT\"}}"
+     curl -s "https://graph.facebook.com/v21.0/1436335366229383?fields=webhook_configuration" -H "Authorization: Bearer $TOKEN"
+     ```
+     The check shows `phone_number` (the override) and `application` (the
+     app's URL). Posting an empty `override_callback_uri` removes the override.
 3. Make sure the WhatsApp Business Account sends events to the app (once):
    ```bash
    curl -s -X POST "https://graph.facebook.com/v21.0/1763205934724539/subscribed_apps" -H "Authorization: Bearer $TOKEN"
    curl -s "https://graph.facebook.com/v21.0/1763205934724539/subscribed_apps" -H "Authorization: Bearer $TOKEN"
    ```
-4. Test from a phone whose number is saved on a customer: send "hi" to the
-   business number → menu with three buttons. `pm2 logs <name>` shows
+4. Test from a phone whose number is saved on a customer in that
+   environment's database: send "hi" to that environment's number → menu with three buttons. `pm2 logs <name>` shows
    `[whatsapp-webhook]` / `[whatsapp-bot]` lines on problems.
 5. Troubleshooting, in order:
    - After every restart `pm2 logs` prints `[whatsapp-webhook] bot ENABLED/disabled;

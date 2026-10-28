@@ -8,18 +8,14 @@ anything older than a few weeks.
 
 1. **Production is behind development** (as of 2026-10-28, release in
    progress — WHATSAPP_AUTOMATION_PLAN.md step 0.1):
-   - Backend `main` lacks 37 commits: vendor work, WhatsApp invoice hardening,
-     bot, templates, automatic reminders, "Our items", STOP / START, tests and
-     tooling. Migrations to apply (all additive): `20261022120000_order_vendor_work`,
-     `20261027120000_whatsapp_messages`, `20261028120000_payment_reminders`,
-     `20261028130000_inventory_show_on_whatsapp`,
-     `20261028140000_customer_whatsapp_opt_out`.
+   - Backend: released 2026-10-28 (PR #15, production `main` at `750c73b`;
+     `npx prisma migrate status` on the server: 27 migrations, schema up to
+     date). Production WhatsApp set up the same day (A.3, A.5).
    - Frontend `main` lacks the dashboard redesign, vendor work, the WhatsApp
      buttons, the inventory "Show on WhatsApp" switch and the phone-width
-     fixes.
+     fixes. The app release is the next step.
    - Production database backup taken 2026-10-28 (INFRASTRUCTURE_AND_DEPLOY.md
-     §4). Release backend first (merge `dev_01` → `main`, run the production
-     deploy workflow), then the app.
+     §4).
    - Verify with `git fetch && git log --oneline origin/main..origin/dev_01`
      in each repo before acting; these refs may be stale.
 2. **RBAC is in shadow mode.** `RBAC_ENFORCE=false` (denials only logged as
@@ -32,42 +28,42 @@ anything older than a few weeks.
 3. **WhatsApp invoice sending** (manual button) — status as of 2026-10-28:
    **working on the dev server.** Template `invoice_share` is APPROVED
    (Utility, `en`, Document header + 4 body variables — matches
-   `sendInvoiceTemplate`); number +91 97550 63737 is `CONNECTED`, quality
-   GREEN, messaging limit `TIER_250` (IDs in INFRASTRUCTURE_AND_DEPLOY.md
-   "WhatsApp Business (Meta) setup"). The owner sent a real invoice from the
+   `sendInvoiceTemplate`); the first number +91 97550 63737 (now the dev
+   number) is `CONNECTED`, quality GREEN, messaging limit `TIER_250`; the
+   production number +91 96859 03733 was added 2026-10-28 (IDs in
+   INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp Business (Meta) setup"). The owner sent a real invoice from the
    dev app to their own number on 2026-10-28 and confirmed the PDF and text.
    Billing is a prepaid INR balance (₹100 loaded; Indian cards are not
-   accepted — keep it topped up). Still to do for production (backend `main`
-   already has the send route): install Chromium in the production checkout,
-   set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
-   `WHATSAPP_TEMPLATE_NAME`, `WHATSAPP_TEMPLATE_LANG` in its `.env` (NOT
-   `WHATSAPP_BOT_ENABLED` — the bot runs on one server only, now dev), pm2
-   restart, then one test send from the production app.
+   accepted — keep it topped up). Production (2026-10-28): Chromium checked,
+   `.env` set with the production number; still to do: one test send from
+   the production app once the app is released.
    **Other templates (code on `dev_01` since 2026-10-28, FEATURES.md "WhatsApp
    messages to customers"):** `order_confirmation`, `payment_received`,
-   `payment_reminder` were in review on 2026-10-28 — until Meta approves one,
-   its send fails with the "not approved yet" message. `account_statement`
+   `payment_reminder` approved (owner, 2026-10-28); real sends not tested
+   yet. An unapproved template's send fails with the "not approved yet"
+   message. `account_statement`
    was submitted without a Document header: submit `account_statement_pdf`
    (same body, Document header) and delete `account_statement`. After
-   approval: test each one on dev to the owner's own number, then release
-   (backend first: migration `20261028120000_payment_reminders`), then set
-   `WHATSAPP_REMINDERS_ENABLED=true` on ONE server.
+   approval: test each one to the owner's own number (backend released
+   2026-10-28), then set `WHATSAPP_REMINDERS_ENABLED=true` on production
+   only.
    Server memory: ~954 MB RAM, only ~320–440 MB available and ~1 GB of swap
    already in use with all hosted apps running. One send at a time is fine;
    any bulk/automatic sending must be queued (one Chromium at a time) or move
    to a bigger server (every send starts its own Chromium).
 4. **WhatsApp automation plan** (agreed 2026-10-28): 17 steps, built one at a
    time — status and open decisions in WHATSAPP_AUTOMATION_PLAN.md.
-5. **WhatsApp bot — live on the DEV server since 2026-10-27.** The Meta
-   webhook points at `dev-api.urjaradiant.com` (messages field subscribed,
-   WABA subscribed to the app, bot enabled on dev only). First real test:
-   "hi" → menu delivered and read. Still to verify with real data on a phone:
-   the five-option list menu (pending amount, orders, invoices → PDF, payment
-   history, statement PDF; list menu added 2026-10-27). Because the webhook
-   belongs to the real number, the DEV server currently answers real
-   customers; for production, point the webhook at `prod-api`, enable the bot
-   there and disable it on dev (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot
-   webhook"). No admin screen for the `whatsapp_messages` log yet.
+5. **WhatsApp bot — on production since 2026-10-28** with its own number
+   +91 96859 03733 (webhook override → `prod-api`, bot enabled there). The
+   first number +91 97550 63737 stays on the dev server (the app's callback
+   URL → `dev-api`) for tests with dev data; real customers must be given the
+   production number (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook").
+   The dev server still sends from a real number: a dev database holding a
+   real customer's phone would message that customer. First production test
+   ("hi" from a number saved on a production customer): pending. Still to
+   verify with real data on a phone: the list menu (pending amount, orders,
+   invoices → PDF, payment history, statement PDF, our items). No admin
+   screen for the `whatsapp_messages` log yet.
 6. **Web hosting details unknown** — see INFRASTRUCTURE_AND_DEPLOY.md §3. Owner
    to record host, branches and build process.
 7. **Not tested on physical devices**: the customer ledger (2026-10-04) and
@@ -109,6 +105,12 @@ anything older than a few weeks.
    pattern (`app/(app)/orders/index.tsx`) when a module grows past 100, and
    give its backend `orderBy` a unique tie-breaker (`id`) first — sorting
    only by `createdAt` repeats/skips rows across pages for imported batches.
+9. Creating or editing a tender with a title longer than 200 characters (or
+   a tender no. / work order no. longer than 100) fails with "Internal server
+   error": Prisma `P2000`, `tenders.title` is `VARCHAR(200)` and the app's
+   form has no limit. Seen in the production log (code from before
+   2026-09-18). Fix: a clear 400 message, or wider columns (additive
+   migration).
 
 ## C. Looks wrong but is intended
 

@@ -83,9 +83,10 @@ If a task seems to require breaking one, stop and ask the owner first.
    checkouts carry local edits to it; changing the tracked file makes
    `git pull` on the server conflict and breaks automatic deploys.
 10. **WhatsApp webhook**: keep `/api/whatsapp/webhook` mounted before
-   `express.json()` and never skip the signature check. Set
-   `WHATSAPP_BOT_ENABLED=true` on ONE server only (the one Meta's webhook URL
-   points at). Bot replies must never reveal data to a number that does not
+   `express.json()` and never skip the signature check. Production and dev
+   use DIFFERENT WhatsApp numbers; each server answers only the number in its
+   `WHATSAPP_PHONE_NUMBER_ID` — never put the production number's ID in a
+   dev `.env`. Bot replies must never reveal data to a number that does not
    match the customer's saved phone. `WHATSAPP_REMINDERS_ENABLED=true`
    (automatic payment reminders, each one charged) also on ONE server only.
    Never send a WhatsApp message to a customer automatically except these

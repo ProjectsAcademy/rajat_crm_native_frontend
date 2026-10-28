@@ -298,10 +298,11 @@ menu with data options only — no "talk to us" option; no AI/LLM.
   - Outside a window only templates can be sent (free-form fails with Meta
     code 131047).
 - Safety: webhook signature (`WHATSAPP_APP_SECRET`) is mandatory; messages for
-  other phone numbers on the app (Meta's test number) are ignored; retried
+  other phone numbers on the app (the other environment's number, Meta's
+  test number) are ignored; retried
   webhooks are answered once (`whatsapp_messages.wa_message_id` unique);
-  messages are processed one at a time; `WHATSAPP_BOT_ENABLED` must be `true`
-  on exactly one server.
+  messages are processed one at a time; production and dev each answer their
+  own number (production +91 96859 03733 since 2026-10-28).
 - Log: every message in and out (including invoice sends) is a row in
   `whatsapp_messages` with delivery status (sent / delivered / read / failed).
   No screen shows it yet.

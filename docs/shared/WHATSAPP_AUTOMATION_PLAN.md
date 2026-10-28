@@ -16,7 +16,7 @@ menu bot with "Our items".
 
 | Step | What | Side | Status |
 |---|---|---|---|
-| 0.1 | Release to production; move the bot to production | both | in progress (production backup taken 2026-10-28) |
+| 0.1 | Release to production; move the bot to production | both | in progress — backend released, production number and bot set up 2026-10-28; app release next |
 | 0.2 | Switch RBAC from shadow mode to enforced | both | waiting for the owner |
 | 0.3 | Staff WhatsApp identity (`users.phone`) | client | not started |
 | 0.4 | Customer opt-out (STOP / START) | customer | done (2026-10-28, backend `063e79d`, app `20a79e6`) |
@@ -67,17 +67,22 @@ menu bot with "Our items".
 
 ### 0.1 Release to production and move the bot
 
-- **Why first:** today the real business number is answered by the DEV
-  server, which has its own (dev) database — real customers get dev data.
-- **Owner actions:** back up the production database (done 2026-10-28,
-  INFRASTRUCTURE_AND_DEPLOY.md §4); release backend first (merge `dev_01` →
-  `main`, run the production deploy; the five pending migrations are listed
-  in KNOWN_ISSUES A.1, all additive), then the app.
-  Production `.env`: the `WHATSAPP_*` values, `WHATSAPP_BOT_ENABLED=true`
-  (and `false` on dev), Chromium installed, `pm2 restart`. Point the Meta
-  webhook at `prod-api…` (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot
-  webhook"). Test "hi" from the owner's phone.
-- **Done when:** the bot answers from production and dev answers nothing.
+- **Why first:** until 2026-10-28 the only business number was answered by
+  the DEV server, which has its own (dev) database — real customers got dev
+  data.
+- **Done (2026-10-28, by the owner):** production database backup
+  (INFRASTRUCTURE_AND_DEPLOY.md §4); backend released (PR #15, all
+  migrations applied); Chromium checked on production; a second number
+  +91 96859 03733 added for production — webhook override to `prod-api`,
+  bot enabled there. The first number +91 97550 63737 stays on dev, so dev
+  and production never answer each other's customers
+  (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook").
+- **Still to do:** "hi" to the production number from a number saved on a
+  production customer; app release; one send of each template from the
+  production app; `WHATSAPP_REMINDERS_ENABLED=true` on production when
+  automatic reminders should start.
+- **Done when:** the production number answers from production and template
+  sends work from the released app.
 
 ### 0.2 RBAC enforced
 
