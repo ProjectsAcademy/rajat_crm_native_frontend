@@ -481,10 +481,10 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | keyToUrl | src/lib/minio.ts:27 | — | — | routes/media.ts |
 | deleteFromMinio | src/lib/minio.ts:35 | — | fileUrlToKey | routes/invoices.ts, routes/media.ts, routes/orders.ts, routes/tenders.ts |
 | getPresignedUrl | src/lib/minio.ts:40 | — | fileUrlToKey | routes/media.ts |
-| remindersEnabled | src/lib/paymentReminders.ts:26 | — | — | not called |
-| nextReminderDay | src/lib/paymentReminders.ts:34 | — | dayKey | lib/paymentReminders.ts, routes/ledger.ts |
-| runReminderPass | src/lib/paymentReminders.ts:44 | PaymentReminder (w) | sendPaymentReminder, dayKey, nextReminderDay | lib/paymentReminders.ts |
-| startPaymentReminders | src/lib/paymentReminders.ts:82 | — | runReminderPass | not called |
+| remindersEnabled | src/lib/paymentReminders.ts:27 | — | — | not called |
+| nextReminderDay | src/lib/paymentReminders.ts:35 | — | dayKey | lib/paymentReminders.ts, routes/ledger.ts |
+| runReminderPass | src/lib/paymentReminders.ts:45 | PaymentReminder (w) | sendPaymentReminder, dayKey, nextReminderDay | lib/paymentReminders.ts |
+| startPaymentReminders | src/lib/paymentReminders.ts:83 | — | runReminderPass | not called |
 | buildUrl | src/lib/prisma.ts:19 | — | — | not called |
 | parseRecipientList | src/lib/whatsapp.ts:52 | — | normalizeIndianMobile | not called |
 | recipientRefusal | src/lib/whatsapp.ts:58 | — | — | lib/customerMessages.ts, lib/whatsapp.ts, lib/whatsappBot.ts, routes/invoices.ts |
