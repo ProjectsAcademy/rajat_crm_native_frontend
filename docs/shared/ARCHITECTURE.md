@@ -161,7 +161,7 @@ Customer ledger balance =
   on the one server with `WHATSAPP_REMINDERS_ENABLED=true`.
 - **WhatsApp bot**: customers who message the business number get a list
   menu (pending amount, latest orders, my invoices → invoice PDF, payment
-  history, statement PDF). Meta calls
+  history, statement PDF, our items → categories → items with rates). Meta calls
   `POST /api/whatsapp/webhook` (signature-checked); `src/lib/whatsappBot.ts`
   answers inside the free 24-hour window. Statement PDFs come from
   `src/utils/statementPdf.ts` (server copy of the app's statement layout).

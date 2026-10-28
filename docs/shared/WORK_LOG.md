@@ -6,6 +6,42 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — WhatsApp bot: "Our items" (inventory with rates)
+
+- **Request:** add inventory to the customers' WhatsApp menu so they stop
+  calling the client to ask what is available.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `dev_01` `7921531`; frontend `dev_01` `0b08a71`; docs
+  in the commits after them. Key files: `src/lib/whatsappBot.ts`
+  (`categoryRows`, `categoryItemsText`), `src/routes/inventory.ts`,
+  `prisma/schema.prisma`; app `components/InventoryFormSheet.tsx`,
+  `app/(app)/inventory/index.tsx` and `[id].tsx`, `constants/colors.ts`
+  (`Colors.whatsapp`, now used by every WhatsApp button and icon).
+- **Database:** migration `20261028130000_inventory_show_on_whatsapp` — one
+  new column `inventory.show_on_whatsapp`, default false (additive).
+- **Decisions (owner, 2026-10-28):** registered customers only; name,
+  description and rate; no photos for now (a category photo PDF is the next
+  step); only items ticked "Show on WhatsApp". Mine: no stock numbers and a
+  "call to book or check availability" line, because orders do not move
+  stock and the system cannot say what is free on a date; 80 items per
+  category at most; rate 0 shows "rate on request".
+- **Tested:** `test/whatsapp-bot-items.test.ts` (6 tests, signed webhook
+  messages, fake Meta): menu row, categories (ticked + active only, "Other",
+  pages of 9 + "More categories"), item text, unregistered number gets
+  nothing, the flag in the inventory API. Fails as expected when the
+  "Show on WhatsApp" filter is removed. Web at 1280 and 390 px: the switch
+  saves, the list shows the icon, no horizontal scroll. Seen on the way and
+  not caused by this change: KNOWN_ISSUES B.9 (cut-off buttons at 390 px).
+- **Not tested / risks:** on a real phone through Meta (needs a push to dev);
+  native layout of the switch reviewed in code only (same row style as the
+  existing "Active Status" switch).
+- **Deploy status:** not pushed.
+- **Follow-ups:** tick the items to show (and fill their categories and
+  rates) in the app after the release; photo catalogue PDF per category;
+  availability by date would need orders to reserve inventory.
+
+---
+
 ## 2026-10-28 — WhatsApp templates: order confirmation, payment received, payment reminder (automatic), statement
 
 - **Request:** use the templates submitted to Meta on 2026-10-27

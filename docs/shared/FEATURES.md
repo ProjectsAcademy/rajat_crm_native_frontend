@@ -145,6 +145,9 @@ invoices, optional link to an order.
   (`purchase_reversal`). Free-text purchase items can auto-create inventory
   entries.
 - Purchase number `PUR-MMMYY-NNN` still uses `count()+1` (see KNOWN_ISSUES).
+- "Show on WhatsApp" (`inventory.show_on_whatsapp`, off by default, a switch
+  in the item form; a WhatsApp icon in the list): the item is listed with its
+  description and rate under "Our items" in the WhatsApp bot menu.
 
 ## HR and Payroll (People → HR)
 
@@ -230,9 +233,9 @@ Built 2026-10-27. Decisions (owner): Phase 1 inside this backend (not n8n),
 menu with data options only — no "talk to us" option; no AI/LLM.
 
 - A customer writes anything to the business number → reply with a WhatsApp
-  **list message** (one "Menu" button, five rows). Every answer ends with the
+  **list message** (one "Menu" button, six rows). Every answer ends with the
   menu again. Options (the first three since 2026-10-27, invoices and payment
-  history added the same day at the owner's choice):
+  history added the same day at the owner's choice, "Our items" 2026-10-28):
   - Pending amount: per customer — total billed (all ledger debits), paid and
     adjusted (all credits), balance due / advance, last payment (amount +
     date), "unpaid since" (oldest due date). Same numbers as the ledger.
@@ -252,6 +255,17 @@ menu with data options only — no "talk to us" option; no AI/LLM.
   - Statement PDF: current financial year statement, rendered on the server
     (`src/utils/statementPdf.ts`) and sent as a document with the closing
     balance in the caption.
+  - Our items (decisions, owner 2026-10-28: registered customers only, name +
+    description + rate, no photos yet, only items ticked "Show on WhatsApp"):
+    a second list with the categories of the active ticked items (item
+    count; no category → "Other"; more than 10 categories → pages of 9 and a
+    "More categories" row, id `CATS:<offset>`). Picking one (`CAT:<name>`)
+    answers "• Name — Rs. 150.00 per pcs" plus the description (first 120
+    characters), at most 80 items, split into several messages above about
+    3,500 characters, then "To book or check availability for your date,
+    please call us on 8839032230 / 9131847282." and the menu. Rate 0 → "rate
+    on request". No stock numbers: orders do not move stock, so the system
+    cannot say what is free on a date (later phase).
   - Row ids `PENDING`, `ORDERS`, `STATEMENT` are the same as the old
     three-button menu, so taps on old messages still work.
 - Identity: the sender's WhatsApp number must match a customer's saved phone

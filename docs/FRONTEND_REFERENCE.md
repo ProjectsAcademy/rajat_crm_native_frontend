@@ -140,8 +140,9 @@ and Office files go as-is. Web appends a Blob, native appends
 Navy + orange palette: `primary #232F3E` (headers), `accent #FF9900`
 (primary actions), `background #F2F3F3`, `surface #FFFFFF`, `border #D5D9D9`,
 text `#0F1111 / #565959 / #8D9397`, `success #067D62`, `error #D13212`,
-`info #0073BB`, plus `*Light` variants and `kpi1..6`. Use the tokens; do not
-hard-code new colours without a reason.
+`info #0073BB`, plus `*Light` variants and `kpi1..6`; `whatsapp #25D366`
+only for WhatsApp buttons and icons. Use the tokens; do not hard-code new
+colours without a reason.
 
 ## 9. Layout patterns
 

@@ -137,9 +137,9 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | GET /categories | 98 | inventory | Inventory | — | inventoryApi.categories (api.ts:155) ← components/InventoryFormSheet.tsx |
 | GET /:id | 115 | inventory | Inventory, InventoryMedia, Stock | calcStock | inventoryApi.detail (api.ts:149) ← app/(app)/inventory/[id].tsx, components/StockEntryFormSheet.tsx |
 | POST / | 152 | inventory | Inventory (w), Stock (w) | — | inventoryApi.create (api.ts:150) ← components/InventoryFormSheet.tsx |
-| PUT /:id | 209 | inventory | Inventory (w) | — | inventoryApi.update (api.ts:151) ← app/(app)/inventory/[id].tsx, components/InventoryFormSheet.tsx |
-| DELETE /:id | 236 | inventory | Inventory (w), OrderItem | — | inventoryApi.deactivate (api.ts:153) ← app/(app)/inventory/[id].tsx |
-| DELETE /:id/permanent | 264 | inventory | Inventory (w), OrderItem, Stock | — | inventoryApi.permanentDelete (api.ts:154) ← app/(app)/inventory/[id].tsx |
+| PUT /:id | 210 | inventory | Inventory (w) | — | inventoryApi.update (api.ts:151) ← app/(app)/inventory/[id].tsx, components/InventoryFormSheet.tsx |
+| DELETE /:id | 238 | inventory | Inventory (w), OrderItem | — | inventoryApi.deactivate (api.ts:153) ← app/(app)/inventory/[id].tsx |
+| DELETE /:id/permanent | 266 | inventory | Inventory (w), OrderItem, Stock | — | inventoryApi.permanentDelete (api.ts:154) ← app/(app)/inventory/[id].tsx |
 
 ### orders — `/api/orders` — src/routes/orders.ts
 
@@ -410,38 +410,38 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | Project | projects | 141 | projectNo | EmployeeAttendance[], Estimate[], Invoice[], MaintenancePeriod[], Order[], ProjectPhotograph[], SalaryIncentive[], Tender, VehicleUsage[] | routes/projects.ts | routes/dashboard.ts, routes/tenders.ts |
 | Vendor | vendors | 169 | vendorCode | GstRecord[], Invoice[], OrderVendorWork[], Purchase[] | routes/vendors.ts | routes/dashboard.ts, routes/orders.ts |
 | Employee | employees | 196 | employeeCode | EmployeeAttendance[], EpfEsic[], SalaryComponent[], SalaryIncentive[], SalaryPayment[] | routes/employees.ts | routes/dashboard.ts, routes/hr.ts |
-| Inventory | inventory | 224 | itemCode | EstimateItem[], InventoryMedia[], InvoiceItem[], OrderItem[], PurchaseItem[], Stock[] | routes/inventory.ts, routes/purchases.ts | routes/dashboard.ts, routes/estimates.ts, routes/invoices.ts, routes/media.ts |
-| Stock | stocks | 247 | — | Inventory | routes/inventory.ts, routes/purchases.ts, routes/stock.ts | routes/dashboard.ts |
-| Order | orders | 275 | orderNo | Customer, Estimate[], Invoice[], OrderItem[], OrderMedia[], OrderPayment[], OrderVendorWork[], Project | lib/ledger.ts, routes/orders.ts | lib/customerMessages.ts, lib/whatsappBot.ts, routes/calendar.ts, routes/customers.ts, routes/dashboard.ts, routes/estimates.ts, routes/invoices.ts, routes/media.ts, routes/projects.ts |
-| OrderVendorWork | order_vendor_works | 307 | — | Order, Vendor | routes/orders.ts | routes/vendors.ts |
-| OrderItem | order_items | 323 | — | Inventory, Order | routes/orders.ts | routes/inventory.ts |
-| OrderPayment | order_payments | 340 | — | CustomerReceipt, Order | routes/ledger.ts, routes/orders.ts | lib/customerMessages.ts, lib/ledger.ts, routes/dashboard.ts |
-| CustomerReceipt | customer_receipts | 367 | receiptNo | Customer, OrderPayment[] | routes/ledger.ts | lib/customerMessages.ts, lib/ledger.ts, routes/customers.ts |
-| CustomerLedgerEntry | customer_ledger_entries | 387 | — | Customer | routes/ledger.ts | lib/ledger.ts, routes/customers.ts |
-| Invoice | invoices | 407 | invoiceNo | Customer, InvoiceItem[], InvoiceMedia[], Order, Project, Vendor | routes/invoices.ts, routes/orders.ts | lib/whatsappBot.ts, routes/customers.ts, routes/dashboard.ts, routes/media.ts, routes/projects.ts, routes/vendors.ts |
-| InvoiceItem | invoice_items | 445 | — | Inventory, Invoice | routes/invoices.ts | — |
-| Purchase | purchases | 463 | purchaseNo | PurchaseItem[], Vendor | routes/purchases.ts | routes/dashboard.ts, routes/vendors.ts |
-| PurchaseItem | purchase_items | 486 | — | Inventory, Purchase | routes/purchases.ts | — |
-| EmployeeAttendance | employee_attendances | 509 | — | Employee, Project | routes/hr.ts | routes/dashboard.ts |
-| SalaryComponent | salary_components | 528 | — | Employee | routes/hr.ts | — |
-| SalaryPayment | salary_payments | 546 | — | Employee, User | routes/hr.ts | routes/dashboard.ts, routes/employees.ts |
-| SalaryIncentive | salary_incentives | 568 | — | Employee, Project, User | routes/hr.ts | routes/dashboard.ts, routes/employees.ts |
-| EpfEsic | epf_esic | 589 | — | Employee | routes/hr.ts | routes/employees.ts |
-| Estimate | estimates | 616 | estimateNo | Customer, EstimateItem[], Order, Project | routes/estimates.ts | routes/customers.ts, routes/dashboard.ts, routes/projects.ts |
-| EstimateItem | estimate_items | 643 | — | Estimate, Inventory | routes/estimates.ts | — |
-| GstRecord | gst_records | 660 | — | Customer, Vendor | routes/gst.ts, routes/orders.ts | routes/dashboard.ts |
-| TenderMedia | tender_media | 689 | — | Tender | — | routes/tenders.ts |
-| InvoiceMedia | invoice_media | 703 | — | Invoice | — | routes/invoices.ts |
-| InventoryMedia | inventory_media | 717 | — | Inventory | routes/media.ts | routes/inventory.ts |
-| OrderMedia | order_media | 732 | — | Order | routes/orders.ts | — |
-| MaintenancePeriod | maintenance_periods | 748 | — | FdAlert[], Project | — | routes/dashboard.ts, routes/maintenance.ts |
-| FdAlert | fd_alerts | 763 | — | MaintenancePeriod | — | routes/maintenance.ts |
-| ProjectPhotograph | project_photographs | 780 | — | Project | — | — |
-| Vehicle | vehicles | 797 | vehicleNo | VehicleUsage[] | — | routes/dashboard.ts, routes/vehicles.ts |
-| VehicleUsage | vehicle_usages | 820 | — | Project, Vehicle | — | — |
-| CalendarEvent | calendar_events | 846 | — | User | routes/calendar.ts | — |
-| WhatsappMessage | whatsapp_messages | 868 | waMessageId | Customer | lib/whatsappBot.ts, lib/whatsappLog.ts | — |
-| PaymentReminder | payment_reminders | 892 | customerId | Customer | lib/customerMessages.ts, lib/paymentReminders.ts, routes/ledger.ts | — |
+| Inventory | inventory | 224 | itemCode | EstimateItem[], InventoryMedia[], InvoiceItem[], OrderItem[], PurchaseItem[], Stock[] | routes/inventory.ts, routes/purchases.ts | lib/whatsappBot.ts, routes/dashboard.ts, routes/estimates.ts, routes/invoices.ts, routes/media.ts |
+| Stock | stocks | 250 | — | Inventory | routes/inventory.ts, routes/purchases.ts, routes/stock.ts | routes/dashboard.ts |
+| Order | orders | 278 | orderNo | Customer, Estimate[], Invoice[], OrderItem[], OrderMedia[], OrderPayment[], OrderVendorWork[], Project | lib/ledger.ts, routes/orders.ts | lib/customerMessages.ts, lib/whatsappBot.ts, routes/calendar.ts, routes/customers.ts, routes/dashboard.ts, routes/estimates.ts, routes/invoices.ts, routes/media.ts, routes/projects.ts |
+| OrderVendorWork | order_vendor_works | 310 | — | Order, Vendor | routes/orders.ts | routes/vendors.ts |
+| OrderItem | order_items | 326 | — | Inventory, Order | routes/orders.ts | routes/inventory.ts |
+| OrderPayment | order_payments | 343 | — | CustomerReceipt, Order | routes/ledger.ts, routes/orders.ts | lib/customerMessages.ts, lib/ledger.ts, routes/dashboard.ts |
+| CustomerReceipt | customer_receipts | 370 | receiptNo | Customer, OrderPayment[] | routes/ledger.ts | lib/customerMessages.ts, lib/ledger.ts, routes/customers.ts |
+| CustomerLedgerEntry | customer_ledger_entries | 390 | — | Customer | routes/ledger.ts | lib/ledger.ts, routes/customers.ts |
+| Invoice | invoices | 410 | invoiceNo | Customer, InvoiceItem[], InvoiceMedia[], Order, Project, Vendor | routes/invoices.ts, routes/orders.ts | lib/whatsappBot.ts, routes/customers.ts, routes/dashboard.ts, routes/media.ts, routes/projects.ts, routes/vendors.ts |
+| InvoiceItem | invoice_items | 448 | — | Inventory, Invoice | routes/invoices.ts | — |
+| Purchase | purchases | 466 | purchaseNo | PurchaseItem[], Vendor | routes/purchases.ts | routes/dashboard.ts, routes/vendors.ts |
+| PurchaseItem | purchase_items | 489 | — | Inventory, Purchase | routes/purchases.ts | — |
+| EmployeeAttendance | employee_attendances | 512 | — | Employee, Project | routes/hr.ts | routes/dashboard.ts |
+| SalaryComponent | salary_components | 531 | — | Employee | routes/hr.ts | — |
+| SalaryPayment | salary_payments | 549 | — | Employee, User | routes/hr.ts | routes/dashboard.ts, routes/employees.ts |
+| SalaryIncentive | salary_incentives | 571 | — | Employee, Project, User | routes/hr.ts | routes/dashboard.ts, routes/employees.ts |
+| EpfEsic | epf_esic | 592 | — | Employee | routes/hr.ts | routes/employees.ts |
+| Estimate | estimates | 619 | estimateNo | Customer, EstimateItem[], Order, Project | routes/estimates.ts | routes/customers.ts, routes/dashboard.ts, routes/projects.ts |
+| EstimateItem | estimate_items | 646 | — | Estimate, Inventory | routes/estimates.ts | — |
+| GstRecord | gst_records | 663 | — | Customer, Vendor | routes/gst.ts, routes/orders.ts | routes/dashboard.ts |
+| TenderMedia | tender_media | 692 | — | Tender | — | routes/tenders.ts |
+| InvoiceMedia | invoice_media | 706 | — | Invoice | — | routes/invoices.ts |
+| InventoryMedia | inventory_media | 720 | — | Inventory | routes/media.ts | routes/inventory.ts |
+| OrderMedia | order_media | 735 | — | Order | routes/orders.ts | — |
+| MaintenancePeriod | maintenance_periods | 751 | — | FdAlert[], Project | — | routes/dashboard.ts, routes/maintenance.ts |
+| FdAlert | fd_alerts | 766 | — | MaintenancePeriod | — | routes/maintenance.ts |
+| ProjectPhotograph | project_photographs | 783 | — | Project | — | — |
+| Vehicle | vehicles | 800 | vehicleNo | VehicleUsage[] | — | routes/dashboard.ts, routes/vehicles.ts |
+| VehicleUsage | vehicle_usages | 823 | — | Project, Vehicle | — | — |
+| CalendarEvent | calendar_events | 849 | — | User | routes/calendar.ts | — |
+| WhatsappMessage | whatsapp_messages | 871 | waMessageId | Customer | lib/whatsappBot.ts, lib/whatsappLog.ts | — |
+| PaymentReminder | payment_reminders | 895 | customerId | Customer | lib/customerMessages.ts, lib/paymentReminders.ts, routes/ledger.ts | — |
 
 ## 6. Backend helpers
 
@@ -498,20 +498,23 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | sendList | src/lib/whatsapp.ts:179 | — | sendMessage | lib/whatsappBot.ts |
 | sendDocument | src/lib/whatsapp.ts:205 | — | sendMessage | lib/whatsappBot.ts |
 | verifyWebhookSignature | src/lib/whatsapp.ts:211 | — | — | routes/whatsappWebhook.ts |
-| enqueueWebhook | src/lib/whatsappBot.ts:48 | — | processWebhook | routes/whatsappWebhook.ts |
-| processWebhook | src/lib/whatsappBot.ts:54 | — | applyStatus, handleMessage | lib/whatsappBot.ts |
-| applyStatus | src/lib/whatsappBot.ts:73 | WhatsappMessage (w) | — | lib/whatsappBot.ts |
-| findCustomersByPhone | src/lib/whatsappBot.ts:92 | Customer | normalizeIndianMobile | lib/whatsappBot.ts |
-| handleMessage | src/lib/whatsappBot.ts:106 | WhatsappMessage | sendText, sendList, findCustomersByPhone, sendMenu, reply, pendingSummary, ordersSummary, invoiceRows, sendInvoicePdf, paymentsSummary, sendStatements, logWhatsapp | lib/whatsappBot.ts |
-| sendMenu | src/lib/whatsappBot.ts:176 | — | sendList, reply | lib/whatsappBot.ts |
-| reply | src/lib/whatsappBot.ts:180 | — | logWhatsapp | lib/whatsappBot.ts |
-| withActivity | src/lib/whatsappBot.ts:195 | — | — | lib/whatsappBot.ts |
-| pendingSummary | src/lib/whatsappBot.ts:205 | — | rs, day, loadLedgerData, buildStatement, buildPosition, withActivity | lib/whatsappBot.ts |
-| ordersSummary | src/lib/whatsappBot.ts:225 | Order | rs, day | lib/whatsappBot.ts |
-| invoiceRows | src/lib/whatsappBot.ts:250 | Invoice | rs, day | lib/whatsappBot.ts |
-| sendInvoicePdf | src/lib/whatsappBot.ts:266 | Invoice | rs, day, uploadMedia, sendDocument, reply, renderInvoicePdf | lib/whatsappBot.ts |
-| paymentsSummary | src/lib/whatsappBot.ts:285 | — | rs, day, loadLedgerData, buildStatement, withActivity | lib/whatsappBot.ts |
-| sendStatements | src/lib/whatsappBot.ts:305 | — | balanceText, currentFy, loadLedgerData, buildStatement, buildPosition, uploadMedia, sendDocument, reply, withActivity, renderStatementPdf | lib/whatsappBot.ts |
+| enqueueWebhook | src/lib/whatsappBot.ts:56 | — | processWebhook | routes/whatsappWebhook.ts |
+| processWebhook | src/lib/whatsappBot.ts:62 | — | applyStatus, handleMessage | lib/whatsappBot.ts |
+| applyStatus | src/lib/whatsappBot.ts:81 | WhatsappMessage (w) | — | lib/whatsappBot.ts |
+| findCustomersByPhone | src/lib/whatsappBot.ts:100 | Customer | normalizeIndianMobile | lib/whatsappBot.ts |
+| handleMessage | src/lib/whatsappBot.ts:114 | WhatsappMessage | sendText, sendList, findCustomersByPhone, sendMenu, reply, bookingHint, categoryRows, categoryItemsText, pendingSummary, ordersSummary, invoiceRows, sendInvoicePdf, paymentsSummary, sendStatements, logWhatsapp | lib/whatsappBot.ts |
+| sendMenu | src/lib/whatsappBot.ts:200 | — | sendList, reply | lib/whatsappBot.ts |
+| reply | src/lib/whatsappBot.ts:204 | — | logWhatsapp | lib/whatsappBot.ts |
+| bookingHint | src/lib/whatsappBot.ts:216 | — | — | lib/whatsappBot.ts |
+| categoryRows | src/lib/whatsappBot.ts:223 | Inventory | — | lib/whatsappBot.ts |
+| categoryItemsText | src/lib/whatsappBot.ts:242 | Inventory | rs | lib/whatsappBot.ts |
+| withActivity | src/lib/whatsappBot.ts:275 | — | — | lib/whatsappBot.ts |
+| pendingSummary | src/lib/whatsappBot.ts:285 | — | rs, day, loadLedgerData, buildStatement, buildPosition, withActivity | lib/whatsappBot.ts |
+| ordersSummary | src/lib/whatsappBot.ts:305 | Order | rs, day | lib/whatsappBot.ts |
+| invoiceRows | src/lib/whatsappBot.ts:330 | Invoice | rs, day | lib/whatsappBot.ts |
+| sendInvoicePdf | src/lib/whatsappBot.ts:346 | Invoice | rs, day, uploadMedia, sendDocument, reply, renderInvoicePdf | lib/whatsappBot.ts |
+| paymentsSummary | src/lib/whatsappBot.ts:365 | — | rs, day, loadLedgerData, buildStatement, withActivity | lib/whatsappBot.ts |
+| sendStatements | src/lib/whatsappBot.ts:385 | — | balanceText, currentFy, loadLedgerData, buildStatement, buildPosition, uploadMedia, sendDocument, reply, withActivity, renderStatementPdf | lib/whatsappBot.ts |
 | logWhatsapp | src/lib/whatsappLog.ts:5 | WhatsappMessage (w) | — | lib/customerMessages.ts, lib/whatsappBot.ts, routes/invoices.ts |
 | requireAuth | src/middleware/auth.ts:14 | — | — | route middleware |
 | requireStaff | src/middleware/auth.ts:40 | — | — | route middleware |
