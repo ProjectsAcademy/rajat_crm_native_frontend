@@ -6,6 +6,28 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — Automatic reminders may also run on dev (one server per database)
+
+- **Request:** the owner asked whether WhatsApp reminders can run on dev too.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs and comments only (this commit): the "ONE server" rule
+  for `WHATSAPP_REMINDERS_ENABLED` becomes "at most one server per database;
+  on dev only with `WHATSAPP_ALLOWED_RECIPIENTS`" — RULES 10,
+  INFRASTRUCTURE_AND_DEPLOY, plan security rule 6, ARCHITECTURE,
+  BACKEND_REFERENCE, `.env.example`, `src/lib/paymentReminders.ts` comment.
+- **Database:** none.
+- **Decisions:** the rule existed because dev and prod might share a
+  database; they do not (separate databases and numbers since 2026-10-28),
+  and the per-day claim still covers a shared one. On dev the recipient list
+  keeps automatic reminders away from real customers (they are recorded as
+  skipped).
+- **Tested:** nothing new — the scheduler and the recipient limit are
+  covered by `npm test` (refusals below 500 count as skipped).
+- **Deploy status:** no code change.
+- **Follow-ups:** the owner may set `WHATSAPP_REMINDERS_ENABLED=true` on dev.
+
+---
+
 ## 2026-10-28 — Test servers message only their test numbers (`WHATSAPP_ALLOWED_RECIPIENTS`)
 
 - **Request:** the dev server sends from a real number (+91 97550 63737) and

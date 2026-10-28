@@ -52,8 +52,10 @@ menu bot with "Our items".
    list already does), so a crafted message cannot reach someone else's data.
 6. **Automatic messages:** only to customers who have not opted out (step
    0.4), only between 10:00 and 19:00 IST, logged in `whatsapp_messages`, on
-   ONE server (env flag per feature, like `WHATSAPP_REMINDERS_ENABLED`), and
-   claimed per day so a second server on a shared database cannot send twice.
+   at most ONE server per database (env flag per feature, like
+   `WHATSAPP_REMINDERS_ENABLED`; on dev only with `WHATSAPP_ALLOWED_RECIPIENTS`),
+   and claimed per day so a second server on a shared database cannot send
+   twice.
 7. **Meta limits:** business-initiated messages reach at most 250 different
    people per 24 h (`TIER_250`, rises with good quality). A poor quality rating
    (blocks, reports) lowers the limit — STOP must always work.

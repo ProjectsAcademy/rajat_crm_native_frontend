@@ -92,11 +92,13 @@ checkout's `.env` and `pm2 restart <name>`. Without Chromium the send button
 returns "The PDF engine (Chromium) is not installed on this server".
 
 Automatic payment reminders: `WHATSAPP_REMINDERS_ENABLED=true` in the `.env`
-of ONE server (production once it is live; never on two servers), then
-`pm2 restart <name>`. The log shows `[payment-reminders] automatic reminders
-ENABLED` at start. Reminders go only to customers someone switched them on
-for in the ledger screen. Dev and prod have separate databases, so a
-customer switched on in the dev app concerns dev data only.
+of at most ONE server per database, then `pm2 restart <name>`. The log shows
+`[payment-reminders] automatic reminders ENABLED` at start. Reminders go only
+to customers someone switched them on for in the ledger screen. Dev and prod
+have separate databases and numbers, so both may run them (owner, 2026-10-28):
+a customer switched on in the dev app concerns dev data only. On dev, only
+together with `WHATSAPP_ALLOWED_RECIPIENTS` — then dev reminders reach only
+the test numbers and every other customer's reminder is recorded as skipped.
 
 ### WhatsApp Business (Meta) setup — which account to use
 
