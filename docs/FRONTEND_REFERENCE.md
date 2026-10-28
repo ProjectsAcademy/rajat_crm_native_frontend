@@ -52,7 +52,8 @@ services/api.ts                    axios instance + every API object + all TypeS
 store/                             auth.ts (user/token, userHasFeature), recents.ts, payrollMonth.ts
 hooks/                             useFeatureGuard.ts, useMediaUpload.ts
 constants/                         api.ts, colors.ts, moduleHubs.ts (breadcrumb/back targets), stackOptions.ts
-utils/                             storage.ts, dialogs.ts, invoiceHtml.ts, ledgerHtml.ts, ledgerFormat.ts, printHtml.ts
+utils/                             storage.ts, dialogs.ts, invoiceHtml.ts, ledgerHtml.ts, ledgerFormat.ts, printHtml.ts,
+                                   whatsappSend.ts (confirm + send + result for every WhatsApp template button)
 docs/                              this file, FRONTEND_UI_RULES.md, shared/ (mirrored project docs)
 ```
 
@@ -154,6 +155,11 @@ hard-code new colours without a reason.
   the `as any` cast. Detail screens opened from another module's stack may
   have no native back button (ledger `[id]` has a fallback).
 - Alerts: use `utils/dialogs.ts` on code paths that run on web.
+- WhatsApp sends: always through `confirmAndSendWhatsapp` (`utils/whatsappSend.ts`)
+  — it shows the number, blocks double taps and reports the server's message.
+  Offers right after saving wait `AFTER_SHEET_MS` so the dialog is not lost
+  while the sheet closes (iOS). The order screen offers the confirmation when
+  opened with `?offerWhatsapp=1` (set by the orders list after "New order").
 
 ## 10. Gotchas
 

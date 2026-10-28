@@ -6,6 +6,53 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — WhatsApp templates: order confirmation, payment received, payment reminder (automatic), statement
+
+- **Request:** use the templates submitted to Meta on 2026-10-27
+  (`order_confirmation`, `payment_received`, `payment_reminder`,
+  `account_statement`) as soon as they are approved.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `dev_01` `551981a`; frontend `dev_01` `b3291dc`; docs
+  in the commits after them. Key files: `src/lib/customerMessages.ts`,
+  `src/lib/paymentReminders.ts`, `src/lib/whatsapp.ts` (`TEMPLATES`,
+  `sendTemplate`), `src/routes/ledger.ts`, `src/routes/orders.ts`,
+  `src/server.ts`; app `utils/whatsappSend.ts`, `app/(app)/ledger/[id].tsx`,
+  `app/(app)/orders/[id].tsx`, `services/api.ts`; docs FEATURES.md "WhatsApp
+  messages to customers", RULES.md 10, ARCHITECTURE, INFRASTRUCTURE,
+  KNOWN_ISSUES A.3, both references.
+- **Database:** migration `20261028120000_payment_reminders` — new table
+  `payment_reminders` only (additive, no data change).
+- **Decisions (owner, 2026-10-28):** payment reminders automatic per customer
+  (off / 7 / 15 / 30 days, 10 AM IST, not under ₹500 due) plus a manual
+  "Send Reminder"; order confirmation and payment receipt offered right after
+  saving (person confirms) and available from buttons; statement as a PDF
+  through a new template `account_statement_pdf`, because the submitted
+  `account_statement` has no Document header. My choices: reminder figures
+  are all-time ledger totals with the all-time statement attached (they must
+  add up); receipt slices are not sent alone; cancelled orders get no
+  confirmation; reminders only 10:00–19:00 IST; the scheduler claims each
+  customer per day so two servers on a shared database cannot both send.
+- **Tested:** `npm test` 39 pass + 1 todo; the new
+  `test/whatsapp-templates.test.ts` (14 tests) checks every template's
+  variables and header against a fake Meta, receipt vs slice, no phone,
+  cancelled order, Meta error naming the template, reminder settings, the
+  scheduler (before 10 AM, under ₹500, once a day, a due customer gets the
+  PDF) and the next-reminder date. Migration SQL equals the schema
+  (`prisma migrate diff` on a throwaway PostgreSQL). App on web against a
+  throwaway database with WhatsApp unconfigured, at 1280 and 390 px: every
+  button and after-save offer shows the right name, number and amount; sends
+  report the server's "not set up" message; reminder setting saves; no
+  horizontal scroll. Frontend tsc 85 = baseline.
+- **Not tested / risks:** a real send of the four new templates (still in
+  review at Meta; `account_statement_pdf` not submitted yet); native
+  Android/iOS (layout reviewed in code only); the scheduler on a real server.
+- **Deploy status:** not pushed.
+- **Follow-ups:** submit `account_statement_pdf`; after approval test each
+  template on dev to the owner's own number; release backend first; set
+  `WHATSAPP_REMINDERS_ENABLED=true` on ONE server (KNOWN_ISSUES A.3).
+
+---
+
 ## 2026-10-28 — WhatsApp template `invoice_share` approved; first real send on dev
 
 - **Request:** Meta approved the `invoice_share` template; check it against

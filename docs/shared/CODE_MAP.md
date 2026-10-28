@@ -24,7 +24,7 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | vendors | `/api/vendors` | src/routes/vendors.ts | vendors | 5 | vendorsApi | app/(app)/vendors/ |
 | employees | `/api/employees` | src/routes/employees.ts | employees | 5 | employeesApi | app/(app)/employees/ |
 | inventory | `/api/inventory` | src/routes/inventory.ts | inventory | 7 | inventoryApi | app/(app)/inventory/ |
-| orders | `/api/orders` | src/routes/orders.ts | orders | 8 | ordersApi | app/(app)/orders/ |
+| orders | `/api/orders` | src/routes/orders.ts | orders | 10 | ordersApi | app/(app)/orders/ |
 | invoices | `/api/invoices` | src/routes/invoices.ts | invoices | 6 | invoicesApi | app/(app)/invoices/ |
 | purchases | `/api/purchases` | src/routes/purchases.ts | purchases | 5 | purchasesApi | app/(app)/purchases/ |
 | hr | `/api/hr` | src/routes/hr.ts | hr.attendance, hr.epf-esic, hr.incentives, hr.salary-components, hr.salary-payments | 25 | hrApi | app/(app)/hr/ |
@@ -35,7 +35,7 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | maintenance | `/api/maintenance` | src/routes/maintenance.ts | maintenance | 2 | maintenanceApi | app/(app)/maintenance/ |
 | media | `/api/media` | src/routes/media.ts | inventory, requireEntityPermission (media.ts:86) | 4 | — | — |
 | calendar | `/api/calendar` | src/routes/calendar.ts | calendar or calendar-write or calendar-manage, calendar-write or calendar-manage | 4 | calendarApi | — |
-| ledger | `/api/ledger` | src/routes/ledger.ts | ledger | 9 | ledgerApi | app/(app)/ledger/ |
+| ledger | `/api/ledger` | src/routes/ledger.ts | ledger | 14 | ledgerApi | app/(app)/ledger/ |
 
 ## 2. API endpoints
 
@@ -93,160 +93,162 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 30 | tenders | Tender | — | tendersApi.list (api.ts:125) ← app/(app)/tenders/index.tsx, components/ProjectFormSheet.tsx |
-| GET /:id | 69 | tenders | Tender | — | tendersApi.detail (api.ts:127) ← app/(app)/tenders/[id].tsx |
-| POST / | 133 | tenders | Tender (w) | parseDateField, validateTenderFields | tendersApi.create (api.ts:128) ← components/TenderFormSheet.tsx |
-| PUT /:id | 172 | tenders | Tender (w) | parseDateField, validateTenderFields | tendersApi.update (api.ts:129) ← components/TenderFormSheet.tsx |
-| DELETE /:id | 223 | tenders | Tender (w), Project, TenderMedia | deleteFromMinio | tendersApi.remove (api.ts:130) ← app/(app)/tenders/[id].tsx |
+| GET / | 30 | tenders | Tender | — | tendersApi.list (api.ts:136) ← app/(app)/tenders/index.tsx, components/ProjectFormSheet.tsx |
+| GET /:id | 69 | tenders | Tender | — | tendersApi.detail (api.ts:138) ← app/(app)/tenders/[id].tsx |
+| POST / | 133 | tenders | Tender (w) | parseDateField, validateTenderFields | tendersApi.create (api.ts:139) ← components/TenderFormSheet.tsx |
+| PUT /:id | 172 | tenders | Tender (w) | parseDateField, validateTenderFields | tendersApi.update (api.ts:140) ← components/TenderFormSheet.tsx |
+| DELETE /:id | 223 | tenders | Tender (w), Project, TenderMedia | deleteFromMinio | tendersApi.remove (api.ts:141) ← app/(app)/tenders/[id].tsx |
 
 ### projects — `/api/projects` — src/routes/projects.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 23 | projects | Project | — | projectsApi.list (api.ts:196) ← app/(app)/projects/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx |
-| GET /:id | 60 | projects | Project | — | projectsApi.detail (api.ts:198) ← app/(app)/projects/[id].tsx |
-| POST / | 81 | projects | Project (w), Tender | parseDateField | projectsApi.create (api.ts:199) ← components/ProjectFormSheet.tsx |
-| PUT /:id | 142 | projects | Project (w), Tender | parseDateField | projectsApi.update (api.ts:200) ← components/ProjectFormSheet.tsx |
-| DELETE /:id | 216 | projects | Project (w), Estimate, Invoice, Order | — | projectsApi.remove (api.ts:201) ← app/(app)/projects/[id].tsx |
+| GET / | 23 | projects | Project | — | projectsApi.list (api.ts:207) ← app/(app)/projects/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx |
+| GET /:id | 60 | projects | Project | — | projectsApi.detail (api.ts:209) ← app/(app)/projects/[id].tsx |
+| POST / | 81 | projects | Project (w), Tender | parseDateField | projectsApi.create (api.ts:210) ← components/ProjectFormSheet.tsx |
+| PUT /:id | 142 | projects | Project (w), Tender | parseDateField | projectsApi.update (api.ts:211) ← components/ProjectFormSheet.tsx |
+| DELETE /:id | 216 | projects | Project (w), Estimate, Invoice, Order | — | projectsApi.remove (api.ts:212) ← app/(app)/projects/[id].tsx |
 
 ### vendors — `/api/vendors` — src/routes/vendors.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 10 | vendors | Vendor | — | vendorsApi.list (api.ts:151) ← app/(app)/vendors/index.tsx, components/GstFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx, components/PurchaseFormSheet.tsx |
-| GET /:id | 48 | vendors | Vendor | — | vendorsApi.detail (api.ts:153) ← app/(app)/vendors/[id].tsx, components/PurchaseFormSheet.tsx |
-| POST / | 73 | vendors | Vendor (w) | — | vendorsApi.create (api.ts:154) ← components/VendorFormSheet.tsx |
-| PUT /:id | 117 | vendors | Vendor (w) | — | vendorsApi.update (api.ts:155) ← app/(app)/vendors/[id].tsx, components/VendorFormSheet.tsx |
-| DELETE /:id | 152 | vendors | Vendor (w), Invoice, OrderVendorWork, Purchase | — | vendorsApi.delete (api.ts:157) ← app/(app)/vendors/[id].tsx |
+| GET / | 10 | vendors | Vendor | — | vendorsApi.list (api.ts:162) ← app/(app)/vendors/index.tsx, components/GstFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx, components/PurchaseFormSheet.tsx |
+| GET /:id | 48 | vendors | Vendor | — | vendorsApi.detail (api.ts:164) ← app/(app)/vendors/[id].tsx, components/PurchaseFormSheet.tsx |
+| POST / | 73 | vendors | Vendor (w) | — | vendorsApi.create (api.ts:165) ← components/VendorFormSheet.tsx |
+| PUT /:id | 117 | vendors | Vendor (w) | — | vendorsApi.update (api.ts:166) ← app/(app)/vendors/[id].tsx, components/VendorFormSheet.tsx |
+| DELETE /:id | 152 | vendors | Vendor (w), Invoice, OrderVendorWork, Purchase | — | vendorsApi.delete (api.ts:168) ← app/(app)/vendors/[id].tsx |
 
 ### employees — `/api/employees` — src/routes/employees.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 10 | employees | Employee | — | employeesApi.list (api.ts:173) ← app/(app)/employees/index.tsx, components/SalaryComponentFormSheet.tsx |
-| GET /:id | 48 | employees | Employee | — | employeesApi.detail (api.ts:175) ← app/(app)/employees/[id].tsx |
-| POST / | 64 | employees | Employee (w) | — | employeesApi.create (api.ts:176) ← components/EmployeeFormSheet.tsx |
-| PUT /:id | 117 | employees | Employee (w) | — | employeesApi.update (api.ts:177) ← components/EmployeeFormSheet.tsx, employeesApi.deactivate (api.ts:178) ← app/(app)/employees/[id].tsx, employeesApi.reactivate (api.ts:179) ← app/(app)/employees/[id].tsx |
-| DELETE /:id | 155 | employees | Employee (w), EpfEsic, SalaryIncentive, SalaryPayment | — | employeesApi.permanentDelete (api.ts:180) ← app/(app)/employees/[id].tsx |
+| GET / | 10 | employees | Employee | — | employeesApi.list (api.ts:184) ← app/(app)/employees/index.tsx, components/SalaryComponentFormSheet.tsx |
+| GET /:id | 48 | employees | Employee | — | employeesApi.detail (api.ts:186) ← app/(app)/employees/[id].tsx |
+| POST / | 64 | employees | Employee (w) | — | employeesApi.create (api.ts:187) ← components/EmployeeFormSheet.tsx |
+| PUT /:id | 117 | employees | Employee (w) | — | employeesApi.update (api.ts:188) ← components/EmployeeFormSheet.tsx, employeesApi.deactivate (api.ts:189) ← app/(app)/employees/[id].tsx, employeesApi.reactivate (api.ts:190) ← app/(app)/employees/[id].tsx |
+| DELETE /:id | 155 | employees | Employee (w), EpfEsic, SalaryIncentive, SalaryPayment | — | employeesApi.permanentDelete (api.ts:191) ← app/(app)/employees/[id].tsx |
 
 ### inventory — `/api/inventory` — src/routes/inventory.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 19 | inventory | Inventory, InventoryMedia, Stock | — | inventoryApi.list (api.ts:136) ← app/(app)/inventory/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx, components/PurchaseFormSheet.tsx, components/StockEntryFormSheet.tsx |
-| GET /categories | 98 | inventory | Inventory | — | inventoryApi.categories (api.ts:144) ← components/InventoryFormSheet.tsx |
-| GET /:id | 115 | inventory | Inventory, InventoryMedia, Stock | calcStock | inventoryApi.detail (api.ts:138) ← app/(app)/inventory/[id].tsx, components/StockEntryFormSheet.tsx |
-| POST / | 152 | inventory | Inventory (w), Stock (w) | — | inventoryApi.create (api.ts:139) ← components/InventoryFormSheet.tsx |
-| PUT /:id | 209 | inventory | Inventory (w) | — | inventoryApi.update (api.ts:140) ← app/(app)/inventory/[id].tsx, components/InventoryFormSheet.tsx |
-| DELETE /:id | 236 | inventory | Inventory (w), OrderItem | — | inventoryApi.deactivate (api.ts:142) ← app/(app)/inventory/[id].tsx |
-| DELETE /:id/permanent | 264 | inventory | Inventory (w), OrderItem, Stock | — | inventoryApi.permanentDelete (api.ts:143) ← app/(app)/inventory/[id].tsx |
+| GET / | 19 | inventory | Inventory, InventoryMedia, Stock | — | inventoryApi.list (api.ts:147) ← app/(app)/inventory/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx, components/PurchaseFormSheet.tsx, components/StockEntryFormSheet.tsx |
+| GET /categories | 98 | inventory | Inventory | — | inventoryApi.categories (api.ts:155) ← components/InventoryFormSheet.tsx |
+| GET /:id | 115 | inventory | Inventory, InventoryMedia, Stock | calcStock | inventoryApi.detail (api.ts:149) ← app/(app)/inventory/[id].tsx, components/StockEntryFormSheet.tsx |
+| POST / | 152 | inventory | Inventory (w), Stock (w) | — | inventoryApi.create (api.ts:150) ← components/InventoryFormSheet.tsx |
+| PUT /:id | 209 | inventory | Inventory (w) | — | inventoryApi.update (api.ts:151) ← app/(app)/inventory/[id].tsx, components/InventoryFormSheet.tsx |
+| DELETE /:id | 236 | inventory | Inventory (w), OrderItem | — | inventoryApi.deactivate (api.ts:153) ← app/(app)/inventory/[id].tsx |
+| DELETE /:id/permanent | 264 | inventory | Inventory (w), OrderItem, Stock | — | inventoryApi.permanentDelete (api.ts:154) ← app/(app)/inventory/[id].tsx |
 
 ### orders — `/api/orders` — src/routes/orders.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 22 | orders | Order | — | ordersApi.list (api.ts:243) ← app/(app)/orders/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx |
-| GET /:id | 50 | orders | Order | — | ordersApi.detail (api.ts:245) ← app/(app)/orders/[id].tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx |
-| POST / | 173 | orders | GstRecord (w), Invoice (w), Order (w) | calcItemTotals, nextOrderNo, nextInvoiceNoTx, calcInvoiceTotals, readVendorWorks | ordersApi.create (api.ts:246) ← components/OrderFormSheet.tsx |
-| PUT /:id | 271 | orders | Order (w), OrderItem (w), OrderVendorWork (w), OrderPayment | calcItemTotals, readVendorWorks | ordersApi.update (api.ts:247) ← components/OrderFormSheet.tsx |
-| DELETE /:id | 345 | orders | Order (w), OrderItem (w), OrderMedia (w), OrderPayment (w) | deleteFromMinio | ordersApi.remove (api.ts:248) ← app/(app)/orders/[id].tsx |
-| POST /:id/payments | 373 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.addPayment (api.ts:249) ← components/PaymentFormSheet.tsx |
-| PUT /:id/payments/:paymentId | 398 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.updatePayment (api.ts:250) ← components/PaymentFormSheet.tsx |
-| DELETE /:id/payments/:paymentId | 436 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.removePayment (api.ts:251) ← components/PaymentFormSheet.tsx |
+| GET / | 23 | orders | Order | — | ordersApi.list (api.ts:254) ← app/(app)/orders/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx |
+| GET /:id | 51 | orders | Order | — | ordersApi.detail (api.ts:256) ← app/(app)/orders/[id].tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx |
+| POST / | 174 | orders | GstRecord (w), Invoice (w), Order (w) | calcItemTotals, nextOrderNo, nextInvoiceNoTx, calcInvoiceTotals, readVendorWorks | ordersApi.create (api.ts:257) ← components/OrderFormSheet.tsx |
+| PUT /:id | 272 | orders | Order (w), OrderItem (w), OrderVendorWork (w), OrderPayment | calcItemTotals, readVendorWorks | ordersApi.update (api.ts:258) ← components/OrderFormSheet.tsx |
+| DELETE /:id | 346 | orders | Order (w), OrderItem (w), OrderMedia (w), OrderPayment (w) | deleteFromMinio | ordersApi.remove (api.ts:259) ← app/(app)/orders/[id].tsx |
+| POST /:id/payments | 374 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.addPayment (api.ts:260) ← components/PaymentFormSheet.tsx |
+| POST /:id/send-whatsapp | 399 | orders | — | sendError, sendOrderConfirmation | ordersApi.sendWhatsapp (api.ts:264) ← app/(app)/orders/[id].tsx |
+| POST /:id/payments/:paymentId/send-whatsapp | 410 | orders | — | sendError, sendPaymentReceivedForPayment | ordersApi.sendPaymentWhatsapp (api.ts:266) ← app/(app)/orders/[id].tsx |
+| PUT /:id/payments/:paymentId | 422 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.updatePayment (api.ts:261) ← components/PaymentFormSheet.tsx |
+| DELETE /:id/payments/:paymentId | 460 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.removePayment (api.ts:262) ← components/PaymentFormSheet.tsx |
 
 ### invoices — `/api/invoices` — src/routes/invoices.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 107 | invoices | Invoice | — | invoicesApi.list (api.ts:257) ← app/(app)/invoices/index.tsx |
-| GET /:id | 134 | invoices | Invoice | — | invoicesApi.detail (api.ts:259) ← app/(app)/invoices/[id].tsx |
-| POST /:id/send-whatsapp | 151 | invoices | Invoice | whatsappConfigError, normalizeIndianMobile, uploadMedia, sendInvoiceTemplate, logWhatsapp, renderInvoicePdf | invoicesApi.sendWhatsapp (api.ts:266) ← app/(app)/invoices/[id].tsx |
-| POST / | 205 | invoices | Invoice (w), Order | nextInvoiceNo, calcItems, invalidDiscountPercentError, applyDiscount, invalidInventoryIdsError | invoicesApi.create (api.ts:260) ← components/InvoiceFormSheet.tsx |
-| PUT /:id | 263 | invoices | Invoice (w), InvoiceItem (w), Order | calcItems, invalidDiscountPercentError, applyDiscount, invalidInventoryIdsError | invoicesApi.update (api.ts:261) ← components/InvoiceFormSheet.tsx |
-| DELETE /:id | 342 | invoices | Invoice (w), InvoiceMedia | deleteFromMinio | invoicesApi.remove (api.ts:262) ← app/(app)/invoices/[id].tsx |
+| GET / | 107 | invoices | Invoice | — | invoicesApi.list (api.ts:273) ← app/(app)/invoices/index.tsx |
+| GET /:id | 134 | invoices | Invoice | — | invoicesApi.detail (api.ts:275) ← app/(app)/invoices/[id].tsx |
+| POST /:id/send-whatsapp | 151 | invoices | Invoice | whatsappConfigError, normalizeIndianMobile, uploadMedia, sendTemplate, logWhatsapp, renderInvoicePdf | invoicesApi.sendWhatsapp (api.ts:282) ← app/(app)/invoices/[id].tsx |
+| POST / | 205 | invoices | Invoice (w), Order | nextInvoiceNo, calcItems, invalidDiscountPercentError, applyDiscount, invalidInventoryIdsError | invoicesApi.create (api.ts:276) ← components/InvoiceFormSheet.tsx |
+| PUT /:id | 263 | invoices | Invoice (w), InvoiceItem (w), Order | calcItems, invalidDiscountPercentError, applyDiscount, invalidInventoryIdsError | invoicesApi.update (api.ts:277) ← components/InvoiceFormSheet.tsx |
+| DELETE /:id | 342 | invoices | Invoice (w), InvoiceMedia | deleteFromMinio | invoicesApi.remove (api.ts:278) ← app/(app)/invoices/[id].tsx |
 
 ### purchases — `/api/purchases` — src/routes/purchases.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 135 | purchases | Purchase | — | purchasesApi.list (api.ts:273) ← app/(app)/purchases/index.tsx |
-| GET /:id | 159 | purchases | Purchase | — | purchasesApi.detail (api.ts:275) ← app/(app)/purchases/[id].tsx |
-| POST / | 178 | purchases | Purchase (w) | calcTotals, derivePaymentStatus, applyStockTransition | purchasesApi.create (api.ts:276) ← components/PurchaseFormSheet.tsx |
-| PUT /:id | 244 | purchases | Purchase (w), PurchaseItem (w) | calcTotals, derivePaymentStatus, d, applyStockTransition | purchasesApi.update (api.ts:277) ← components/PurchaseFormSheet.tsx |
-| DELETE /:id | 370 | purchases | Purchase (w) | d, applyStockTransition | purchasesApi.remove (api.ts:278) ← app/(app)/purchases/[id].tsx |
+| GET / | 135 | purchases | Purchase | — | purchasesApi.list (api.ts:289) ← app/(app)/purchases/index.tsx |
+| GET /:id | 159 | purchases | Purchase | — | purchasesApi.detail (api.ts:291) ← app/(app)/purchases/[id].tsx |
+| POST / | 178 | purchases | Purchase (w) | calcTotals, derivePaymentStatus, applyStockTransition | purchasesApi.create (api.ts:292) ← components/PurchaseFormSheet.tsx |
+| PUT /:id | 244 | purchases | Purchase (w), PurchaseItem (w) | calcTotals, derivePaymentStatus, d, applyStockTransition | purchasesApi.update (api.ts:293) ← components/PurchaseFormSheet.tsx |
+| DELETE /:id | 370 | purchases | Purchase (w) | d, applyStockTransition | purchasesApi.remove (api.ts:294) ← app/(app)/purchases/[id].tsx |
 
 ### hr — `/api/hr` — src/routes/hr.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET /attendance | 18 | hr.attendance | EmployeeAttendance | — | hrApi.attendance.list (api.ts:318) ← app/(app)/hr/attendance.tsx, app/(app)/hr/employee-attendance.tsx |
+| GET /attendance | 18 | hr.attendance | EmployeeAttendance | — | hrApi.attendance.list (api.ts:334) ← app/(app)/hr/attendance.tsx, app/(app)/hr/employee-attendance.tsx |
 | POST /attendance | 51 | hr.attendance | EmployeeAttendance (w) | — | not called by the app |
-| GET /attendance/day | 83 | hr.attendance | Employee, EmployeeAttendance | — | hrApi.attendance.day (api.ts:321) ← app/(app)/hr/attendance.tsx |
-| POST /attendance/bulk | 103 | hr.attendance | EmployeeAttendance (w) | — | hrApi.attendance.bulkMark (api.ts:322) ← app/(app)/hr/attendance.tsx |
-| GET /attendance/summary/month | 156 | hr.attendance | Employee, EmployeeAttendance | — | hrApi.attendance.monthSummary (api.ts:327) ← app/(app)/hr/attendance.tsx |
-| GET /attendance/summary/year | 194 | hr.attendance | Employee, EmployeeAttendance | — | hrApi.attendance.yearSummary (api.ts:329) ← app/(app)/hr/employee-attendance.tsx |
-| GET /attendance/:id | 227 | hr.attendance | EmployeeAttendance | — | hrApi.attendance.detail (api.ts:320) ← not called |
-| PUT /attendance/:id | 247 | hr.attendance | EmployeeAttendance (w) | — | hrApi.attendance.update (api.ts:324) ← components/AttendanceEditSheet.tsx |
-| DELETE /attendance/:id | 290 | hr.attendance | EmployeeAttendance (w) | — | hrApi.attendance.remove (api.ts:326) ← components/AttendanceEditSheet.tsx |
-| GET /salary-components | 305 | hr.salary-components | SalaryComponent | — | hrApi.salaryComponents.list (api.ts:333) ← app/(app)/hr/salary-components.tsx |
-| POST /salary-components | 330 | hr.salary-components | SalaryComponent (w) | — | hrApi.salaryComponents.create (api.ts:335) ← components/SalaryComponentFormSheet.tsx |
-| GET /salary-components/payroll | 438 | hr.salary-components | — | computeMonthPayroll | hrApi.salaryComponents.payroll (api.ts:340) ← app/(app)/hr/salary-components.tsx |
-| PUT /salary-components/:id | 449 | hr.salary-components | SalaryComponent (w) | — | hrApi.salaryComponents.update (api.ts:337) ← components/SalaryComponentFormSheet.tsx |
-| DELETE /salary-components/:id | 473 | hr.salary-components | SalaryComponent (w) | — | hrApi.salaryComponents.remove (api.ts:339) ← components/SalaryComponentFormSheet.tsx |
-| GET /salary-payments | 488 | hr.salary-payments | SalaryPayment | — | hrApi.salaryPayments.list (api.ts:344) ← not called |
-| POST /salary-payments | 517 | hr.salary-payments | SalaryPayment (w) | computeMonthPayroll | hrApi.salaryPayments.create (api.ts:347) ← components/SalaryPaymentSheet.tsx |
-| GET /salary-payments/by-employee | 559 | hr.salary-payments | — | computeMonthPayroll | hrApi.salaryPayments.byEmployee (api.ts:352) ← app/(app)/hr/salary-payments.tsx |
-| PUT /salary-payments/:id | 572 | hr.salary-payments | SalaryPayment (w) | computeMonthPayroll | hrApi.salaryPayments.update (api.ts:349) ← components/SalaryPaymentSheet.tsx |
-| DELETE /salary-payments/:id | 609 | hr.salary-payments | SalaryPayment (w) | — | hrApi.salaryPayments.remove (api.ts:351) ← components/SalaryPaymentSheet.tsx |
-| GET /salary-payments/:id | 622 | hr.salary-payments | SalaryPayment | — | hrApi.salaryPayments.detail (api.ts:346) ← not called |
-| GET /incentives | 640 | hr.incentives | SalaryIncentive | — | hrApi.incentives.list (api.ts:356) ← app/(app)/hr/incentives.tsx |
+| GET /attendance/day | 83 | hr.attendance | Employee, EmployeeAttendance | — | hrApi.attendance.day (api.ts:337) ← app/(app)/hr/attendance.tsx |
+| POST /attendance/bulk | 103 | hr.attendance | EmployeeAttendance (w) | — | hrApi.attendance.bulkMark (api.ts:338) ← app/(app)/hr/attendance.tsx |
+| GET /attendance/summary/month | 156 | hr.attendance | Employee, EmployeeAttendance | — | hrApi.attendance.monthSummary (api.ts:343) ← app/(app)/hr/attendance.tsx |
+| GET /attendance/summary/year | 194 | hr.attendance | Employee, EmployeeAttendance | — | hrApi.attendance.yearSummary (api.ts:345) ← app/(app)/hr/employee-attendance.tsx |
+| GET /attendance/:id | 227 | hr.attendance | EmployeeAttendance | — | hrApi.attendance.detail (api.ts:336) ← not called |
+| PUT /attendance/:id | 247 | hr.attendance | EmployeeAttendance (w) | — | hrApi.attendance.update (api.ts:340) ← components/AttendanceEditSheet.tsx |
+| DELETE /attendance/:id | 290 | hr.attendance | EmployeeAttendance (w) | — | hrApi.attendance.remove (api.ts:342) ← components/AttendanceEditSheet.tsx |
+| GET /salary-components | 305 | hr.salary-components | SalaryComponent | — | hrApi.salaryComponents.list (api.ts:349) ← app/(app)/hr/salary-components.tsx |
+| POST /salary-components | 330 | hr.salary-components | SalaryComponent (w) | — | hrApi.salaryComponents.create (api.ts:351) ← components/SalaryComponentFormSheet.tsx |
+| GET /salary-components/payroll | 438 | hr.salary-components | — | computeMonthPayroll | hrApi.salaryComponents.payroll (api.ts:356) ← app/(app)/hr/salary-components.tsx |
+| PUT /salary-components/:id | 449 | hr.salary-components | SalaryComponent (w) | — | hrApi.salaryComponents.update (api.ts:353) ← components/SalaryComponentFormSheet.tsx |
+| DELETE /salary-components/:id | 473 | hr.salary-components | SalaryComponent (w) | — | hrApi.salaryComponents.remove (api.ts:355) ← components/SalaryComponentFormSheet.tsx |
+| GET /salary-payments | 488 | hr.salary-payments | SalaryPayment | — | hrApi.salaryPayments.list (api.ts:360) ← not called |
+| POST /salary-payments | 517 | hr.salary-payments | SalaryPayment (w) | computeMonthPayroll | hrApi.salaryPayments.create (api.ts:363) ← components/SalaryPaymentSheet.tsx |
+| GET /salary-payments/by-employee | 559 | hr.salary-payments | — | computeMonthPayroll | hrApi.salaryPayments.byEmployee (api.ts:368) ← app/(app)/hr/salary-payments.tsx |
+| PUT /salary-payments/:id | 572 | hr.salary-payments | SalaryPayment (w) | computeMonthPayroll | hrApi.salaryPayments.update (api.ts:365) ← components/SalaryPaymentSheet.tsx |
+| DELETE /salary-payments/:id | 609 | hr.salary-payments | SalaryPayment (w) | — | hrApi.salaryPayments.remove (api.ts:367) ← components/SalaryPaymentSheet.tsx |
+| GET /salary-payments/:id | 622 | hr.salary-payments | SalaryPayment | — | hrApi.salaryPayments.detail (api.ts:362) ← not called |
+| GET /incentives | 640 | hr.incentives | SalaryIncentive | — | hrApi.incentives.list (api.ts:372) ← app/(app)/hr/incentives.tsx |
 | POST /incentives | 669 | hr.incentives | SalaryIncentive (w) | — | not called by the app |
-| GET /epf-esic | 696 | hr.epf-esic | EpfEsic | — | hrApi.epfEsic.list (api.ts:360) ← app/(app)/hr/epf-esic.tsx |
+| GET /epf-esic | 696 | hr.epf-esic | EpfEsic | — | hrApi.epfEsic.list (api.ts:376) ← app/(app)/hr/epf-esic.tsx |
 | POST /epf-esic | 721 | hr.epf-esic | EpfEsic (w) | — | not called by the app |
-| GET /epf-esic/:id | 752 | hr.epf-esic | EpfEsic | — | hrApi.epfEsic.detail (api.ts:362) ← not called |
+| GET /epf-esic/:id | 752 | hr.epf-esic | EpfEsic | — | hrApi.epfEsic.detail (api.ts:378) ← not called |
 
 ### estimates — `/api/estimates` — src/routes/estimates.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 71 | estimates | Estimate | — | estimatesApi.list (api.ts:284) ← app/(app)/estimates/index.tsx |
-| GET /:id | 108 | estimates | Estimate | — | estimatesApi.detail (api.ts:286) ← app/(app)/estimates/[id].tsx |
-| POST / | 124 | estimates | Estimate (w), Order | nextEstimateNo, calcItems, invalidInventoryIdsError, invalidDiscountPercentError, applyDiscount | estimatesApi.create (api.ts:287) ← components/EstimateFormSheet.tsx |
-| PUT /:id | 175 | estimates | Estimate (w), EstimateItem (w), Order | calcItems, invalidInventoryIdsError, invalidDiscountPercentError, applyDiscount | estimatesApi.update (api.ts:288) ← components/EstimateFormSheet.tsx |
-| DELETE /:id | 235 | estimates | Estimate (w) | — | estimatesApi.remove (api.ts:289) ← app/(app)/estimates/[id].tsx |
+| GET / | 71 | estimates | Estimate | — | estimatesApi.list (api.ts:300) ← app/(app)/estimates/index.tsx |
+| GET /:id | 108 | estimates | Estimate | — | estimatesApi.detail (api.ts:302) ← app/(app)/estimates/[id].tsx |
+| POST / | 124 | estimates | Estimate (w), Order | nextEstimateNo, calcItems, invalidInventoryIdsError, invalidDiscountPercentError, applyDiscount | estimatesApi.create (api.ts:303) ← components/EstimateFormSheet.tsx |
+| PUT /:id | 175 | estimates | Estimate (w), EstimateItem (w), Order | calcItems, invalidInventoryIdsError, invalidDiscountPercentError, applyDiscount | estimatesApi.update (api.ts:304) ← components/EstimateFormSheet.tsx |
+| DELETE /:id | 235 | estimates | Estimate (w) | — | estimatesApi.remove (api.ts:305) ← app/(app)/estimates/[id].tsx |
 
 ### gst — `/api/gst` — src/routes/gst.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 10 | gst | GstRecord | — | gstApi.list (api.ts:306) ← app/(app)/gst/index.tsx |
-| GET /:id | 52 | gst | GstRecord | — | gstApi.detail (api.ts:308) ← app/(app)/gst/[id].tsx |
-| POST / | 87 | gst | GstRecord (w) | splitGst | gstApi.create (api.ts:309) ← components/GstFormSheet.tsx |
-| PUT /:id | 132 | gst | GstRecord (w) | splitGst | gstApi.update (api.ts:310) ← components/GstFormSheet.tsx |
-| DELETE /:id | 179 | gst | GstRecord (w) | — | gstApi.remove (api.ts:311) ← app/(app)/gst/[id].tsx |
+| GET / | 10 | gst | GstRecord | — | gstApi.list (api.ts:322) ← app/(app)/gst/index.tsx |
+| GET /:id | 52 | gst | GstRecord | — | gstApi.detail (api.ts:324) ← app/(app)/gst/[id].tsx |
+| POST / | 87 | gst | GstRecord (w) | splitGst | gstApi.create (api.ts:325) ← components/GstFormSheet.tsx |
+| PUT /:id | 132 | gst | GstRecord (w) | splitGst | gstApi.update (api.ts:326) ← components/GstFormSheet.tsx |
+| DELETE /:id | 179 | gst | GstRecord (w) | — | gstApi.remove (api.ts:327) ← app/(app)/gst/[id].tsx |
 
 ### stock — `/api/stock` — src/routes/stock.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 32 | stock | Stock | — | stockApi.list (api.ts:295) ← app/(app)/inventory/stock.tsx, app/(app)/purchases/[id].tsx |
-| POST / | 79 | stock | Stock (w) | currentStockForItem | stockApi.create (api.ts:297) ← components/StockEntryFormSheet.tsx, components/StockMovementSheet.tsx |
-| PUT /:id | 131 | stock | Stock (w) | currentStockForItem | stockApi.update (api.ts:298) ← components/StockEntryFormSheet.tsx |
-| DELETE /:id | 186 | stock | Stock (w) | currentStockForItem | stockApi.remove (api.ts:300) ← app/(app)/inventory/[id].tsx, app/(app)/inventory/stock.tsx, app/(app)/purchases/[id].tsx |
+| GET / | 32 | stock | Stock | — | stockApi.list (api.ts:311) ← app/(app)/inventory/stock.tsx, app/(app)/purchases/[id].tsx |
+| POST / | 79 | stock | Stock (w) | currentStockForItem | stockApi.create (api.ts:313) ← components/StockEntryFormSheet.tsx, components/StockMovementSheet.tsx |
+| PUT /:id | 131 | stock | Stock (w) | currentStockForItem | stockApi.update (api.ts:314) ← components/StockEntryFormSheet.tsx |
+| DELETE /:id | 186 | stock | Stock (w) | currentStockForItem | stockApi.remove (api.ts:316) ← app/(app)/inventory/[id].tsx, app/(app)/inventory/stock.tsx, app/(app)/purchases/[id].tsx |
 
 ### vehicles — `/api/vehicles` — src/routes/vehicles.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 10 | vehicles | Vehicle | — | vehiclesApi.list (api.ts:369) ← app/(app)/vehicles/index.tsx |
-| GET /:id | 40 | vehicles | Vehicle | — | vehiclesApi.detail (api.ts:371) ← app/(app)/vehicles/[id].tsx |
+| GET / | 10 | vehicles | Vehicle | — | vehiclesApi.list (api.ts:385) ← app/(app)/vehicles/index.tsx |
+| GET /:id | 40 | vehicles | Vehicle | — | vehiclesApi.detail (api.ts:387) ← app/(app)/vehicles/[id].tsx |
 
 ### maintenance — `/api/maintenance` — src/routes/maintenance.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 10 | maintenance | MaintenancePeriod | — | maintenanceApi.list (api.ts:401) ← app/(app)/maintenance/index.tsx |
-| GET /fd-alerts | 35 | maintenance | FdAlert | — | maintenanceApi.fdAlerts (api.ts:403) ← not called |
+| GET / | 10 | maintenance | MaintenancePeriod | — | maintenanceApi.list (api.ts:417) ← app/(app)/maintenance/index.tsx |
+| GET /fd-alerts | 35 | maintenance | FdAlert | — | maintenanceApi.fdAlerts (api.ts:419) ← not called |
 
 ### media — `/api/media` — src/routes/media.ts
 
@@ -261,24 +263,29 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 29 | calendar or calendar-write or calendar-manage | CalendarEvent, Order | — | calendarApi.list (api.ts:394) ← not called |
-| POST / | 69 | calendar-write or calendar-manage | CalendarEvent (w) | — | calendarApi.create (api.ts:395) ← components/DashboardCalendar.tsx |
-| PUT /:id | 94 | calendar-write or calendar-manage | CalendarEvent (w) | canManageAny | calendarApi.update (api.ts:396) ← components/DashboardCalendar.tsx |
-| DELETE /:id | 123 | calendar-write or calendar-manage | CalendarEvent (w) | canManageAny | calendarApi.remove (api.ts:397) ← components/DashboardCalendar.tsx |
+| GET / | 29 | calendar or calendar-write or calendar-manage | CalendarEvent, Order | — | calendarApi.list (api.ts:410) ← not called |
+| POST / | 69 | calendar-write or calendar-manage | CalendarEvent (w) | — | calendarApi.create (api.ts:411) ← components/DashboardCalendar.tsx |
+| PUT /:id | 94 | calendar-write or calendar-manage | CalendarEvent (w) | canManageAny | calendarApi.update (api.ts:412) ← components/DashboardCalendar.tsx |
+| DELETE /:id | 123 | calendar-write or calendar-manage | CalendarEvent (w) | canManageAny | calendarApi.remove (api.ts:413) ← components/DashboardCalendar.tsx |
 
 ### ledger — `/api/ledger` — src/routes/ledger.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET /receivables | 51 | ledger | Customer | todayKey, loadLedgerData | ledgerApi.receivables (api.ts:92) ← app/(app)/finance.tsx, app/(app)/ledger/index.tsx |
-| GET /customers/:id | 96 | ledger | Customer | loadLedgerData, buildStatement, buildPosition, validDate, parseId | ledgerApi.customer (api.ts:94) ← app/(app)/customers/[id].tsx, app/(app)/ledger/[id].tsx |
-| PUT /customers/:id/opening-balance | 134 | ledger | Customer (w) | validDate, parseId | ledgerApi.setOpeningBalance (api.ts:96) ← components/LedgerEntrySheet.tsx |
-| GET /customers/:id/due-orders | 165 | ledger | — | loadDueOrders, parseId | ledgerApi.dueOrders (api.ts:98) ← components/ReceiptFormSheet.tsx |
-| POST /customers/:id/receipts | 185 | ledger | CustomerReceipt (w), OrderPayment (w), Customer, raw SQL | recalcOrderPaid, loadDueOrders, validDate, parseAmount, parseId, nextReceiptNo | ledgerApi.createReceipt (api.ts:100) ← components/ReceiptFormSheet.tsx |
-| DELETE /receipts/:id | 285 | ledger | CustomerReceipt (w), OrderPayment (w) | recalcOrderPaid, parseId | ledgerApi.deleteReceipt (api.ts:102) ← app/(app)/ledger/[id].tsx |
-| POST /customers/:id/entries | 320 | ledger | CustomerLedgerEntry (w) | parseId, readEntry | ledgerApi.createEntry (api.ts:103) ← components/LedgerEntrySheet.tsx |
-| PUT /entries/:id | 336 | ledger | CustomerLedgerEntry (w) | parseId, readEntry | ledgerApi.updateEntry (api.ts:104) ← components/LedgerEntrySheet.tsx |
-| DELETE /entries/:id | 352 | ledger | CustomerLedgerEntry (w) | parseId | ledgerApi.deleteEntry (api.ts:105) ← components/LedgerEntrySheet.tsx |
+| GET /receivables | 56 | ledger | Customer | todayKey, loadLedgerData | ledgerApi.receivables (api.ts:92) ← app/(app)/finance.tsx, app/(app)/ledger/index.tsx |
+| GET /customers/:id | 101 | ledger | Customer, PaymentReminder | loadLedgerData, buildStatement, buildPosition, validDate, parseId, reminderView | ledgerApi.customer (api.ts:94) ← app/(app)/customers/[id].tsx, app/(app)/ledger/[id].tsx |
+| PUT /customers/:id/opening-balance | 141 | ledger | Customer (w) | validDate, parseId | ledgerApi.setOpeningBalance (api.ts:96) ← components/LedgerEntrySheet.tsx |
+| GET /customers/:id/due-orders | 172 | ledger | — | loadDueOrders, parseId | ledgerApi.dueOrders (api.ts:98) ← components/ReceiptFormSheet.tsx |
+| POST /customers/:id/receipts | 192 | ledger | CustomerReceipt (w), OrderPayment (w), Customer, raw SQL | recalcOrderPaid, loadDueOrders, validDate, parseAmount, parseId, nextReceiptNo | ledgerApi.createReceipt (api.ts:100) ← components/ReceiptFormSheet.tsx |
+| DELETE /receipts/:id | 292 | ledger | CustomerReceipt (w), OrderPayment (w) | recalcOrderPaid, parseId | ledgerApi.deleteReceipt (api.ts:102) ← app/(app)/ledger/[id].tsx |
+| POST /customers/:id/entries | 327 | ledger | CustomerLedgerEntry (w) | parseId, readEntry | ledgerApi.createEntry (api.ts:103) ← components/LedgerEntrySheet.tsx |
+| PUT /entries/:id | 343 | ledger | CustomerLedgerEntry (w) | parseId, readEntry | ledgerApi.updateEntry (api.ts:104) ← components/LedgerEntrySheet.tsx |
+| PUT /customers/:id/reminder | 374 | ledger | PaymentReminder (w), Customer | normalizeIndianMobile, parseId, reminderView | ledgerApi.updateReminder (api.ts:106) ← app/(app)/ledger/[id].tsx |
+| POST /customers/:id/send-reminder | 400 | ledger | — | sendError, sendPaymentReminder, parseId | ledgerApi.sendReminder (api.ts:109) ← app/(app)/ledger/[id].tsx |
+| POST /customers/:id/send-statement | 412 | ledger | — | sendError, sendAccountStatement, validDate, parseId | ledgerApi.sendStatement (api.ts:111) ← app/(app)/ledger/[id].tsx |
+| POST /receipts/:id/send-whatsapp | 428 | ledger | — | sendError, sendPaymentReceivedForReceipt, parseId | ledgerApi.sendReceiptWhatsapp (api.ts:113) ← app/(app)/ledger/[id].tsx |
+| POST /payments/:id/send-whatsapp | 440 | ledger | — | sendError, sendPaymentReceivedForPayment, parseId | ledgerApi.sendPaymentWhatsapp (api.ts:115) ← app/(app)/ledger/[id].tsx |
+| DELETE /entries/:id | 451 | ledger | CustomerLedgerEntry (w) | parseId | ledgerApi.deleteEntry (api.ts:105) ← components/LedgerEntrySheet.tsx |
 
 ## 3. Screens (Expo Router, `app/`)
 
@@ -320,12 +327,12 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | /invoices/[id] | app/(app)/invoices/[id].tsx | invoicesApi.detail, invoicesApi.remove, invoicesApi.sendWhatsapp | InvoiceFormSheet, MediaSection | — |
 | /invoices | app/(app)/invoices/index.tsx | invoicesApi.list | Breadcrumbs, CustomerFilterBanner, InvoiceFormSheet | — |
 | /ledger (layout) | app/(app)/ledger/_layout.tsx | — | HubBackButton | 'ledger' |
-| /ledger/[id] | app/(app)/ledger/[id].tsx | ledgerApi.customer, ledgerApi.deleteReceipt | DatePickerModal, LedgerEntrySheet, ReceiptFormSheet | — |
+| /ledger/[id] | app/(app)/ledger/[id].tsx | ledgerApi.customer, ledgerApi.deleteReceipt, ledgerApi.sendPaymentWhatsapp, ledgerApi.sendReceiptWhatsapp, ledgerApi.sendReminder, ledgerApi.sendStatement, ledgerApi.updateReminder | DatePickerModal, LedgerEntrySheet, ReceiptFormSheet | — |
 | /ledger | app/(app)/ledger/index.tsx | ledgerApi.receivables | Breadcrumbs | — |
 | /maintenance (layout) | app/(app)/maintenance/_layout.tsx | — | HubBackButton | 'maintenance' |
 | /maintenance | app/(app)/maintenance/index.tsx | maintenanceApi.list | Breadcrumbs | — |
 | /orders (layout) | app/(app)/orders/_layout.tsx | — | HubBackButton | 'orders' |
-| /orders/[id] | app/(app)/orders/[id].tsx | ordersApi.detail, ordersApi.remove | InvoiceFormSheet, MediaSection, OrderFormSheet, PaymentFormSheet | — |
+| /orders/[id] | app/(app)/orders/[id].tsx | ordersApi.detail, ordersApi.remove, ordersApi.sendPaymentWhatsapp, ordersApi.sendWhatsapp | InvoiceFormSheet, MediaSection, OrderFormSheet, PaymentFormSheet | — |
 | /orders | app/(app)/orders/index.tsx | ordersApi.list | Breadcrumbs, CustomerFilterBanner, OrderFormSheet | — |
 | /people | app/(app)/people.tsx | dashboardApi.getSummary | WebHubPage | — |
 | /projects (layout) | app/(app)/projects/_layout.tsx | — | HubBackButton | 'projects' |
@@ -398,42 +405,43 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | Group | groups | 46 | name | GroupPermission[], UserGroup[] | routes/admin.ts | — |
 | UserGroup | user_groups | 60 | — | Group, User | routes/admin.ts | routes/auth.ts |
 | GroupPermission | group_permissions | 72 | — | Group | routes/admin.ts | — |
-| Customer | customers | 85 | customerCode | CustomerLedgerEntry[], CustomerReceipt[], Estimate[], GstRecord[], Invoice[], Order[], WhatsappMessage[] | routes/customers.ts, routes/ledger.ts | lib/ledger.ts, lib/whatsappBot.ts, routes/dashboard.ts |
-| Tender | tenders | 116 | tenderNo | Project[], TenderMedia[] | routes/tenders.ts | routes/dashboard.ts, routes/media.ts, routes/projects.ts |
-| Project | projects | 140 | projectNo | EmployeeAttendance[], Estimate[], Invoice[], MaintenancePeriod[], Order[], ProjectPhotograph[], SalaryIncentive[], Tender, VehicleUsage[] | routes/projects.ts | routes/dashboard.ts, routes/tenders.ts |
-| Vendor | vendors | 168 | vendorCode | GstRecord[], Invoice[], OrderVendorWork[], Purchase[] | routes/vendors.ts | routes/dashboard.ts, routes/orders.ts |
-| Employee | employees | 195 | employeeCode | EmployeeAttendance[], EpfEsic[], SalaryComponent[], SalaryIncentive[], SalaryPayment[] | routes/employees.ts | routes/dashboard.ts, routes/hr.ts |
-| Inventory | inventory | 223 | itemCode | EstimateItem[], InventoryMedia[], InvoiceItem[], OrderItem[], PurchaseItem[], Stock[] | routes/inventory.ts, routes/purchases.ts | routes/dashboard.ts, routes/estimates.ts, routes/invoices.ts, routes/media.ts |
-| Stock | stocks | 246 | — | Inventory | routes/inventory.ts, routes/purchases.ts, routes/stock.ts | routes/dashboard.ts |
-| Order | orders | 274 | orderNo | Customer, Estimate[], Invoice[], OrderItem[], OrderMedia[], OrderPayment[], OrderVendorWork[], Project | lib/ledger.ts, routes/orders.ts | lib/whatsappBot.ts, routes/calendar.ts, routes/customers.ts, routes/dashboard.ts, routes/estimates.ts, routes/invoices.ts, routes/media.ts, routes/projects.ts |
-| OrderVendorWork | order_vendor_works | 306 | — | Order, Vendor | routes/orders.ts | routes/vendors.ts |
-| OrderItem | order_items | 322 | — | Inventory, Order | routes/orders.ts | routes/inventory.ts |
-| OrderPayment | order_payments | 339 | — | CustomerReceipt, Order | routes/ledger.ts, routes/orders.ts | lib/ledger.ts, routes/dashboard.ts |
-| CustomerReceipt | customer_receipts | 366 | receiptNo | Customer, OrderPayment[] | routes/ledger.ts | lib/ledger.ts, routes/customers.ts |
-| CustomerLedgerEntry | customer_ledger_entries | 386 | — | Customer | routes/ledger.ts | lib/ledger.ts, routes/customers.ts |
-| Invoice | invoices | 406 | invoiceNo | Customer, InvoiceItem[], InvoiceMedia[], Order, Project, Vendor | routes/invoices.ts, routes/orders.ts | lib/whatsappBot.ts, routes/customers.ts, routes/dashboard.ts, routes/media.ts, routes/projects.ts, routes/vendors.ts |
-| InvoiceItem | invoice_items | 444 | — | Inventory, Invoice | routes/invoices.ts | — |
-| Purchase | purchases | 462 | purchaseNo | PurchaseItem[], Vendor | routes/purchases.ts | routes/dashboard.ts, routes/vendors.ts |
-| PurchaseItem | purchase_items | 485 | — | Inventory, Purchase | routes/purchases.ts | — |
-| EmployeeAttendance | employee_attendances | 508 | — | Employee, Project | routes/hr.ts | routes/dashboard.ts |
-| SalaryComponent | salary_components | 527 | — | Employee | routes/hr.ts | — |
-| SalaryPayment | salary_payments | 545 | — | Employee, User | routes/hr.ts | routes/dashboard.ts, routes/employees.ts |
-| SalaryIncentive | salary_incentives | 567 | — | Employee, Project, User | routes/hr.ts | routes/dashboard.ts, routes/employees.ts |
-| EpfEsic | epf_esic | 588 | — | Employee | routes/hr.ts | routes/employees.ts |
-| Estimate | estimates | 615 | estimateNo | Customer, EstimateItem[], Order, Project | routes/estimates.ts | routes/customers.ts, routes/dashboard.ts, routes/projects.ts |
-| EstimateItem | estimate_items | 642 | — | Estimate, Inventory | routes/estimates.ts | — |
-| GstRecord | gst_records | 659 | — | Customer, Vendor | routes/gst.ts, routes/orders.ts | routes/dashboard.ts |
-| TenderMedia | tender_media | 688 | — | Tender | — | routes/tenders.ts |
-| InvoiceMedia | invoice_media | 702 | — | Invoice | — | routes/invoices.ts |
-| InventoryMedia | inventory_media | 716 | — | Inventory | routes/media.ts | routes/inventory.ts |
-| OrderMedia | order_media | 731 | — | Order | routes/orders.ts | — |
-| MaintenancePeriod | maintenance_periods | 747 | — | FdAlert[], Project | — | routes/dashboard.ts, routes/maintenance.ts |
-| FdAlert | fd_alerts | 762 | — | MaintenancePeriod | — | routes/maintenance.ts |
-| ProjectPhotograph | project_photographs | 779 | — | Project | — | — |
-| Vehicle | vehicles | 796 | vehicleNo | VehicleUsage[] | — | routes/dashboard.ts, routes/vehicles.ts |
-| VehicleUsage | vehicle_usages | 819 | — | Project, Vehicle | — | — |
-| CalendarEvent | calendar_events | 845 | — | User | routes/calendar.ts | — |
-| WhatsappMessage | whatsapp_messages | 867 | waMessageId | Customer | lib/whatsappBot.ts, lib/whatsappLog.ts | — |
+| Customer | customers | 85 | customerCode | CustomerLedgerEntry[], CustomerReceipt[], Estimate[], GstRecord[], Invoice[], Order[], PaymentReminder, WhatsappMessage[] | routes/customers.ts, routes/ledger.ts | lib/customerMessages.ts, lib/ledger.ts, lib/whatsappBot.ts, routes/dashboard.ts |
+| Tender | tenders | 117 | tenderNo | Project[], TenderMedia[] | routes/tenders.ts | routes/dashboard.ts, routes/media.ts, routes/projects.ts |
+| Project | projects | 141 | projectNo | EmployeeAttendance[], Estimate[], Invoice[], MaintenancePeriod[], Order[], ProjectPhotograph[], SalaryIncentive[], Tender, VehicleUsage[] | routes/projects.ts | routes/dashboard.ts, routes/tenders.ts |
+| Vendor | vendors | 169 | vendorCode | GstRecord[], Invoice[], OrderVendorWork[], Purchase[] | routes/vendors.ts | routes/dashboard.ts, routes/orders.ts |
+| Employee | employees | 196 | employeeCode | EmployeeAttendance[], EpfEsic[], SalaryComponent[], SalaryIncentive[], SalaryPayment[] | routes/employees.ts | routes/dashboard.ts, routes/hr.ts |
+| Inventory | inventory | 224 | itemCode | EstimateItem[], InventoryMedia[], InvoiceItem[], OrderItem[], PurchaseItem[], Stock[] | routes/inventory.ts, routes/purchases.ts | routes/dashboard.ts, routes/estimates.ts, routes/invoices.ts, routes/media.ts |
+| Stock | stocks | 247 | — | Inventory | routes/inventory.ts, routes/purchases.ts, routes/stock.ts | routes/dashboard.ts |
+| Order | orders | 275 | orderNo | Customer, Estimate[], Invoice[], OrderItem[], OrderMedia[], OrderPayment[], OrderVendorWork[], Project | lib/ledger.ts, routes/orders.ts | lib/customerMessages.ts, lib/whatsappBot.ts, routes/calendar.ts, routes/customers.ts, routes/dashboard.ts, routes/estimates.ts, routes/invoices.ts, routes/media.ts, routes/projects.ts |
+| OrderVendorWork | order_vendor_works | 307 | — | Order, Vendor | routes/orders.ts | routes/vendors.ts |
+| OrderItem | order_items | 323 | — | Inventory, Order | routes/orders.ts | routes/inventory.ts |
+| OrderPayment | order_payments | 340 | — | CustomerReceipt, Order | routes/ledger.ts, routes/orders.ts | lib/customerMessages.ts, lib/ledger.ts, routes/dashboard.ts |
+| CustomerReceipt | customer_receipts | 367 | receiptNo | Customer, OrderPayment[] | routes/ledger.ts | lib/customerMessages.ts, lib/ledger.ts, routes/customers.ts |
+| CustomerLedgerEntry | customer_ledger_entries | 387 | — | Customer | routes/ledger.ts | lib/ledger.ts, routes/customers.ts |
+| Invoice | invoices | 407 | invoiceNo | Customer, InvoiceItem[], InvoiceMedia[], Order, Project, Vendor | routes/invoices.ts, routes/orders.ts | lib/whatsappBot.ts, routes/customers.ts, routes/dashboard.ts, routes/media.ts, routes/projects.ts, routes/vendors.ts |
+| InvoiceItem | invoice_items | 445 | — | Inventory, Invoice | routes/invoices.ts | — |
+| Purchase | purchases | 463 | purchaseNo | PurchaseItem[], Vendor | routes/purchases.ts | routes/dashboard.ts, routes/vendors.ts |
+| PurchaseItem | purchase_items | 486 | — | Inventory, Purchase | routes/purchases.ts | — |
+| EmployeeAttendance | employee_attendances | 509 | — | Employee, Project | routes/hr.ts | routes/dashboard.ts |
+| SalaryComponent | salary_components | 528 | — | Employee | routes/hr.ts | — |
+| SalaryPayment | salary_payments | 546 | — | Employee, User | routes/hr.ts | routes/dashboard.ts, routes/employees.ts |
+| SalaryIncentive | salary_incentives | 568 | — | Employee, Project, User | routes/hr.ts | routes/dashboard.ts, routes/employees.ts |
+| EpfEsic | epf_esic | 589 | — | Employee | routes/hr.ts | routes/employees.ts |
+| Estimate | estimates | 616 | estimateNo | Customer, EstimateItem[], Order, Project | routes/estimates.ts | routes/customers.ts, routes/dashboard.ts, routes/projects.ts |
+| EstimateItem | estimate_items | 643 | — | Estimate, Inventory | routes/estimates.ts | — |
+| GstRecord | gst_records | 660 | — | Customer, Vendor | routes/gst.ts, routes/orders.ts | routes/dashboard.ts |
+| TenderMedia | tender_media | 689 | — | Tender | — | routes/tenders.ts |
+| InvoiceMedia | invoice_media | 703 | — | Invoice | — | routes/invoices.ts |
+| InventoryMedia | inventory_media | 717 | — | Inventory | routes/media.ts | routes/inventory.ts |
+| OrderMedia | order_media | 732 | — | Order | routes/orders.ts | — |
+| MaintenancePeriod | maintenance_periods | 748 | — | FdAlert[], Project | — | routes/dashboard.ts, routes/maintenance.ts |
+| FdAlert | fd_alerts | 763 | — | MaintenancePeriod | — | routes/maintenance.ts |
+| ProjectPhotograph | project_photographs | 780 | — | Project | — | — |
+| Vehicle | vehicles | 797 | vehicleNo | VehicleUsage[] | — | routes/dashboard.ts, routes/vehicles.ts |
+| VehicleUsage | vehicle_usages | 820 | — | Project, Vehicle | — | — |
+| CalendarEvent | calendar_events | 846 | — | User | routes/calendar.ts | — |
+| WhatsappMessage | whatsapp_messages | 868 | waMessageId | Customer | lib/whatsappBot.ts, lib/whatsappLog.ts | — |
+| PaymentReminder | payment_reminders | 892 | customerId | Customer | lib/customerMessages.ts, lib/paymentReminders.ts, routes/ledger.ts | — |
 
 ## 6. Backend helpers
 
@@ -441,52 +449,70 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 
 | Function | File:line | Tables | Calls | Called from |
 |---|---|---|---|---|
-| dayKey | src/lib/ledger.ts:33 | — | — | lib/ledger.ts |
-| todayKey | src/lib/ledger.ts:36 | — | dayKey | lib/ledger.ts, lib/whatsappBot.ts, routes/ledger.ts, utils/statementPdf.ts |
+| sendError | src/lib/customerMessages.ts:28 | — | — | routes/ledger.ts, routes/orders.ts |
+| amountText | src/lib/customerMessages.ts:37 | — | — | lib/customerMessages.ts |
+| rs | src/lib/customerMessages.ts:40 | — | amountText | lib/customerMessages.ts, lib/whatsappBot.ts |
+| day | src/lib/customerMessages.ts:44 | — | — | lib/customerMessages.ts, lib/whatsappBot.ts |
+| balanceText | src/lib/customerMessages.ts:50 | — | rs | lib/customerMessages.ts, lib/whatsappBot.ts |
+| currentFy | src/lib/customerMessages.ts:54 | — | todayKey | lib/whatsappBot.ts |
+| variable | src/lib/customerMessages.ts:63 | — | — | not called |
+| modeText | src/lib/customerMessages.ts:67 | — | — | lib/customerMessages.ts |
+| send | src/lib/customerMessages.ts:77 | — | whatsappConfigError, normalizeIndianMobile, uploadMedia, sendTemplate, logWhatsapp | lib/customerMessages.ts |
+| ledgerOf | src/lib/customerMessages.ts:115 | — | loadLedgerData | lib/customerMessages.ts |
+| sendOrderConfirmation | src/lib/customerMessages.ts:120 | Order | amountText, day, send, dayKey | routes/orders.ts |
+| sendPaymentReceived | src/lib/customerMessages.ts:139 | — | amountText, day, balanceText, modeText, send, ledgerOf, dayKey, buildPosition | lib/customerMessages.ts |
+| sendPaymentReceivedForPayment | src/lib/customerMessages.ts:149 | OrderPayment | amountText, sendPaymentReceived | routes/ledger.ts, routes/orders.ts |
+| sendPaymentReceivedForReceipt | src/lib/customerMessages.ts:167 | CustomerReceipt | sendPaymentReceived | routes/ledger.ts |
+| sendPaymentReminder | src/lib/customerMessages.ts:180 | PaymentReminder (w), Customer | amountText, rs, day, balanceText, send, ledgerOf, buildStatement, buildPosition, renderStatementPdf | lib/paymentReminders.ts, routes/ledger.ts |
+| periodText | src/lib/customerMessages.ts:204 | — | day, todayKey | lib/customerMessages.ts |
+| sendAccountStatement | src/lib/customerMessages.ts:212 | Customer | balanceText, send, ledgerOf, periodText, buildStatement, buildPosition, renderStatementPdf | routes/ledger.ts |
+| dayKey | src/lib/ledger.ts:33 | — | — | lib/customerMessages.ts, lib/ledger.ts, lib/paymentReminders.ts |
+| todayKey | src/lib/ledger.ts:36 | — | dayKey | lib/customerMessages.ts, lib/ledger.ts, routes/ledger.ts, utils/statementPdf.ts |
 | emptyData | src/lib/ledger.ts:62 | — | — | lib/ledger.ts |
-| loadLedgerData | src/lib/ledger.ts:68 | Customer, CustomerLedgerEntry, CustomerReceipt, Order, OrderPayment | dayKey, emptyData | lib/whatsappBot.ts, routes/ledger.ts |
+| loadLedgerData | src/lib/ledger.ts:68 | Customer, CustomerLedgerEntry, CustomerReceipt, Order, OrderPayment | dayKey, emptyData | lib/customerMessages.ts, lib/whatsappBot.ts, routes/ledger.ts |
 | modeText | src/lib/ledger.ts:156 | — | — | lib/ledger.ts |
 | fmtRupees | src/lib/ledger.ts:161 | — | — | lib/ledger.ts |
 | buildRawLines | src/lib/ledger.ts:167 | — | modeText, fmtRupees | lib/ledger.ts |
-| buildStatement | src/lib/ledger.ts:256 | — | buildRawLines | lib/whatsappBot.ts, routes/ledger.ts |
-| buildPosition | src/lib/ledger.ts:300 | — | todayKey | lib/whatsappBot.ts, routes/ledger.ts |
+| buildStatement | src/lib/ledger.ts:256 | — | buildRawLines | lib/customerMessages.ts, lib/whatsappBot.ts, routes/ledger.ts |
+| buildPosition | src/lib/ledger.ts:300 | — | todayKey | lib/customerMessages.ts, lib/whatsappBot.ts, routes/ledger.ts |
 | recalcOrderPaid | src/lib/ledger.ts:376 | Order (w), OrderPayment | — | routes/ledger.ts, routes/orders.ts |
 | loadDueOrders | src/lib/ledger.ts:388 | Order, OrderPayment | dayKey | routes/ledger.ts |
 | fileUrlToKey | src/lib/minio.ts:20 | — | — | lib/minio.ts |
 | keyToUrl | src/lib/minio.ts:27 | — | — | routes/media.ts |
 | deleteFromMinio | src/lib/minio.ts:35 | — | fileUrlToKey | routes/invoices.ts, routes/media.ts, routes/orders.ts, routes/tenders.ts |
 | getPresignedUrl | src/lib/minio.ts:40 | — | fileUrlToKey | routes/media.ts |
+| remindersEnabled | src/lib/paymentReminders.ts:26 | — | — | not called |
+| nextReminderDay | src/lib/paymentReminders.ts:34 | — | dayKey | lib/paymentReminders.ts, routes/ledger.ts |
+| runReminderPass | src/lib/paymentReminders.ts:44 | PaymentReminder (w) | sendPaymentReminder, dayKey, nextReminderDay | lib/paymentReminders.ts |
+| startPaymentReminders | src/lib/paymentReminders.ts:82 | — | runReminderPass | not called |
 | buildUrl | src/lib/prisma.ts:19 | — | — | not called |
-| whatsappConfigError | src/lib/whatsapp.ts:40 | — | — | lib/whatsapp.ts, routes/invoices.ts |
-| requireConfig | src/lib/whatsapp.ts:47 | — | whatsappConfigError | lib/whatsapp.ts |
-| normalizeIndianMobile | src/lib/whatsapp.ts:79 | — | — | lib/whatsappBot.ts, routes/invoices.ts |
-| metaFetch | src/lib/whatsapp.ts:86 | — | requireConfig | lib/whatsapp.ts |
-| uploadMedia | src/lib/whatsapp.ts:107 | — | metaFetch | lib/whatsappBot.ts, routes/invoices.ts |
-| sendMessage | src/lib/whatsapp.ts:116 | — | metaFetch | lib/whatsapp.ts |
-| sendInvoiceTemplate | src/lib/whatsapp.ts:128 | — | sendMessage | routes/invoices.ts |
-| sendText | src/lib/whatsapp.ts:151 | — | sendMessage | lib/whatsappBot.ts |
-| sendButtons | src/lib/whatsapp.ts:156 | — | sendMessage | not called |
-| sendList | src/lib/whatsapp.ts:169 | — | sendMessage | lib/whatsappBot.ts |
-| sendDocument | src/lib/whatsapp.ts:195 | — | sendMessage | lib/whatsappBot.ts |
-| verifyWebhookSignature | src/lib/whatsapp.ts:201 | — | — | routes/whatsappWebhook.ts |
-| enqueueWebhook | src/lib/whatsappBot.ts:47 | — | processWebhook | routes/whatsappWebhook.ts |
-| processWebhook | src/lib/whatsappBot.ts:53 | — | applyStatus, handleMessage | lib/whatsappBot.ts |
-| applyStatus | src/lib/whatsappBot.ts:72 | WhatsappMessage (w) | — | lib/whatsappBot.ts |
-| findCustomersByPhone | src/lib/whatsappBot.ts:91 | Customer | normalizeIndianMobile | lib/whatsappBot.ts |
-| handleMessage | src/lib/whatsappBot.ts:105 | WhatsappMessage | sendText, sendList, findCustomersByPhone, sendMenu, reply, pendingSummary, ordersSummary, invoiceRows, sendInvoicePdf, paymentsSummary, sendStatements, logWhatsapp | lib/whatsappBot.ts |
-| sendMenu | src/lib/whatsappBot.ts:175 | — | sendList, reply | lib/whatsappBot.ts |
-| reply | src/lib/whatsappBot.ts:179 | — | logWhatsapp | lib/whatsappBot.ts |
-| rs | src/lib/whatsappBot.ts:191 | — | — | lib/whatsappBot.ts |
-| day | src/lib/whatsappBot.ts:194 | — | — | lib/whatsappBot.ts |
-| withActivity | src/lib/whatsappBot.ts:203 | — | — | lib/whatsappBot.ts |
-| pendingSummary | src/lib/whatsappBot.ts:213 | — | loadLedgerData, buildStatement, buildPosition, rs, day, withActivity | lib/whatsappBot.ts |
-| ordersSummary | src/lib/whatsappBot.ts:233 | Order | rs, day | lib/whatsappBot.ts |
-| invoiceRows | src/lib/whatsappBot.ts:258 | Invoice | rs, day | lib/whatsappBot.ts |
-| sendInvoicePdf | src/lib/whatsappBot.ts:274 | Invoice | uploadMedia, sendDocument, reply, rs, day, renderInvoicePdf | lib/whatsappBot.ts |
-| paymentsSummary | src/lib/whatsappBot.ts:293 | — | loadLedgerData, buildStatement, rs, day, withActivity | lib/whatsappBot.ts |
-| currentFy | src/lib/whatsappBot.ts:314 | — | todayKey | lib/whatsappBot.ts |
-| sendStatements | src/lib/whatsappBot.ts:321 | — | loadLedgerData, buildStatement, buildPosition, uploadMedia, sendDocument, reply, rs, withActivity, currentFy, renderStatementPdf | lib/whatsappBot.ts |
-| logWhatsapp | src/lib/whatsappLog.ts:5 | WhatsappMessage (w) | — | lib/whatsappBot.ts, routes/invoices.ts |
+| whatsappConfigError | src/lib/whatsapp.ts:49 | — | — | lib/customerMessages.ts, lib/whatsapp.ts, routes/invoices.ts |
+| requireConfig | src/lib/whatsapp.ts:56 | — | whatsappConfigError | lib/whatsapp.ts |
+| normalizeIndianMobile | src/lib/whatsapp.ts:88 | — | — | lib/customerMessages.ts, lib/whatsappBot.ts, routes/invoices.ts, routes/ledger.ts |
+| metaFetch | src/lib/whatsapp.ts:95 | — | requireConfig | lib/whatsapp.ts |
+| uploadMedia | src/lib/whatsapp.ts:116 | — | metaFetch | lib/customerMessages.ts, lib/whatsappBot.ts, routes/invoices.ts |
+| sendMessage | src/lib/whatsapp.ts:125 | — | metaFetch | lib/whatsapp.ts |
+| sendTemplate | src/lib/whatsapp.ts:139 | — | sendMessage | lib/customerMessages.ts, routes/invoices.ts |
+| sendText | src/lib/whatsapp.ts:161 | — | sendMessage | lib/whatsappBot.ts |
+| sendButtons | src/lib/whatsapp.ts:166 | — | sendMessage | not called |
+| sendList | src/lib/whatsapp.ts:179 | — | sendMessage | lib/whatsappBot.ts |
+| sendDocument | src/lib/whatsapp.ts:205 | — | sendMessage | lib/whatsappBot.ts |
+| verifyWebhookSignature | src/lib/whatsapp.ts:211 | — | — | routes/whatsappWebhook.ts |
+| enqueueWebhook | src/lib/whatsappBot.ts:48 | — | processWebhook | routes/whatsappWebhook.ts |
+| processWebhook | src/lib/whatsappBot.ts:54 | — | applyStatus, handleMessage | lib/whatsappBot.ts |
+| applyStatus | src/lib/whatsappBot.ts:73 | WhatsappMessage (w) | — | lib/whatsappBot.ts |
+| findCustomersByPhone | src/lib/whatsappBot.ts:92 | Customer | normalizeIndianMobile | lib/whatsappBot.ts |
+| handleMessage | src/lib/whatsappBot.ts:106 | WhatsappMessage | sendText, sendList, findCustomersByPhone, sendMenu, reply, pendingSummary, ordersSummary, invoiceRows, sendInvoicePdf, paymentsSummary, sendStatements, logWhatsapp | lib/whatsappBot.ts |
+| sendMenu | src/lib/whatsappBot.ts:176 | — | sendList, reply | lib/whatsappBot.ts |
+| reply | src/lib/whatsappBot.ts:180 | — | logWhatsapp | lib/whatsappBot.ts |
+| withActivity | src/lib/whatsappBot.ts:195 | — | — | lib/whatsappBot.ts |
+| pendingSummary | src/lib/whatsappBot.ts:205 | — | rs, day, loadLedgerData, buildStatement, buildPosition, withActivity | lib/whatsappBot.ts |
+| ordersSummary | src/lib/whatsappBot.ts:225 | Order | rs, day | lib/whatsappBot.ts |
+| invoiceRows | src/lib/whatsappBot.ts:250 | Invoice | rs, day | lib/whatsappBot.ts |
+| sendInvoicePdf | src/lib/whatsappBot.ts:266 | Invoice | rs, day, uploadMedia, sendDocument, reply, renderInvoicePdf | lib/whatsappBot.ts |
+| paymentsSummary | src/lib/whatsappBot.ts:285 | — | rs, day, loadLedgerData, buildStatement, withActivity | lib/whatsappBot.ts |
+| sendStatements | src/lib/whatsappBot.ts:305 | — | balanceText, currentFy, loadLedgerData, buildStatement, buildPosition, uploadMedia, sendDocument, reply, withActivity, renderStatementPdf | lib/whatsappBot.ts |
+| logWhatsapp | src/lib/whatsappLog.ts:5 | WhatsappMessage (w) | — | lib/customerMessages.ts, lib/whatsappBot.ts, routes/invoices.ts |
 | requireAuth | src/middleware/auth.ts:14 | — | — | route middleware |
 | requireStaff | src/middleware/auth.ts:40 | — | — | route middleware |
 | invalidateUserAccess | src/middleware/permissions.ts:25 | — | — | routes/admin.ts, routes/auth.ts |
@@ -515,22 +541,23 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | invalidDiscountPercentError | src/routes/invoices.ts:76 | — | — | routes/invoices.ts |
 | applyDiscount | src/routes/invoices.ts:81 | — | — | routes/invoices.ts |
 | invalidInventoryIdsError | src/routes/invoices.ts:91 | Inventory | — | routes/invoices.ts |
-| validDate | src/routes/ledger.ts:17 | — | — | routes/ledger.ts |
-| parseAmount | src/routes/ledger.ts:22 | — | — | routes/ledger.ts |
-| parseId | src/routes/ledger.ts:28 | — | — | routes/ledger.ts |
-| nextReceiptNo | src/routes/ledger.ts:35 | CustomerReceipt | — | routes/ledger.ts |
-| readEntry | src/routes/ledger.ts:309 | — | validDate, parseAmount | routes/ledger.ts |
+| validDate | src/routes/ledger.ts:22 | — | — | routes/ledger.ts |
+| parseAmount | src/routes/ledger.ts:27 | — | — | routes/ledger.ts |
+| parseId | src/routes/ledger.ts:33 | — | — | routes/ledger.ts |
+| nextReceiptNo | src/routes/ledger.ts:40 | CustomerReceipt | — | routes/ledger.ts |
+| readEntry | src/routes/ledger.ts:316 | — | validDate, parseAmount | routes/ledger.ts |
+| reminderView | src/routes/ledger.ts:360 | — | nextReminderDay | routes/ledger.ts |
 | getModel | src/routes/media.ts:30 | — | — | routes/media.ts |
 | getFk | src/routes/media.ts:40 | — | — | routes/media.ts |
 | serializeMedia | src/routes/media.ts:44 | — | — | routes/media.ts |
 | getEntityFolderName | src/routes/media.ts:50 | Inventory, Invoice, Order, Tender | — | routes/media.ts |
 | compressImage | src/routes/media.ts:72 | — | — | routes/media.ts |
 | requireEntityPermission | src/routes/media.ts:86 | — | — | not called |
-| calcItemTotals | src/routes/orders.ts:69 | — | — | routes/orders.ts |
-| nextOrderNo | src/routes/orders.ts:104 | Order | — | routes/orders.ts |
-| nextInvoiceNoTx | src/routes/orders.ts:115 | Invoice | — | routes/orders.ts |
-| calcInvoiceTotals | src/routes/orders.ts:131 | — | — | routes/orders.ts |
-| readVendorWorks | src/routes/orders.ts:154 | Vendor | — | routes/orders.ts |
+| calcItemTotals | src/routes/orders.ts:70 | — | — | routes/orders.ts |
+| nextOrderNo | src/routes/orders.ts:105 | Order | — | routes/orders.ts |
+| nextInvoiceNoTx | src/routes/orders.ts:116 | Invoice | — | routes/orders.ts |
+| calcInvoiceTotals | src/routes/orders.ts:132 | — | — | routes/orders.ts |
+| readVendorWorks | src/routes/orders.ts:155 | Vendor | — | routes/orders.ts |
 | parseDateField | src/routes/projects.ts:15 | — | — | routes/projects.ts |
 | calcTotals | src/routes/purchases.ts:16 | — | — | routes/purchases.ts |
 | derivePaymentStatus | src/routes/purchases.ts:25 | — | — | routes/purchases.ts |
@@ -559,7 +586,7 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | amt | src/utils/statementPdf.ts:25 | — | — | utils/statementPdf.ts |
 | bal | src/utils/statementPdf.ts:28 | — | amt | utils/statementPdf.ts |
 | buildStatementHtml | src/utils/statementPdf.ts:33 | — | esc, iconChip, isoToDisplay, todayIso, amt, bal | utils/statementPdf.ts |
-| renderStatementPdf | src/utils/statementPdf.ts:175 | — | renderHtmlToPdf, buildStatementHtml | lib/whatsappBot.ts |
+| renderStatementPdf | src/utils/statementPdf.ts:175 | — | renderHtmlToPdf, buildStatementHtml | lib/customerMessages.ts, lib/whatsappBot.ts |
 
 ## 7. Loose ends
 

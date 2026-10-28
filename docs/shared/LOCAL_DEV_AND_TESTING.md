@@ -131,7 +131,12 @@ the same checks without relying on memory.
   status after add/edit/delete (paid exactly in full, paise, overpaid),
   payment ownership, order paging with shared `createdAt`, search across
   pages, ledger receipts (oldest first, locked slices, delete, advance,
-  validation), WhatsApp webhook signature and "no credentials → nothing sent".
+  validation), WhatsApp webhook signature and "no credentials → nothing sent",
+  WhatsApp templates against a fake Meta (`test/whatsapp-templates.test.ts`:
+  the variables of every template, receipts vs their order slices, no phone,
+  Meta errors, reminder settings, the reminder scheduler's hours, ₹500 limit
+  and once-a-day claim). The PDF tests are skipped when Playwright's Chromium
+  is not installed (`npx playwright install chromium`).
 - `npm test -- orders` runs only the files whose name contains `orders`.
 - A `todo` test documents a known bug (KNOWN_ISSUES B.1 vendor codes): it runs
   but does not fail the suite. Remove the `todo` when the bug is fixed.

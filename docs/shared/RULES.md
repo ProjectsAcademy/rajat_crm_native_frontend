@@ -86,7 +86,10 @@ If a task seems to require breaking one, stop and ask the owner first.
    `express.json()` and never skip the signature check. Set
    `WHATSAPP_BOT_ENABLED=true` on ONE server only (the one Meta's webhook URL
    points at). Bot replies must never reveal data to a number that does not
-   match the customer's saved phone.
+   match the customer's saved phone. `WHATSAPP_REMINDERS_ENABLED=true`
+   (automatic payment reminders, each one charged) also on ONE server only.
+   Never send a WhatsApp message to a customer automatically except these
+   reminders, which a person switched on for that customer.
 
 ## 4. Frontend code
 

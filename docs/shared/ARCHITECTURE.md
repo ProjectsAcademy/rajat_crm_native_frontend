@@ -90,7 +90,7 @@ calendar dates are `@db.Date`.
 | Purchases & tax | `Purchase` → `PurchaseItem` (adds stock), `GstRecord` |
 | HR & payroll | `EmployeeAttendance`, `SalaryComponent`, `SalaryPayment`, `SalaryIncentive`, `EpfEsic` |
 | Media | `TenderMedia`, `InvoiceMedia`, `InventoryMedia`, `OrderMedia` (files live in MinIO) |
-| WhatsApp | `WhatsappMessage` (log of every message in/out) |
+| WhatsApp | `WhatsappMessage` (log of every message in/out), `PaymentReminder` (automatic reminder setting per customer) |
 
 Key relations:
 
@@ -154,6 +154,11 @@ Customer ledger balance =
   PDF on the server (`src/utils/invoicePdf.ts`, Playwright Chromium), uploads
   it to Meta's WhatsApp Cloud API and sends the approved template
   `invoice_share`. Needs `WHATSAPP_*` env vars and Meta Business setup.
+- **WhatsApp templates to customers** (order confirmation, payment received,
+  payment reminder and account statement with the statement PDF):
+  `src/lib/customerMessages.ts`, called from buttons in the order and ledger
+  screens; automatic payment reminders run in `src/lib/paymentReminders.ts`
+  on the one server with `WHATSAPP_REMINDERS_ENABLED=true`.
 - **WhatsApp bot**: customers who message the business number get a list
   menu (pending amount, latest orders, my invoices → invoice PDF, payment
   history, statement PDF). Meta calls

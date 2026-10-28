@@ -39,6 +39,15 @@ anything older than a few weeks.
    `WHATSAPP_TEMPLATE_NAME`, `WHATSAPP_TEMPLATE_LANG` in its `.env` (NOT
    `WHATSAPP_BOT_ENABLED` — the bot runs on one server only, now dev), pm2
    restart, then one test send from the production app.
+   **Other templates (code on `dev_01` since 2026-10-28, FEATURES.md "WhatsApp
+   messages to customers"):** `order_confirmation`, `payment_received`,
+   `payment_reminder` were in review on 2026-10-28 — until Meta approves one,
+   its send fails with the "not approved yet" message. `account_statement`
+   was submitted without a Document header: submit `account_statement_pdf`
+   (same body, Document header) and delete `account_statement`. After
+   approval: test each one on dev to the owner's own number, then release
+   (backend first: migration `20261028120000_payment_reminders`), then set
+   `WHATSAPP_REMINDERS_ENABLED=true` on ONE server.
    Server memory: ~954 MB RAM, only ~320–440 MB available and ~1 GB of swap
    already in use with all hosted apps running. One send at a time is fine;
    any bulk/automatic sending must be queued (one Chromium at a time) or move

@@ -90,6 +90,13 @@ Then set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
 checkout's `.env` and `pm2 restart <name>`. Without Chromium the send button
 returns "The PDF engine (Chromium) is not installed on this server".
 
+Automatic payment reminders: `WHATSAPP_REMINDERS_ENABLED=true` in the `.env`
+of ONE server (production once it is live; never on two servers), then
+`pm2 restart <name>`. The log shows `[payment-reminders] automatic reminders
+ENABLED` at start. Reminders go only to customers someone switched them on
+for in the ledger screen. Dev and prod may share one database, so switching
+a customer on in the dev app counts for production too.
+
 ### WhatsApp Business (Meta) setup — which account to use
 
 Recorded 2026-10-27. These IDs are not secrets; the token is (it lives only in
@@ -103,7 +110,7 @@ the servers' `.env`).
 | `WHATSAPP_PHONE_NUMBER_ID` | `1368505093020145` |
 | Developer app | `rajatcrmAppForWp`, App ID `1990145641680838` |
 | Token | permanent token of system user `rajat_crm_api_admin` (Admin), permissions `whatsapp_business_messaging` + `whatsapp_business_management` |
-| Template | `invoice_share`, Utility, English (`en`) — lives in the WABA above; APPROVED (checked 2026-10-28) |
+| Templates | All Utility, English (`en`), in the WABA above. `invoice_share` APPROVED (checked 2026-10-28); `order_confirmation`, `payment_received`, `payment_reminder` in review (2026-10-28); `account_statement_pdf` to be submitted; `account_statement` (no Document header) unused. Texts and variables: FEATURES.md "WhatsApp messages to customers" |
 | Billing | **Prepaid "Available funds" in INR**, topped up manually (Meta Business Suite → Billing & payments → Accounts → Rajat Electricals → Add funds). Indian-issued credit/debit cards are rejected by Meta ("India credit cards are currently not supported", 2026-10-27). Meta deducts about once a day; when the balance runs out, sends fail with code 131042. First top-up ₹100 on 2026-10-27 |
 
 Several duplicate WABAs (and a Meta-provided +1 number) were created by

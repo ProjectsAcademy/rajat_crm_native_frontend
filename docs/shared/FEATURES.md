@@ -7,6 +7,8 @@ module, update its section here in the same task.
 
 - Statuses: `pending`, `confirmed`, `in_progress`, `ready`, `delivered`,
   `cancelled`. Payment status (`pending` / `partial` / `paid`) is derived.
+- WhatsApp order confirmation and payment receipts (offered after saving,
+  buttons on the order screen): "WhatsApp messages to customers".
 - `orderDate` is the **event date** (shown as "Event Date" on invoices);
   `deliveryDate` is optional.
 - Items: inventory item (optional) + description, quantity, unit price,
@@ -71,6 +73,9 @@ professionally". Decisions confirmed with the owner:
   `paid_amount` had no payment rows (imported data, 11 orders / ₹3,27,500 in
   the database checked) got one payment row dated on the order date with the
   note "Imported balance (actual payment date not recorded)".
+- WhatsApp from the ledger screen: Send Reminder, WhatsApp Statement, a
+  WhatsApp icon on payment and receipt lines, and the automatic reminder
+  setting — see "WhatsApp messages to customers".
 - Implementation: `src/lib/ledger.ts` (pure calculation, integer paise),
   `src/routes/ledger.ts`; frontend `app/(app)/ledger/*`,
   `components/ReceiptFormSheet.tsx`, `components/LedgerEntrySheet.tsx`.
@@ -89,8 +94,9 @@ professionally". Decisions confirmed with the owner:
 - Printed layout copies the client's paper bill book (letterhead constants in
   `utils/invoiceHtml.ts`, `COMPANY`). A second copy of the template is
   `src/utils/invoicePdf.ts` in the backend — keep them identical.
-- WhatsApp (manual only — decided with the owner 2026-10-27; no automatic
-  sending anywhere): the "WhatsApp" button on a sales invoice that has a
+- WhatsApp (manual — decided with the owner 2026-10-27; the only automatic
+  WhatsApp message is the payment reminder, see "WhatsApp messages to
+  customers"): the "WhatsApp" button on a sales invoice that has a
   customer sends the invoice PDF to the phone number saved in that customer's
   profile, after a confirm dialog that shows the number. Each message costs
   money and cannot be recalled.
@@ -152,6 +158,71 @@ invoices, optional link to an order.
   month are allowed; the API prevents paying more than the
   attendance-computed net payable.
 - EPF/ESIC records are unique per employee per month.
+
+## WhatsApp messages to customers (templates)
+
+Built 2026-10-28; decisions (owner, same day): order confirmation and payment
+receipt are offered right after saving and can be sent again from a button;
+payment reminders run automatically per customer and can also be sent by
+hand; the statement goes as a PDF.
+
+Every message uses an approved Utility template (WhatsApp Manager, language
+`en`), goes to the phone saved in the customer's profile (Indian mobile, as
+for invoices), is logged in `whatsapp_messages` (`kind` =
+`template:<name>`), and is charged by Meta when sent outside the customer's
+24-hour window. Apart from automatic reminders, nothing is sent until a person
+confirms a dialog that shows the number (`utils/whatsappSend.ts` in the app;
+a second tap while a send is running is ignored). Senders and variable order:
+`src/lib/customerMessages.ts`; template names: `TEMPLATES` in
+`src/lib/whatsapp.ts`.
+
+| Template | Header | Variables, in order | Sent from |
+|---|---|---|---|
+| `invoice_share` | invoice PDF | name, invoice no., total, due date | Invoice screen → WhatsApp (see Invoices) |
+| `order_confirmation` | none | name, order no., order (event) date, order amount, advance received (paid so far) | Order screen → WhatsApp; offered after "New order" |
+| `payment_received` | none | name, amount, date, "UPI, ref UTR123", customer balance after it ("Rs. 34,000.00 due" / "Rs. 500.00 advance" / "nil") | WhatsApp icon on an order payment and on ledger payment/receipt lines; offered after "Add Payment" and "Receive Payment" |
+| `payment_reminder` | statement PDF, all time | name, total billed, paid and adjusted, balance due, last payment ("Rs. 20,000.00 on 04/10/2026" / "none yet") | Ledger → Send Reminder (only when something is due); automatic reminders |
+| `account_statement_pdf` | statement PDF of the period shown | name, period ("01/04/2026 to 31/03/2027"), closing balance | Ledger → WhatsApp Statement |
+
+- Template texts (body):
+  - `order_confirmation`: "Hello {{1}}, your order {{2}} with RAJAT Electric
+    Decoration & Power Point is confirmed for {{3}}. Order amount: Rs. {{4}}.
+    Advance received: Rs. {{5}}. For any changes please call 8839032230.
+    Thank you."
+  - `payment_received`: "Hello {{1}}, we have received your payment of Rs.
+    {{2}} on {{3}} ({{4}}). Your account balance with RAJAT Electric
+    Decoration & Power Point is now {{5}}. Thank you for your payment."
+  - `payment_reminder`: "Hello {{1}}, this is a payment reminder from RAJAT
+    Electric Decoration & Power Point. / Total billed: Rs. {{2}} / Paid and
+    adjusted: Rs. {{3}} / Balance due: Rs. {{4}} / Last payment: {{5}} / Your
+    full statement with every order and payment is attached. Please clear the
+    balance at the earliest. Thank you." (each " / " is a line break)
+  - `account_statement_pdf`: "Hello {{1}}, please find attached your account
+    statement from RAJAT Electricals for {{2}}. Closing balance: {{3}}. Thank
+    you."
+- The template `account_statement` (submitted 2026-10-27 without a Document
+  header) is not used: its text says "attached" but it cannot carry a PDF.
+- Reminder numbers are the ledger's (all ledger debits / credits, the same as
+  the bot's "Pending amount"), so billed − paid = balance and they match the
+  attached statement.
+- A payment that is a slice of a lump-sum receipt is not sent on its own
+  (400): the customer paid the receipt, which is sent from the ledger.
+  Cancelled orders get no confirmation; every other status can be confirmed
+  (an order is a booking).
+- **Automatic payment reminders** (`src/lib/paymentReminders.ts`, table
+  `payment_reminders`):
+  - Switched on per customer in the ledger screen card "Automatic Payment
+    Reminder": Off / every 7 / 15 / 30 days. Needs a valid mobile number.
+  - Run only on the server with `WHATSAPP_REMINDERS_ENABLED=true` (ONE
+    server). Every 10 minutes between 10:00 and 19:00 IST: a customer is due
+    on the day reminders are switched on, then `everyDays` after the last
+    reminder (a manual "Send Reminder" restarts the cycle). Sent only when at
+    least ₹500 is due. One customer at a time (each PDF starts Chromium).
+  - A customer is claimed for the day (`checked_on`) before sending, so a
+    second server on a shared database, or an overlapping run, cannot send
+    twice. Skipped (less than ₹500 due, no phone) and failed sends are tried
+    again the next day; the card shows the next date and the last skip/failure.
+  - The card warns when the server does not send automatically.
 
 ## WhatsApp self-service bot (`/api/whatsapp/webhook`)
 
