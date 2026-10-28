@@ -156,6 +156,9 @@ colours without a reason.
   the `as any` cast. Detail screens opened from another module's stack may
   have no native back button (ledger `[id]` has a fallback).
 - Alerts: use `utils/dialogs.ts` on code paths that run on web.
+- Web form dialogs: the header row (`w.header`, title + Cancel/Save) has
+  `flexWrap: 'wrap'` so the buttons drop under the title at phone width —
+  the dialog clips anything wider (`overflow: hidden`). Keep it in new dialogs.
 - WhatsApp sends: always through `confirmAndSendWhatsapp` (`utils/whatsappSend.ts`)
   — it shows the number, blocks double taps and reports the server's message.
   Offers right after saving wait `AFTER_SHEET_MS` so the dialog is not lost

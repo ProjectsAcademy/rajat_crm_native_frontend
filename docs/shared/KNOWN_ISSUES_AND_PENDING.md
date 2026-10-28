@@ -103,11 +103,6 @@ anything older than a few weeks.
    pattern (`app/(app)/orders/index.tsx`) when a module grows past 100, and
    give its backend `orderBy` a unique tie-breaker (`id`) first — sorting
    only by `createdAt` repeats/skips rows across pages for imported batches.
-9. Web at phone width (390 px, seen 2026-10-28): the Inventory list header's
-   "Add" button and the item form dialog's "Update" button are cut off at the
-   right edge (`app/(app)/inventory/index.tsx` header row,
-   `components/InventoryFormSheet.tsx` web dialog header). Native is not
-   affected; other form dialogs may have the same header.
 
 ## C. Looks wrong but is intended
 

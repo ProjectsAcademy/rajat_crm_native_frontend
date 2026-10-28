@@ -6,6 +6,32 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — Web at phone width: header buttons no longer cut off
+
+- **Request:** fix KNOWN_ISSUES B.9 — at 390 px the Inventory list's "Add"
+  button and the item form's "Update" button were cut off.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** frontend `dev_01` `03036d6`. `app/(app)/inventory/index.tsx`
+  (header: title + a button group that wraps; 16 px side padding under
+  600 px) and the web dialog header (`w.header`: `flexWrap`, `rowGap`) of
+  13 form sheets: Inventory, Customer, Vendor, Order, Invoice, Estimate,
+  Purchase, GST, Project, Tender, User, Group, Stock movement.
+- **Database:** none.
+- **Decisions:** root cause was one shared pattern — a header row that
+  cannot wrap inside a dialog with `overflow: hidden` — so every dialog with
+  it was fixed, not only Inventory. Attendance, salary component/payment and
+  the ledger sheets already wrapped and were left alone.
+- **Tested:** web at 390 px: Inventory list and the Inventory, Customer,
+  Vendor, Order and Invoice dialogs — buttons on a second line, nothing
+  beyond the screen edge; at 1280 px the same screens look as before.
+  Frontend tsc 85 = baseline.
+- **Not tested / risks:** the other 8 dialogs only by reading (same style
+  line); native unaffected (these styles are used by the web layouts only).
+- **Deploy status:** not pushed.
+- **Follow-ups:** none.
+
+---
+
 ## 2026-10-28 — WhatsApp bot: "Our items" (inventory with rates)
 
 - **Request:** add inventory to the customers' WhatsApp menu so they stop
