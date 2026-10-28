@@ -16,6 +16,8 @@ export async function confirmAndSendWhatsapp(opts: {
   intro?: string;               // shown above the question, e.g. what was just saved
   // An offer right after saving: without a phone number only `intro` is shown.
   afterSave?: boolean;
+  // The customer sent STOP: said in the dialog, the person still decides.
+  optedOut?: boolean;
 }): Promise<boolean> {
   const phone = opts.phone?.trim();
   if (!phone) {
@@ -27,7 +29,10 @@ export async function confirmAndSendWhatsapp(opts: {
     return false;
   }
   if (sending) return false;
-  const question = `Send ${opts.what} to ${opts.customerName} (${phone}) on WhatsApp?`;
+  const stopNote = opts.optedOut
+    ? '\n\nThis customer sent STOP: they get no automatic messages. This one goes only because you send it.'
+    : '';
+  const question = `Send ${opts.what} to ${opts.customerName} (${phone}) on WhatsApp?${stopNote}`;
   const ok = await confirmAsync(opts.title ?? 'Send on WhatsApp', opts.intro ? `${opts.intro}\n\n${question}` : question, 'Send');
   if (!ok) return false;
   sending = true;

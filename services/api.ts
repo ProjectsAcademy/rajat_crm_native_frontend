@@ -483,6 +483,7 @@ export interface Customer {
   id: number; customerCode: string; customerName: string; businessName: string;
   email: string; phone: string; address: string; gstin: string;
   isActive: boolean; createdAt: string; updatedAt?: string;
+  whatsappOptOutAt?: string | null;   // sent STOP on WhatsApp: no automatic messages
   _count?: { orders: number; invoices: number; estimates: number; gstRecords: number };
 }
 export interface CustomerListResponse { customers: Customer[]; total: number; page: number; limit: number; }
@@ -638,7 +639,7 @@ export interface OrderPayment {
   receipt?: { id: number; receiptNo: string } | null;
 }
 export interface OrderDetail extends OrderSummary {
-  customer: { id: number; customerName: string; customerCode: string; phone: string; email: string } | null;
+  customer: { id: number; customerName: string; customerCode: string; phone: string; email: string; whatsappOptOutAt: string | null } | null;
   notes: string | null; createdAt: string;
   items: OrderItem[];
   payments: OrderPayment[];
@@ -1014,6 +1015,7 @@ export interface CustomerLedgerResponse {
 }
 // Automatic WhatsApp payment reminder of one customer.
 export interface PaymentReminderInfo {
+  optedOutAt: string | null;    // the customer sent STOP: no automatic messages
   enabled: boolean;
   everyDays: number;            // 7, 15 or 30
   lastSentAt: string | null;

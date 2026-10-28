@@ -119,6 +119,7 @@ export default function CustomerLedgerScreen() {
       what: `a payment receipt for ${fmtMoney(l.credit)}${l.date ? ` (${fmtDay(l.date)})` : ''}`,
       customerName: data.customer.customerName,
       phone: data.customer.phone,
+      optedOut: !!data.reminder.optedOutAt,
       send: () => (l.type === 'receipt' ? ledgerApi.sendReceiptWhatsapp(refId) : ledgerApi.sendPaymentWhatsapp(refId)),
     });
   };
@@ -127,7 +128,9 @@ export default function CustomerLedgerScreen() {
     load();
     if (!data) return;
     const { customerName, phone } = data.customer;
+    const optedOut = !!data.reminder.optedOutAt;
     setTimeout(() => confirmAndSendWhatsapp({
+      optedOut,
       title: `Receipt ${created.receiptNo} saved`,
       intro: created.summary,
       afterSave: true,
@@ -147,6 +150,7 @@ export default function CustomerLedgerScreen() {
         : `the statement PDF (${periodLabel(data.statement.from, data.statement.to)})`,
       customerName: data.customer.customerName,
       phone: data.customer.phone,
+      optedOut: !!data.reminder.optedOutAt,
       send: () => (kind === 'reminder'
         ? ledgerApi.sendReminder(customerId)
         : ledgerApi.sendStatement(customerId, { from: data.statement.from, to: data.statement.to })),
@@ -276,6 +280,11 @@ export default function CustomerLedgerScreen() {
                 })}
               </View>
               <Text style={styles.reminderText}>{reminderText(reminder)}</Text>
+              {reminder.optedOutAt && (
+                <Text style={styles.reminderWarn}>
+                  This customer sent STOP on WhatsApp on {fmtDay(reminder.optedOutAt.slice(0, 10))}: no automatic messages. They can send START to turn them back on.
+                </Text>
+              )}
               {reminder.enabled && !reminder.schedulerOn && (
                 <Text style={styles.reminderWarn}>
                   Automatic sending is not switched on on this server yet, so nothing goes out automatically.
@@ -402,7 +411,9 @@ export default function CustomerLedgerScreen() {
 
 function reminderText(r: PaymentReminderInfo): string {
   const parts: string[] = [];
-  if (r.enabled) {
+  if (r.enabled && r.optedOutAt) {
+    parts.push('Paused while the customer has WhatsApp messages stopped.');
+  } else if (r.enabled) {
     parts.push(`Next on ${fmtDay(r.nextDue)} after 10 AM, if at least ${fmtMoney(r.minDue)} is due. The full statement PDF is attached.`);
   } else {
     parts.push('Off. Choose how often this customer gets a WhatsApp payment reminder with the statement PDF.');

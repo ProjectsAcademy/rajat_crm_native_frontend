@@ -69,6 +69,7 @@ export default function OrderDetailScreen() {
       what: 'the order confirmation',
       customerName: order.customer.customerName,
       phone: order.customer.phone,
+      optedOut: !!order.customer.whatsappOptOutAt,
       send: () => ordersApi.sendWhatsapp(orderId),
     });
   };
@@ -81,6 +82,7 @@ export default function OrderDetailScreen() {
       what: `a payment receipt for ₹${parseFloat(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
       customerName: order.customer.customerName,
       phone: order.customer.phone,
+      optedOut: !!order.customer.whatsappOptOutAt,
       send: () => ordersApi.sendPaymentWhatsapp(orderId, p.id),
     });
   };

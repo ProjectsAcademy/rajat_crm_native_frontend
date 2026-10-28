@@ -234,6 +234,13 @@ export default function CustomerDetailScreen() {
           <View style={styles.card}>
             <InfoRow label="Customer Code" value={customer.customerCode} />
             <InfoRow label="Phone" value={customer.phone} icon="call-outline" />
+            {customer.whatsappOptOutAt ? (
+              <InfoRow
+                label="WhatsApp"
+                value={`Sent STOP on ${new Date(customer.whatsappOptOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}: no automatic messages (START turns them back on)`}
+                icon="logo-whatsapp"
+              />
+            ) : null}
             <InfoRow label="Email" value={customer.email} icon="mail-outline" />
             <InfoRow label="Address" value={customer.address} icon="location-outline" />
           </View>
