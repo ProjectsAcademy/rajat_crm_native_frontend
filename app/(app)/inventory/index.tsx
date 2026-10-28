@@ -1,6 +1,6 @@
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl, Platform, Image,
+  StyleSheet, ActivityIndicator, RefreshControl, Platform, Image, useWindowDimensions,
 } from 'react-native';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -63,6 +63,8 @@ function ItemThumb({ item }: { item: InventoryItem }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function InventoryScreen() {
+  // Web at phone width: less side padding, header buttons wrap under the title.
+  const narrow = useWindowDimensions().width < 600;
   const [items, setItems]         = useState<InventoryItem[]>([]);
   const [search, setSearch]       = useState('');
   const [loading, setLoading]     = useState(true);
@@ -135,23 +137,24 @@ export default function InventoryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-    <View style={isWeb ? styles.webWrap : styles.flex1}>
+    <View style={isWeb ? [styles.webWrap, narrow && styles.webWrapNarrow] : styles.flex1}>
       {isWeb ? (
         /* Desktop: page header row with actions instead of banner + FAB */
         <View style={styles.webHeader}>
-          <View>
+          <View style={{ flexGrow: 1 }}>
             <Text style={styles.webTitle}>Inventory</Text>
             <Text style={styles.webSubtitle}>Item catalog & stock levels</Text>
           </View>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity style={styles.webLedgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.75}>
-            <Ionicons name="git-branch-outline" size={14} color={Colors.info} />
-            <Text style={styles.webLedgerText}>Stock Ledger</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.webAddBtn} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-            <Ionicons name="add" size={16} color="#111" />
-            <Text style={styles.webAddText}>Add Item</Text>
-          </TouchableOpacity>
+          <View style={styles.webHeaderActions}>
+            <TouchableOpacity style={styles.webLedgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.75}>
+              <Ionicons name="git-branch-outline" size={14} color={Colors.info} />
+              <Text style={styles.webLedgerText}>Stock Ledger</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.webAddBtn} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+              <Ionicons name="add" size={16} color="#111" />
+              <Text style={styles.webAddText}>Add Item</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
         <TouchableOpacity style={styles.ledgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.8}>
@@ -229,7 +232,9 @@ const styles = StyleSheet.create({
 
   // ── Desktop web layout ──
   webWrap:     { flex: 1, width: '100%', maxWidth: 1240, alignSelf: 'center', paddingHorizontal: 32 },
-  webHeader:   { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 26, paddingBottom: 4 },
+  webWrapNarrow: { paddingHorizontal: 16 },
+  webHeader:   { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingTop: 26, paddingBottom: 4 },
+  webHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   webTitle:    { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
   webSubtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   webLedgerBtn: {
