@@ -185,6 +185,12 @@ export default function InventoryDetailScreen() {
           </View>
           <Text style={styles.itemName}>{item.name}</Text>
           {item.category ? <Text style={styles.category}>{item.category}</Text> : null}
+          {item.showOnWhatsapp && (
+            <View style={styles.waRow}>
+              <Ionicons name="logo-whatsapp" size={13} color={Colors.whatsapp} />
+              <Text style={styles.waText}>Shown to customers on WhatsApp (Our items)</Text>
+            </View>
+          )}
           {item.description ? <Text style={styles.desc}>{item.description}</Text> : null}
 
           {/* Action buttons */}
@@ -309,6 +315,8 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   itemCode: { fontSize: 13, fontWeight: '700', color: Colors.accent, letterSpacing: 0.5 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
+  waRow:  { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  waText: { fontSize: 12, color: Colors.textSecondary },
   badgeText: { fontSize: 11, fontWeight: '700' },
   itemName: { fontSize: 18, fontWeight: '700', color: '#fff', lineHeight: 26 },
   category: { fontSize: 12, color: Colors.accent, marginTop: 4, fontWeight: '600' },

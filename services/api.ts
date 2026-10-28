@@ -571,6 +571,7 @@ export interface InventoryItem {
   id: number; itemCode: string; name: string; category: string;
   unit: string; unitPrice: string; reorderLevel: string;
   isActive: boolean; currentStock: number;
+  showOnWhatsapp: boolean;      // listed under "Our items" in the WhatsApp menu
   primaryImage: { id: number; fileType: string } | null;
 }
 export interface StockMovement {
@@ -598,6 +599,7 @@ export interface InventoryPayload {
   unitPrice: number | string;
   reorderLevel?: number | string;
   isActive?: boolean;
+  showOnWhatsapp?: boolean;
   // Create-only: seeds an initial stock movement
   initialStock?: number | string;
   initialLocation?: string;

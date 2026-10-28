@@ -30,8 +30,6 @@ const MODE_ICONS: Record<string, any> = {
   check: 'document-outline', other: 'ellipsis-horizontal-outline',
 };
 
-// WhatsApp's own green, as on the invoice screen's WhatsApp button.
-const WHATSAPP_GREEN = '#25D366';
 // A dialog opened while a sheet is still closing can be lost on iOS.
 const AFTER_SHEET_MS = 400;
 
@@ -270,7 +268,7 @@ export default function OrderDetailScreen() {
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           accessibilityLabel="Send payment receipt on WhatsApp"
                         >
-                          <Ionicons name="logo-whatsapp" size={15} color={WHATSAPP_GREEN} />
+                          <Ionicons name="logo-whatsapp" size={15} color={Colors.whatsapp} />
                         </TouchableOpacity>
                       )}
                       <TouchableOpacity
@@ -413,7 +411,7 @@ const styles = StyleSheet.create({
   dateText:      { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 6 },
 
   headerActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
-  whatsappBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: WHATSAPP_GREEN, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: WHATSAPP_GREEN },
+  whatsappBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.whatsapp, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: Colors.whatsapp },
   whatsappBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   editBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,153,0,0.15)', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: Colors.accent },
   editBtnText:   { fontSize: 13, fontWeight: '600', color: Colors.accent },

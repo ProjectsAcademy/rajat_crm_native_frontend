@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   printBtnText: { fontSize: 13, fontWeight: '700', color: '#111' },
   whatsappBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#25D366', paddingHorizontal: 16,
+    backgroundColor: Colors.whatsapp, paddingHorizontal: 16,
     paddingVertical: 8, borderRadius: 6,
   },
   whatsappBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },

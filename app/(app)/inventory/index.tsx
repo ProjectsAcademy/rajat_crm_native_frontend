@@ -112,7 +112,10 @@ export default function InventoryScreen() {
               <Text style={[styles.badgeText, { color: ss.text }]}>{ss.label}</Text>
             </View>
           </View>
-          <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.itemName, { flexShrink: 1 }]} numberOfLines={1}>{item.name}</Text>
+            {item.showOnWhatsapp && <Ionicons name="logo-whatsapp" size={13} color={Colors.whatsapp} accessibilityLabel="Shown on WhatsApp" />}
+          </View>
           {item.category ? <Text style={styles.category}>{item.category}</Text> : null}
           <View style={styles.cardMeta}>
             <View style={styles.metaItem}>
@@ -307,6 +310,7 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
   badgeText: { fontSize: 10, fontWeight: '700' },
   itemName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, lineHeight: 20 },
+  nameRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   category: { fontSize: 11, color: Colors.textSecondary, marginBottom: 4, marginTop: 1 },
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 4 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },

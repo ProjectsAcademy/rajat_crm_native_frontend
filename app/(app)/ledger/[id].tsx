@@ -469,9 +469,6 @@ function SummaryLine({ wide, date, label, balance, strong }: { wide: boolean; da
   );
 }
 
-// WhatsApp's own green, as on the invoice screen's WhatsApp button.
-const WHATSAPP_GREEN = '#25D366';
-
 const LINE_ICONS: Record<string, any> = {
   order: 'receipt-outline', payment: 'cash-outline', receipt: 'wallet-outline', adjustment: 'create-outline', opening: 'flag-outline',
 };
@@ -481,7 +478,7 @@ function LineRow({ line: l, wide, onPress, onWhatsapp }: { line: LedgerLine; wid
   const trailingColor = l.type === 'receipt' ? Colors.error : Colors.textMuted;
   const whatsapp = onWhatsapp ? (
     <TouchableOpacity onPress={onWhatsapp} hitSlop={8} accessibilityLabel="Send payment receipt on WhatsApp">
-      <Ionicons name="logo-whatsapp" size={15} color={WHATSAPP_GREEN} />
+      <Ionicons name="logo-whatsapp" size={15} color={Colors.whatsapp} />
     </TouchableOpacity>
   ) : null;
   if (wide) {
