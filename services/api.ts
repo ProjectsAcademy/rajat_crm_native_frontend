@@ -1017,12 +1017,14 @@ export interface CustomerLedgerResponse {
 export interface PaymentReminderInfo {
   optedOutAt: string | null;    // the customer sent STOP: no automatic messages
   enabled: boolean;
-  everyDays: number;            // 7, 15 or 30
+  everyDays: number;            // minEveryDays..maxEveryDays (7 / 15 / 30 or custom)
   lastSentAt: string | null;
   lastResult: string;           // 'sent' | 'skipped: …' | 'failed: …' | ''
   nextDue: string | null;       // YYYY-MM-DD, when enabled
   schedulerOn: boolean;         // the server sends automatically at all
   minDue: number;               // rupees; less than this due → no reminder
+  minEveryDays: number;         // 3
+  maxEveryDays: number;         // 90
 }
 export interface WhatsappSendResult { success: boolean; messageId: string; sentTo: string }
 export interface ReceivableRow extends LedgerPosition {

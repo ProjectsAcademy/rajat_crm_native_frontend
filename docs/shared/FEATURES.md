@@ -215,9 +215,12 @@ a second tap while a send is running is ignored). Senders and variable order:
 - **Automatic payment reminders** (`src/lib/paymentReminders.ts`, table
   `payment_reminders`):
   - Switched on per customer in the ledger screen card "Automatic Payment
-    Reminder": Off / every 7 / 15 / 30 days. Needs a valid mobile number.
-  - Run only on the server with `WHATSAPP_REMINDERS_ENABLED=true` (ONE
-    server). Every 10 minutes between 10:00 and 19:00 IST: a customer is due
+    Reminder": Off / every 7 / 15 / 30 days / Custom — any whole number of
+    days from 3 to 90 (owner, 2026-10-28; reminders closer together risk
+    blocks and reports, which lower the number's quality with Meta). Needs a
+    valid mobile number.
+  - Run only on servers with `WHATSAPP_REMINDERS_ENABLED=true` (at most one
+    per database). Every 10 minutes between 10:00 and 19:00 IST: a customer is due
     on the day reminders are switched on, then `everyDays` after the last
     reminder (a manual "Send Reminder" restarts the cycle). Sent only when at
     least ₹500 is due. One customer at a time (each PDF starts Chromium).

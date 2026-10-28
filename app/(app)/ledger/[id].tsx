@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity,
-  RefreshControl, useWindowDimensions, Platform,
+  RefreshControl, useWindowDimensions, Platform, TextInput,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,8 +20,10 @@ import { confirmAndSendWhatsapp } from '../../../utils/whatsappSend';
 type PeriodKey = 'fy' | 'lastfy' | 'all' | 'custom';
 type Busy = 'print' | 'preview' | 'reminder' | 'statement' | null;
 
-// [days, label]; 0 = off.
+// [days, label]; 0 = off. Any other number of days (server limits, 3–90) is
+// set with "Custom".
 const REMINDER_OPTIONS: [number, string][] = [[0, 'Off'], [7, 'Every 7 days'], [15, 'Every 15 days'], [30, 'Every 30 days']];
+const isPresetDays = (days: number) => REMINDER_OPTIONS.some(([d]) => d !== 0 && d === days);
 // A dialog opened while a sheet is still closing can be lost on iOS.
 const AFTER_SHEET_MS = 400;
 
@@ -42,6 +44,8 @@ export default function CustomerLedgerScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]     = useState('');
   const [busy, setBusy]       = useState<Busy>(null);
+  // Days typed in the reminder card's "Custom" box; null = the box is closed.
+  const [customDays, setCustomDays] = useState<string | null>(null);
 
   const [showReceipt, setShowReceipt] = useState(false);
   const [entrySheet, setEntrySheet] = useState<{ mode: 'entry' | 'opening'; entry?: EditableEntry | null } | null>(null);
@@ -159,13 +163,26 @@ export default function CustomerLedgerScreen() {
     if (sent && kind === 'reminder') load();
   };
 
-  const setReminder = async (enabled: boolean, everyDays: number) => {
+  const setReminder = async (enabled: boolean, everyDays: number): Promise<boolean> => {
     try {
       const { data: r } = await ledgerApi.updateReminder(customerId, { enabled, everyDays });
       setData((d) => (d ? { ...d, reminder: r.reminder } : d));
+      return true;
     } catch (e: any) {
       notify('Payment reminder', e?.response?.data?.error ?? 'Could not save the reminder setting.');
+      return false;
     }
+  };
+
+  const saveCustomDays = async () => {
+    const r = data?.reminder;
+    if (!r || customDays === null) return;
+    const days = Number(customDays);
+    if (!customDays || !Number.isInteger(days) || days < r.minEveryDays || days > r.maxEveryDays) {
+      notify('Payment reminder', `Enter a number of days from ${r.minEveryDays} to ${r.maxEveryDays}.`);
+      return;
+    }
+    if (await setReminder(true, days)) setCustomDays(null);
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>;
@@ -272,13 +289,49 @@ export default function CustomerLedgerScreen() {
                     <TouchableOpacity
                       key={days}
                       style={[styles.pill, active && styles.pillActive]}
-                      onPress={() => { if (!active) setReminder(days !== 0, days || reminder.everyDays); }}
+                      onPress={() => { setCustomDays(null); if (!active) setReminder(days !== 0, days || reminder.everyDays); }}
                     >
                       <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
                     </TouchableOpacity>
                   );
                 })}
+                {(() => {
+                  const active = reminder.enabled && !isPresetDays(reminder.everyDays);
+                  return (
+                    <TouchableOpacity
+                      style={[styles.pill, active && styles.pillActive]}
+                      onPress={() => setCustomDays(customDays !== null ? null : isPresetDays(reminder.everyDays) ? '' : String(reminder.everyDays))}
+                    >
+                      <Text style={[styles.pillText, active && styles.pillTextActive]}>
+                        {active ? `Every ${reminder.everyDays} days` : 'Custom'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })()}
               </View>
+              {customDays !== null && (
+                <View style={styles.daysRow}>
+                  <Text style={styles.daysLabel}>Every</Text>
+                  <TextInput
+                    style={styles.daysInput}
+                    value={customDays}
+                    onChangeText={(t) => setCustomDays(t.replace(/\D/g, ''))}
+                    onSubmitEditing={saveCustomDays}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    autoFocus
+                    placeholder={`${reminder.minEveryDays}–${reminder.maxEveryDays}`}
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                  <Text style={styles.daysLabel}>days</Text>
+                  <TouchableOpacity style={[styles.pill, styles.pillActive]} onPress={saveCustomDays}>
+                    <Text style={[styles.pillText, styles.pillTextActive]}>Save</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.pill} onPress={() => setCustomDays(null)}>
+                    <Text style={styles.pillText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               <Text style={styles.reminderText}>{reminderText(reminder)}</Text>
               {reminder.optedOutAt && (
                 <Text style={styles.reminderWarn}>
@@ -584,6 +637,9 @@ const styles = StyleSheet.create({
   reminderCard: { padding: 12, gap: 10 },
   reminderText: { fontSize: 12, color: Colors.textSecondary, lineHeight: 17 },
   reminderWarn: { fontSize: 12, color: Colors.error, lineHeight: 17 },
+  daysRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  daysLabel: { fontSize: 13, color: Colors.textSecondary },
+  daysInput: { width: 64, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 6, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface, fontSize: 13, color: Colors.textPrimary, textAlign: 'center' },
   customRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' },
   dateBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
   dateBtnText: { fontSize: 13, color: Colors.textPrimary },
