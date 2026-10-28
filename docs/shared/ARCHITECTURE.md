@@ -158,7 +158,7 @@ Customer ledger balance =
   payment reminder and account statement with the statement PDF):
   `src/lib/customerMessages.ts`, called from buttons in the order and ledger
   screens; automatic payment reminders run in `src/lib/paymentReminders.ts`
-  on the one server with `WHATSAPP_REMINDERS_ENABLED=true`.
+  on each server with `WHATSAPP_REMINDERS_ENABLED=true` (one per database).
 - **WhatsApp bot**: customers who message the business number get a list
   menu (pending amount, latest orders, my invoices → invoice PDF, payment
   history, statement PDF, our items → categories → items with rates). Meta calls

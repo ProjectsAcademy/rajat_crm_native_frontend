@@ -280,12 +280,12 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | DELETE /receipts/:id | 292 | ledger | CustomerReceipt (w), OrderPayment (w) | recalcOrderPaid, parseId | ledgerApi.deleteReceipt (api.ts:102) ← app/(app)/ledger/[id].tsx |
 | POST /customers/:id/entries | 327 | ledger | CustomerLedgerEntry (w) | parseId, readEntry | ledgerApi.createEntry (api.ts:103) ← components/LedgerEntrySheet.tsx |
 | PUT /entries/:id | 343 | ledger | CustomerLedgerEntry (w) | parseId, readEntry | ledgerApi.updateEntry (api.ts:104) ← components/LedgerEntrySheet.tsx |
-| PUT /customers/:id/reminder | 376 | ledger | PaymentReminder (w), Customer | normalizeIndianMobile, parseId, reminderView | ledgerApi.updateReminder (api.ts:106) ← app/(app)/ledger/[id].tsx |
-| POST /customers/:id/send-reminder | 405 | ledger | — | sendError, sendPaymentReminder, parseId | ledgerApi.sendReminder (api.ts:109) ← app/(app)/ledger/[id].tsx |
-| POST /customers/:id/send-statement | 417 | ledger | — | sendError, sendAccountStatement, validDate, parseId | ledgerApi.sendStatement (api.ts:111) ← app/(app)/ledger/[id].tsx |
-| POST /receipts/:id/send-whatsapp | 433 | ledger | — | sendError, sendPaymentReceivedForReceipt, parseId | ledgerApi.sendReceiptWhatsapp (api.ts:113) ← app/(app)/ledger/[id].tsx |
-| POST /payments/:id/send-whatsapp | 445 | ledger | — | sendError, sendPaymentReceivedForPayment, parseId | ledgerApi.sendPaymentWhatsapp (api.ts:115) ← app/(app)/ledger/[id].tsx |
-| DELETE /entries/:id | 456 | ledger | CustomerLedgerEntry (w) | parseId | ledgerApi.deleteEntry (api.ts:105) ← components/LedgerEntrySheet.tsx |
+| PUT /customers/:id/reminder | 378 | ledger | PaymentReminder (w), Customer | normalizeIndianMobile, parseId, reminderView | ledgerApi.updateReminder (api.ts:106) ← app/(app)/ledger/[id].tsx |
+| POST /customers/:id/send-reminder | 409 | ledger | — | sendError, sendPaymentReminder, parseId | ledgerApi.sendReminder (api.ts:109) ← app/(app)/ledger/[id].tsx |
+| POST /customers/:id/send-statement | 421 | ledger | — | sendError, sendAccountStatement, validDate, parseId | ledgerApi.sendStatement (api.ts:111) ← app/(app)/ledger/[id].tsx |
+| POST /receipts/:id/send-whatsapp | 437 | ledger | — | sendError, sendPaymentReceivedForReceipt, parseId | ledgerApi.sendReceiptWhatsapp (api.ts:113) ← app/(app)/ledger/[id].tsx |
+| POST /payments/:id/send-whatsapp | 449 | ledger | — | sendError, sendPaymentReceivedForPayment, parseId | ledgerApi.sendPaymentWhatsapp (api.ts:115) ← app/(app)/ledger/[id].tsx |
+| DELETE /entries/:id | 460 | ledger | CustomerLedgerEntry (w) | parseId | ledgerApi.deleteEntry (api.ts:105) ← components/LedgerEntrySheet.tsx |
 
 ## 3. Screens (Expo Router, `app/`)
 
@@ -481,10 +481,10 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | keyToUrl | src/lib/minio.ts:27 | — | — | routes/media.ts |
 | deleteFromMinio | src/lib/minio.ts:35 | — | fileUrlToKey | routes/invoices.ts, routes/media.ts, routes/orders.ts, routes/tenders.ts |
 | getPresignedUrl | src/lib/minio.ts:40 | — | fileUrlToKey | routes/media.ts |
-| remindersEnabled | src/lib/paymentReminders.ts:26 | — | — | not called |
-| nextReminderDay | src/lib/paymentReminders.ts:34 | — | dayKey | lib/paymentReminders.ts, routes/ledger.ts |
-| runReminderPass | src/lib/paymentReminders.ts:44 | PaymentReminder (w) | sendPaymentReminder, dayKey, nextReminderDay | lib/paymentReminders.ts |
-| startPaymentReminders | src/lib/paymentReminders.ts:82 | — | runReminderPass | not called |
+| remindersEnabled | src/lib/paymentReminders.ts:32 | — | — | not called |
+| nextReminderDay | src/lib/paymentReminders.ts:40 | — | dayKey | lib/paymentReminders.ts, routes/ledger.ts |
+| runReminderPass | src/lib/paymentReminders.ts:50 | PaymentReminder (w) | sendPaymentReminder, dayKey, nextReminderDay | lib/paymentReminders.ts |
+| startPaymentReminders | src/lib/paymentReminders.ts:88 | — | runReminderPass | not called |
 | buildUrl | src/lib/prisma.ts:19 | — | — | not called |
 | parseRecipientList | src/lib/whatsapp.ts:52 | — | normalizeIndianMobile | not called |
 | recipientRefusal | src/lib/whatsapp.ts:58 | — | — | lib/customerMessages.ts, lib/whatsapp.ts, lib/whatsappBot.ts, routes/invoices.ts |

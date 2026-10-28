@@ -89,7 +89,8 @@ If a task seems to require breaking one, stop and ask the owner first.
    dev `.env`. A test server (dev) sets `WHATSAPP_ALLOWED_RECIPIENTS`;
    production leaves it empty. Bot replies must never reveal data to a number that does not
    match the customer's saved phone. `WHATSAPP_REMINDERS_ENABLED=true`
-   (automatic payment reminders, each one charged) also on ONE server only.
+   (automatic payment reminders, each one charged) on at most ONE server per
+   database; on dev only together with `WHATSAPP_ALLOWED_RECIPIENTS`.
    Never send a WhatsApp message to a customer automatically except these
    reminders, which a person switched on for that customer.
 

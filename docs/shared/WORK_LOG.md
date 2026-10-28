@@ -6,6 +6,59 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — Custom reminder interval (3 to 90 days)
+
+- **Request:** the owner asked why automatic payment reminders offer only
+  7 / 15 / 30 days, and chose a custom interval with a 3-day minimum and a
+  90-day maximum.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend: `src/lib/paymentReminders.ts` (`MIN_REMINDER_DAYS`,
+  `MAX_REMINDER_DAYS` replace `REMINDER_DAYS`), `src/routes/ledger.ts`
+  (`PUT /customers/:id/reminder` accepts any whole number 3–90; the
+  ledger's `reminder` also returns `minEveryDays` / `maxEveryDays`),
+  `test/whatsapp-templates.test.ts`. Frontend: `app/(app)/ledger/[id].tsx`
+  ("Custom" pill → "Every [n] days" box with Save / Cancel; the pill shows
+  "Every n days" when a custom interval is on), `services/api.ts`
+  (`PaymentReminderInfo`). Docs: FEATURES.
+- **Database:** none (`every_days` is already an integer; existing rows hold
+  7 / 15 / 30).
+- **Decisions:** owner, 2026-10-28 — minimum 3 days, maximum 90; the three
+  quick choices stay.
+- **Tested:** `npm test` (2, 91, 7.5, "10", null refused; 3, 10, 90 saved;
+  the limits in the ledger answer; next date 3 days after the last send).
+  Mutation check: with a 1-day minimum the tests fail. Web UI at 390 px
+  against a throwaway database with synthetic data: the box opens, 2 days
+  shows "Enter a number of days from 3 to 90.", 10 days saves and the pill
+  reads "Every 10 days", tapping "Every 7 days" switches back.
+- **Not tested / risks:** native Android / iOS (number keyboard).
+- **Deploy status:** on `dev_01`; backend and app go to production together
+  (the old app's pills still send 7 / 15 / 30, which the new backend accepts).
+- **Follow-ups:** none.
+
+---
+
+## 2026-10-28 — Automatic reminders may also run on dev (one server per database)
+
+- **Request:** the owner asked whether WhatsApp reminders can run on dev too.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs and comments only (this commit): the "ONE server" rule
+  for `WHATSAPP_REMINDERS_ENABLED` becomes "at most one server per database;
+  on dev only with `WHATSAPP_ALLOWED_RECIPIENTS`" — RULES 10,
+  INFRASTRUCTURE_AND_DEPLOY, plan security rule 6, ARCHITECTURE,
+  BACKEND_REFERENCE, `.env.example`, `src/lib/paymentReminders.ts` comment.
+- **Database:** none.
+- **Decisions:** the rule existed because dev and prod might share a
+  database; they do not (separate databases and numbers since 2026-10-28),
+  and the per-day claim still covers a shared one. On dev the recipient list
+  keeps automatic reminders away from real customers (they are recorded as
+  skipped).
+- **Tested:** nothing new — the scheduler and the recipient limit are
+  covered by `npm test` (refusals below 500 count as skipped).
+- **Deploy status:** no code change.
+- **Follow-ups:** the owner may set `WHATSAPP_REMINDERS_ENABLED=true` on dev.
+
+---
+
 ## 2026-10-28 — Test servers message only their test numbers (`WHATSAPP_ALLOWED_RECIPIENTS`)
 
 - **Request:** the dev server sends from a real number (+91 97550 63737) and
