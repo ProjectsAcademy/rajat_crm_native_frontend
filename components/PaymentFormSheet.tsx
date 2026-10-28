@@ -13,7 +13,8 @@ interface Props {
   orderId: number;
   payment?: OrderPayment | null;  // null/undefined = add mode, set = edit mode
   onClose: () => void;
-  onSaved: () => void;
+  // `created` is set only for a new payment (the screen offers a WhatsApp receipt).
+  onSaved: (created?: OrderPayment) => void;
 }
 
 const MODES = [
@@ -80,10 +81,11 @@ export default function PaymentFormSheet({ visible, orderId, payment, onClose, o
       const payload = { amount, paymentMode: mode, paymentDate: isoDate, referenceNo: refNo || undefined };
       if (isEdit && payment) {
         await ordersApi.updatePayment(orderId, payment.id, payload);
+        onSaved();
       } else {
-        await ordersApi.addPayment(orderId, payload);
+        const { data } = await ordersApi.addPayment(orderId, payload);
+        onSaved(data.payment);
       }
-      onSaved();
       onClose();
     } catch (e: any) {
       notify('Error', e?.response?.data?.error || 'Could not save payment.');

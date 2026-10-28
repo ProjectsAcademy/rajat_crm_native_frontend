@@ -103,6 +103,17 @@ export const ledgerApi = {
   createEntry: (id: number, data: LedgerEntryInput) => api.post(`/api/ledger/customers/${id}/entries`, data),
   updateEntry: (entryId: number, data: LedgerEntryInput) => api.put(`/api/ledger/entries/${entryId}`, data),
   deleteEntry: (entryId: number) => api.delete(`/api/ledger/entries/${entryId}`),
+  updateReminder: (id: number, data: { enabled: boolean; everyDays: number }) =>
+    api.put<{ reminder: PaymentReminderInfo }>(`/api/ledger/customers/${id}/reminder`, data),
+  // WhatsApp template sends (see invoicesApi.sendWhatsapp for the 60 s timeout).
+  sendReminder: (id: number) =>
+    api.post<WhatsappSendResult>(`/api/ledger/customers/${id}/send-reminder`, undefined, { timeout: 60000 }),
+  sendStatement: (id: number, data: { from: string | null; to: string | null }) =>
+    api.post<WhatsappSendResult>(`/api/ledger/customers/${id}/send-statement`, data, { timeout: 60000 }),
+  sendReceiptWhatsapp: (receiptId: number) =>
+    api.post<WhatsappSendResult>(`/api/ledger/receipts/${receiptId}/send-whatsapp`, undefined, { timeout: 60000 }),
+  sendPaymentWhatsapp: (paymentId: number) =>
+    api.post<WhatsappSendResult>(`/api/ledger/payments/${paymentId}/send-whatsapp`, undefined, { timeout: 60000 }),
 };
 
 // ─── Tenders ──────────────────────────────────────────────────────────────────
@@ -249,6 +260,11 @@ export const ordersApi = {
   addPayment:    (id: number, data: OrderPaymentInput) => api.post<{ payment: OrderPayment }>(`/api/orders/${id}/payments`, data),
   updatePayment: (id: number, paymentId: number, data: OrderPaymentInput) => api.put<{ success: boolean }>(`/api/orders/${id}/payments/${paymentId}`, data),
   removePayment: (id: number, paymentId: number) => api.delete<{ success: boolean }>(`/api/orders/${id}/payments/${paymentId}`),
+  // WhatsApp templates order_confirmation / payment_received (60 s: see invoicesApi.sendWhatsapp).
+  sendWhatsapp: (id: number) =>
+    api.post<WhatsappSendResult>(`/api/orders/${id}/send-whatsapp`, undefined, { timeout: 60000 }),
+  sendPaymentWhatsapp: (id: number, paymentId: number) =>
+    api.post<WhatsappSendResult>(`/api/orders/${id}/payments/${paymentId}/send-whatsapp`, undefined, { timeout: 60000 }),
 };
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────
@@ -620,6 +636,7 @@ export interface OrderPayment {
   receipt?: { id: number; receiptNo: string } | null;
 }
 export interface OrderDetail extends OrderSummary {
+  customer: { id: number; customerName: string; customerCode: string; phone: string; email: string } | null;
   notes: string | null; createdAt: string;
   items: OrderItem[];
   payments: OrderPayment[];
@@ -991,7 +1008,19 @@ export interface CustomerLedgerResponse {
     closingBalance: number;
   };
   position: LedgerPosition;
+  reminder: PaymentReminderInfo;
 }
+// Automatic WhatsApp payment reminder of one customer.
+export interface PaymentReminderInfo {
+  enabled: boolean;
+  everyDays: number;            // 7, 15 or 30
+  lastSentAt: string | null;
+  lastResult: string;           // 'sent' | 'skipped: …' | 'failed: …' | ''
+  nextDue: string | null;       // YYYY-MM-DD, when enabled
+  schedulerOn: boolean;         // the server sends automatically at all
+  minDue: number;               // rupees; less than this due → no reminder
+}
+export interface WhatsappSendResult { success: boolean; messageId: string; sentTo: string }
 export interface ReceivableRow extends LedgerPosition {
   id: number; customerCode: string; customerName: string; businessName: string; phone: string; isActive: boolean;
 }

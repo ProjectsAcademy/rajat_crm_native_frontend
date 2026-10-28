@@ -168,7 +168,8 @@ export default function OrdersScreen() {
         onClose={() => setShowForm(false)}
         onSaved={(newId) => {
           if (newId) {
-            router.push(`/(app)/orders/${newId}` as any);
+            // The order screen then offers the WhatsApp order confirmation.
+            router.push(`/(app)/orders/${newId}?offerWhatsapp=1` as any);
           } else {
             fetchItems(true);
           }

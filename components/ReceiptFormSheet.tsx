@@ -18,7 +18,8 @@ interface Props {
   customerId: number;
   customerName: string;
   onClose: () => void;
-  onSaved: () => void;
+  // The screen shows what was saved (and offers a WhatsApp receipt).
+  onSaved: (created: { id: number; receiptNo: string; summary: string }) => void;
 }
 
 const toPaise = (s: string) => {
@@ -87,9 +88,8 @@ export default function ReceiptFormSheet({ visible, customerId, customerName, on
       });
       const lines = data.allocations.map((a) => `${a.orderNo}: ${fmtMoney(a.amount)}`);
       if (data.advance > 0) lines.push(`Advance: ${fmtMoney(data.advance)}`);
-      notify(`Receipt ${data.receipt.receiptNo} saved`, lines.join('\n') || 'Kept fully as advance.');
-      onSaved();
       onClose();
+      onSaved({ id: data.receipt.id, receiptNo: data.receipt.receiptNo, summary: lines.join('\n') || 'Kept fully as advance.' });
     } catch (e: any) {
       notify('Could not save', e?.response?.data?.error || 'Please try again.');
     } finally {
