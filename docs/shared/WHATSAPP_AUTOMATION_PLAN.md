@@ -16,7 +16,7 @@ menu bot with "Our items".
 
 | Step | What | Side | Status |
 |---|---|---|---|
-| 0.1 | Release to production; move the bot to production | both | in progress — backend released, production number and bot set up 2026-10-28; app release next |
+| 0.1 | Release to production; move the bot to production | both | in progress — backend and app code released, production number and bot set up 2026-10-28; APK build next |
 | 0.2 | Switch RBAC from shadow mode to enforced | both | waiting for the owner |
 | 0.3 | Staff WhatsApp identity (`users.phone`) | client | not started |
 | 0.4 | Customer opt-out (STOP / START) | customer | done (2026-10-28, backend `063e79d`, app `20a79e6`) |
@@ -78,9 +78,11 @@ menu bot with "Our items".
   +91 96859 03733 added for production — webhook override to `prod-api`,
   bot enabled there. The first number +91 97550 63737 stays on dev, so dev
   and production never answer each other's customers
-  (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook").
+  (INFRASTRUCTURE_AND_DEPLOY.md "WhatsApp bot webhook"). Second release the
+  same evening: backend `dev_01` up to `b52be0d`, frontend `main` at
+  `e8a7185` (PR #11).
 - **Still to do:** "hi" to the production number from a number saved on a
-  production customer; app release; one send of each template from the
+  production customer; the production APK (built from `e8a7185`); one send of each template from the
   production app; `WHATSAPP_REMINDERS_ENABLED=true` on production when
   automatic reminders should start.
 - **Done when:** the production number answers from production and template

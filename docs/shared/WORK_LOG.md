@@ -6,6 +6,30 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-28 — Second production release (backend and app code)
+
+- **Request:** the owner merged `dev_01` into `main` in both repos after the
+  recipient allow-list and the custom reminder interval.
+- **Done by:** the owner (merge, "Deploy Backend" on `main`, frontend
+  `git pull` on `main`); docs by Claude Code (Opus 5.5)
+- **Changes:** none in code. Backend production now runs `dev_01` up to
+  `b52be0d`; frontend `main` is `e8a7185` (PR #11, contains `dbc44dd`).
+  Docs: KNOWN_ISSUES A.1, WHATSAPP_AUTOMATION_PLAN 0.1.
+- **Database:** none (no new migration since the first release).
+- **Tested:** the owner reported the deploy without problems. Locally
+  checked: frontend `main` contains `dbc44dd`, `utils/whatsappSend.ts` is
+  present, the `production` profile in `eas.json` points to `prod-api`.
+  The backend merge commit could not be read from here (no GitHub
+  credentials in this checkout).
+- **Not tested / risks:** the production APK is not built or installed yet;
+  no template send from the production app yet (A.3).
+- **Deploy status:** backend on production; app code on `main`, APK pending.
+- **Follow-ups:** build and install the APK; one test send of each template
+  from the production app; then `WHATSAPP_REMINDERS_ENABLED=true` on
+  production when the owner wants it.
+
+---
+
 ## 2026-10-28 — Custom reminder interval (3 to 90 days)
 
 - **Request:** the owner asked why automatic payment reminders offer only

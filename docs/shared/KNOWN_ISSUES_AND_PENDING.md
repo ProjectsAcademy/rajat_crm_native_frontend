@@ -6,14 +6,16 @@ anything older than a few weeks.
 
 ## A. Pending work (status as of 2026-10-22)
 
-1. **Production is behind development** (as of 2026-10-28, release in
-   progress — WHATSAPP_AUTOMATION_PLAN.md step 0.1):
-   - Backend: released 2026-10-28 (PR #15, production `main` at `750c73b`;
-     `npx prisma migrate status` on the server: 27 migrations, schema up to
-     date). Production WhatsApp set up the same day (A.3, A.5).
-   - Frontend `main` lacks the dashboard redesign, vendor work, the WhatsApp
-     buttons, the inventory "Show on WhatsApp" switch and the phone-width
-     fixes. The app release is the next step.
+1. **Production release of 2026-10-28** (WHATSAPP_AUTOMATION_PLAN.md step 0.1):
+   - Backend: first release PR #15 (`750c73b`; `npx prisma migrate status`
+     on the server: 27 migrations, schema up to date), then a second release
+     the same evening with `dev_01` up to `b52be0d` (recipient allow-list,
+     custom reminder interval); owner confirmed the deploy. Production
+     WhatsApp set up the same day (A.3, A.5).
+   - Frontend: `main` at `e8a7185` (PR #11) holds everything on `dev_01` up
+     to `dbc44dd`. Still to do: the production APK from that commit
+     (`eas build --platform android --profile production`; the build page
+     on expo.dev shows the commit) and installing it on the team's phones.
    - Production database backup taken 2026-10-28 (INFRASTRUCTURE_AND_DEPLOY.md
      §4).
    - Verify with `git fetch && git log --oneline origin/main..origin/dev_01`
