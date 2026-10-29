@@ -18,7 +18,7 @@ menu bot with "Our items".
 |---|---|---|---|
 | 0.1 | Release to production; move the bot to production | both | in progress — backend and app code released, production number and bot set up 2026-10-28; APK build next |
 | 0.2 | Switch RBAC from shadow mode to enforced | both | waiting for the owner |
-| 0.3 | Staff WhatsApp identity (`users.phone`) | client | built (2026-10-29, backend `82c2bd1`, app `fef2785`) — owner to save numbers in Admin → Users and check on dev |
+| 0.3 | Staff WhatsApp identity (employees' phone) | client | built (2026-10-29, backend `d12a09e`, app `529c08c`) — owner to check on dev |
 | 0.4 | Customer opt-out (STOP / START) | customer | done (2026-10-28, backend `063e79d`, app `20a79e6`) |
 | 1.1 | Owner daily summary + alerts | client | not started — template needed |
 | 1.2 | Order status updates | customer | not started — template needed |
@@ -40,10 +40,15 @@ menu bot with "Our items".
    message never changes amounts, phone numbers, addresses or prices.
 2. **Identity = the sender's WhatsApp number**, verified by Meta, on a
    signature-checked webhook (already in place). It must match a customer's
-   saved phone (customer side) or an active app user's `phone` (client side,
-   step 0.3) — otherwise no data at all.
-3. **Staff get the same permissions as in the app** (`userHasFeature` rules,
-   server side). Step 0.2 must be done before any staff step that writes.
+   saved phone (customer side) or an active employee's phone in HR (client
+   side, step 0.3) — otherwise no data at all.
+3. **Staff = employees (HR), not app logins** (owner, 2026-10-29). Employees
+   have no app permissions, so each staff step decides who may use its
+   options: an employee's own data (attendance, deliveries) is fine for that
+   employee; anything wider (customer balances, stock, payment entry,
+   approvals — steps 1.1, 3.2, 3.3, 5.2) needs a decision in that step on
+   which employees may use it. Step 0.2 must be done before any staff step
+   that writes.
 4. **Anything that moves money or stock from WhatsApp** needs a PIN (hashed,
    locked after 3 wrong tries), a confirm button, a copy to the owner and a log
    row. No free-text amounts without a confirm step.
@@ -98,20 +103,20 @@ menu bot with "Our items".
 
 ### 0.3 Staff WhatsApp identity
 
-- **Build:** `users.phone` (additive column, unique when set), field in Admin
-  → Users; the bot recognises an active user's number before checking
-  customers and answers with a staff menu (empty until step 1.1 / 3.2 fill it).
-  A number saved on both a user and a customer gets the staff menu.
-- **Decisions:** which staff get a number is data, not code — the owner
-  fills it in Admin → Users. STOP / START from a number that is also a
-  customer's still reaches the customer opt-out (rule 7).
-- **Built (2026-10-29):** as above; the staff menu is one text message
-  ("Hello <name>, this WhatsApp number belongs to the … app user
-  "<username>". Staff options will appear here as they are added …").
-  `test/whatsapp-staff.test.ts`.
-- **Done when:** the owner's number gets the staff menu; a deactivated
-  user's number gets the "not registered" answer. Both pass in the tests;
-  still to check once on the dev server (the number must also be in
+- **Decision (owner, 2026-10-29):** staff are the **employees** in HR, not
+  app users. A first version on app users (`users.phone`, Admin field) was
+  replaced the same day; its column is dropped again.
+- **Built (2026-10-29):** the bot matches the sender against the phone of
+  every **active** employee (HR → Employees → Phone, free text, matched
+  like customers' phones) before checking customers. A number saved on an
+  employee and a customer gets the staff menu; STOP / START from it still
+  reach the customer opt-out (rule 7). Two active employees with one number
+  → the older record. The staff menu is one text message for now ("Hello
+  <name>, this WhatsApp number is saved on … employee EMP001. Staff options
+  will appear here as they are added."). `test/whatsapp-staff.test.ts`.
+- **Done when:** an employee's number gets the staff menu; a deactivated
+  employee's number gets the "not registered" answer. Both pass in the
+  tests; still to check once on the dev server (the number must also be in
   `WHATSAPP_ALLOWED_RECIPIENTS` there).
 
 ### 0.4 Customer opt-out
@@ -205,12 +210,16 @@ menu bot with "Our items".
 - **Build:** staff menu: customer balance, order status, item stock — lists
   and buttons, read-only, permission-checked (`ledger`, `orders`,
   `inventory`).
+- **Decision to settle:** staff are employees without app permissions (rule
+  3) — which employees may look these up, and how it is stored.
 
 ### 3.3 Staff payment entry with PIN
 
 - **Build:** staff menu → customer → amount (typed, then confirmed) → mode →
   PIN → receipt + `payment_received`; the owner gets a copy of every entry.
   Needs `ledger` permission and step 0.2.
+- **Decision to settle:** as in 3.2 — which employees may enter payments
+  (rule 3).
 
 ### 4.1 Booking enquiry
 

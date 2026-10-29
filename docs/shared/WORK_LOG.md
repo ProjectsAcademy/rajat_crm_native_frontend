@@ -6,7 +6,56 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — Staff WhatsApp menu for employees, not app users (step 0.3)
+
+- **Request:** the owner: the staff number is for employees, not for app
+  users — "make it for employees".
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `d12a09e`: `src/lib/whatsappBot.ts`
+  (`findStaffByPhone` now matches active employees' phone like customers'
+  phones; staff text names the employee and code), `src/routes/admin.ts`
+  and `prisma/schema.prisma` back to before `82c2bd1`, migration
+  `20261029120000_drop_user_whatsapp_phone`, `test/whatsapp-staff.test.ts`
+  rewritten. App `529c08c`: reverts the Admin field (`fef2785`);
+  `components/EmployeeFormSheet.tsx` (hint under Phone; a cleared phone is
+  saved). Docs: WHATSAPP_AUTOMATION_PLAN (rules 2, 3 and step 0.3),
+  FEATURES (bot, HR, Admin), BACKEND_REFERENCE §5, LOCAL_DEV_AND_TESTING
+  §4, KNOWN_ISSUES B.10 (new).
+- **Database:** the new migration DROPS `users.phone` and its unique index
+  — a deliberate exception to RULES.md rule 3 (additive only): the column
+  was added the same day by `20261029100000`, only the dev database got it
+  (pushed, auto-deployed), no production release or released code ever
+  read it, and dev and production have separate databases (2026-10-28).
+  Production will apply both migrations in a row (add, then drop). Any
+  number saved on a dev user that day is lost (none expected). Checked on a
+  throwaway database: all migrations applied, `prisma migrate diff` against
+  `schema.prisma` empty.
+- **Decisions:** owner, 2026-10-29 — staff = employees. Plan rule 3
+  rewritten: employees have no app permissions, so every later staff step
+  decides which employees may use its options.
+- **Tested:** `npm test` (5 tests: employee → staff menu, employee +
+  customer → staff menu without customer data, STOP still opts the
+  customer out, deactivated employee → "not registered" or the customer
+  menu, cleared phone → "not registered"). Mutation checks: without the
+  staff branch, the STOP exception or the active filter, a test fails. Web
+  UI at 390 px and 1280 px on a throwaway database: the hint shows, an
+  emptied phone saves as "", a new phone saves.
+- **Not tested / risks:** native Android form; a real WhatsApp message from
+  an employee's number (dev server, after deploy). While the dev server
+  deploys, the old process may fail user queries between the migration and
+  its restart (seconds, dev only).
+- **Deploy status:** on `dev_01` (backend partly pushed: `82c2bd1` is on
+  dev already). Backend before app.
+- **Follow-ups:** owner: an employee with their own number in HR (the
+  number must be in `WHATSAPP_ALLOWED_RECIPIENTS` on dev), "hi" to the dev
+  number. Later staff steps decide who may use each option (plan rule 3).
+
+---
+
 ## 2026-10-29 — Staff WhatsApp number (automation plan step 0.3)
+
+> Replaced the same day: staff are employees, not app users (next entry
+> above).
 
 - **Request:** the owner asked to carry on with the next pending phase of the
   WhatsApp automation plan. Step 0.2 (RBAC enforced) is owner work in Admin

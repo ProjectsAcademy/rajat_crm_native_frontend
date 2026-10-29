@@ -115,6 +115,10 @@ anything older than a few weeks.
    form has no limit. Seen in the production log (code from before
    2026-09-18). Fix: a clear 400 message, or wider columns (additive
    migration).
+10. The employee form (`components/EmployeeFormSheet.tsx`) sends
+    `undefined` for an emptied Email, Address, Aadhar or PAN, so clearing one
+    of them in edit mode keeps the old value. Phone was fixed on 2026-10-29
+    (it decides the WhatsApp staff menu); the others are untouched.
 
 ## C. Looks wrong but is intended
 
