@@ -6,6 +6,27 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — WhatsApp "Our items": item names only
+
+- **Request:** the owner: when a customer asks for items on WhatsApp, show
+  only the item names — no available quantity and no price per unit.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend: `src/lib/whatsappBot.ts` (`categoryItemsText` lists
+  "• Name" only; the menu row reads "Items we rent out"),
+  `test/whatsapp-bot-items.test.ts`. App: `components/InventoryFormSheet.tsx`
+  (switch hint). Docs: FEATURES (Inventory, bot), ARCHITECTURE.
+- **Database:** none.
+- **Decisions:** owner, 2026-10-29 — names only. The description went too
+  ("sirf inventory name"); it can come back on request. Quantities were
+  never shown (orders do not move stock).
+- **Tested:** `npm test -- whatsapp-bot-items` (names in order, no "Rs.",
+  unit, "rate on request" or description).
+- **Not tested / risks:** a real WhatsApp message (dev number after deploy).
+- **Deploy status:** on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
 ## 2026-10-29 — Permissions plan: cleanup step P7
 
 - **Request:** the owner asked whether the plan says to clean up the old

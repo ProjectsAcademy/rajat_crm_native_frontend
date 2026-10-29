@@ -406,7 +406,7 @@ export default function InventoryFormSheet({ visible, onClose, onSaved, item }: 
         {may('inventory.whatsapp-listing') && (
           <View style={{ flex: 1 }}>
             <Text style={s.toggleLabel}>Show on WhatsApp</Text>
-            <Text style={s.toggleSub}>Customers see this item with its description and rate under "Our items" in the WhatsApp menu</Text>
+            <Text style={s.toggleSub}>Customers see this item's name (no rate or quantity) under "Our items" in the WhatsApp menu</Text>
           </View>
         )}
         <Switch value={showOnWhatsapp} onValueChange={setShowOnWhatsapp} trackColor={{ true: Colors.success, false: Colors.border }} thumbColor="#fff" />

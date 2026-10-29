@@ -527,27 +527,27 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | sendList | src/lib/whatsapp.ts:202 | — | sendMessage | lib/whatsappBot.ts |
 | sendDocument | src/lib/whatsapp.ts:228 | — | sendMessage | lib/whatsappBot.ts |
 | verifyWebhookSignature | src/lib/whatsapp.ts:234 | — | — | routes/whatsappWebhook.ts |
-| enqueueWebhook | src/lib/whatsappBot.ts:66 | — | processWebhook | routes/whatsappWebhook.ts |
-| processWebhook | src/lib/whatsappBot.ts:72 | — | applyStatus, handleMessage | lib/whatsappBot.ts |
-| applyStatus | src/lib/whatsappBot.ts:91 | WhatsappMessage (w) | — | lib/whatsappBot.ts |
-| findCustomersByPhone | src/lib/whatsappBot.ts:110 | Customer | normalizeIndianMobile | lib/whatsappBot.ts |
-| findStaffByPhone | src/lib/whatsappBot.ts:129 | Employee | normalizeIndianMobile | lib/whatsappBot.ts |
-| handleMessage | src/lib/whatsappBot.ts:139 | WhatsappMessage | recipientRefusal, sendText, sendList, findCustomersByPhone, findStaffByPhone, repliedToday, sendStaffMenu, sendMenu, reply, setOptOut, bookingHint, categoryRows, categoryItemsText, pendingSummary, ordersSummary, invoiceRows, sendInvoicePdf, paymentsSummary, sendStatements, logWhatsapp | lib/whatsappBot.ts |
-| repliedToday | src/lib/whatsappBot.ts:250 | WhatsappMessage | — | lib/whatsappBot.ts |
-| sendStaffMenu | src/lib/whatsappBot.ts:261 | — | sendText, reply | lib/whatsappBot.ts |
-| sendMenu | src/lib/whatsappBot.ts:266 | — | sendList, reply | lib/whatsappBot.ts |
-| reply | src/lib/whatsappBot.ts:270 | — | logWhatsapp | lib/whatsappBot.ts |
-| setOptOut | src/lib/whatsappBot.ts:283 | Customer (w) | normalizeIndianMobile | lib/whatsappBot.ts |
-| bookingHint | src/lib/whatsappBot.ts:292 | — | — | lib/whatsappBot.ts |
-| categoryRows | src/lib/whatsappBot.ts:299 | Inventory | — | lib/whatsappBot.ts |
-| categoryItemsText | src/lib/whatsappBot.ts:318 | Inventory | rs | lib/whatsappBot.ts |
-| withActivity | src/lib/whatsappBot.ts:351 | — | — | lib/whatsappBot.ts |
-| pendingSummary | src/lib/whatsappBot.ts:361 | — | rs, day, loadLedgerData, buildStatement, buildPosition, withActivity | lib/whatsappBot.ts |
-| ordersSummary | src/lib/whatsappBot.ts:381 | Order | rs, day | lib/whatsappBot.ts |
-| invoiceRows | src/lib/whatsappBot.ts:406 | Invoice | rs, day | lib/whatsappBot.ts |
-| sendInvoicePdf | src/lib/whatsappBot.ts:422 | Invoice | rs, day, uploadMedia, sendDocument, reply, renderInvoicePdf | lib/whatsappBot.ts |
-| paymentsSummary | src/lib/whatsappBot.ts:441 | — | rs, day, loadLedgerData, buildStatement, withActivity | lib/whatsappBot.ts |
-| sendStatements | src/lib/whatsappBot.ts:461 | — | balanceText, currentFy, loadLedgerData, buildStatement, buildPosition, uploadMedia, sendDocument, reply, withActivity, renderStatementPdf | lib/whatsappBot.ts |
+| enqueueWebhook | src/lib/whatsappBot.ts:67 | — | processWebhook | routes/whatsappWebhook.ts |
+| processWebhook | src/lib/whatsappBot.ts:73 | — | applyStatus, handleMessage | lib/whatsappBot.ts |
+| applyStatus | src/lib/whatsappBot.ts:92 | WhatsappMessage (w) | — | lib/whatsappBot.ts |
+| findCustomersByPhone | src/lib/whatsappBot.ts:111 | Customer | normalizeIndianMobile | lib/whatsappBot.ts |
+| findStaffByPhone | src/lib/whatsappBot.ts:130 | Employee | normalizeIndianMobile | lib/whatsappBot.ts |
+| handleMessage | src/lib/whatsappBot.ts:140 | WhatsappMessage | recipientRefusal, sendText, sendList, findCustomersByPhone, findStaffByPhone, repliedToday, sendStaffMenu, sendMenu, reply, setOptOut, bookingHint, categoryRows, categoryItemsText, pendingSummary, ordersSummary, invoiceRows, sendInvoicePdf, paymentsSummary, sendStatements, logWhatsapp | lib/whatsappBot.ts |
+| repliedToday | src/lib/whatsappBot.ts:251 | WhatsappMessage | — | lib/whatsappBot.ts |
+| sendStaffMenu | src/lib/whatsappBot.ts:262 | — | sendText, reply | lib/whatsappBot.ts |
+| sendMenu | src/lib/whatsappBot.ts:267 | — | sendList, reply | lib/whatsappBot.ts |
+| reply | src/lib/whatsappBot.ts:271 | — | logWhatsapp | lib/whatsappBot.ts |
+| setOptOut | src/lib/whatsappBot.ts:284 | Customer (w) | normalizeIndianMobile | lib/whatsappBot.ts |
+| bookingHint | src/lib/whatsappBot.ts:293 | — | — | lib/whatsappBot.ts |
+| categoryRows | src/lib/whatsappBot.ts:300 | Inventory | — | lib/whatsappBot.ts |
+| categoryItemsText | src/lib/whatsappBot.ts:319 | Inventory | — | lib/whatsappBot.ts |
+| withActivity | src/lib/whatsappBot.ts:348 | — | — | lib/whatsappBot.ts |
+| pendingSummary | src/lib/whatsappBot.ts:358 | — | rs, day, loadLedgerData, buildStatement, buildPosition, withActivity | lib/whatsappBot.ts |
+| ordersSummary | src/lib/whatsappBot.ts:378 | Order | rs, day | lib/whatsappBot.ts |
+| invoiceRows | src/lib/whatsappBot.ts:403 | Invoice | rs, day | lib/whatsappBot.ts |
+| sendInvoicePdf | src/lib/whatsappBot.ts:419 | Invoice | rs, day, uploadMedia, sendDocument, reply, renderInvoicePdf | lib/whatsappBot.ts |
+| paymentsSummary | src/lib/whatsappBot.ts:438 | — | rs, day, loadLedgerData, buildStatement, withActivity | lib/whatsappBot.ts |
+| sendStatements | src/lib/whatsappBot.ts:458 | — | balanceText, currentFy, loadLedgerData, buildStatement, buildPosition, uploadMedia, sendDocument, reply, withActivity, renderStatementPdf | lib/whatsappBot.ts |
 | logWhatsapp | src/lib/whatsappLog.ts:5 | WhatsappMessage (w) | — | lib/customerMessages.ts, lib/whatsappBot.ts, routes/invoices.ts |
 | requireAuth | src/middleware/auth.ts:14 | — | — | route middleware |
 | requireStaff | src/middleware/auth.ts:40 | — | — | route middleware |

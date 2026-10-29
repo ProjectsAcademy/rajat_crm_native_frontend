@@ -146,8 +146,9 @@ invoices, optional link to an order.
   entries.
 - Purchase number `PUR-MMMYY-NNN` still uses `count()+1` (see KNOWN_ISSUES).
 - "Show on WhatsApp" (`inventory.show_on_whatsapp`, off by default, a switch
-  in the item form; a WhatsApp icon in the list): the item is listed with its
-  description and rate under "Our items" in the WhatsApp bot menu.
+  in the item form; a WhatsApp icon in the list): the item's name is listed
+  under "Our items" in the WhatsApp bot menu (no rate, description or
+  quantity since 2026-10-29).
 
 ## HR and Payroll (People → HR)
 
@@ -278,17 +279,18 @@ menu with data options only — no "talk to us" option; no AI/LLM.
   - Statement PDF: current financial year statement, rendered on the server
     (`src/utils/statementPdf.ts`) and sent as a document with the closing
     balance in the caption.
-  - Our items (decisions, owner 2026-10-28: registered customers only, name +
-    description + rate, no photos yet, only items ticked "Show on WhatsApp"):
+  - Our items (decisions, owner 2026-10-28: registered customers only, no
+    photos yet, only items ticked "Show on WhatsApp"; 2026-10-29: names only —
+    no rate, description or quantity):
     a second list with the categories of the active ticked items (item
     count; no category → "Other"; more than 10 categories → pages of 9 and a
     "More categories" row, id `CATS:<offset>`). Picking one (`CAT:<name>`)
-    answers "• Name — Rs. 150.00 per pcs" plus the description (first 120
-    characters), at most 80 items, split into several messages above about
-    3,500 characters, then "To book or check availability for your date,
-    please call us on 8839032230 / 9131847282." and the menu. Rate 0 → "rate
-    on request". No stock numbers: orders do not move stock, so the system
-    cannot say what is free on a date (later phase).
+    answers one line per item, "• Name", at most 80 items, split into several
+    messages above about 3,500 characters, then "To book or check
+    availability for your date, please call us on 8839032230 / 9131847282."
+    and the menu. Rates and stock are given on the phone (owner, 2026-10-29);
+    the system cannot say what is free on a date anyway (orders do not move
+    stock).
   - Row ids `PENDING`, `ORDERS`, `STATEMENT` are the same as the old
     three-button menu, so taps on old messages still work.
 - Identity: the sender's WhatsApp number must match a customer's saved phone
