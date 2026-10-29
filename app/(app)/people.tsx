@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { dashboardApi, DashboardResponse } from '../../services/api';
-import { useAuthStore, userHasFeature } from '../../store/auth';
+import { useAuthStore, canOpen } from '../../store/auth';
 import { Colors } from '../../constants/colors';
 import WebHubPage, { HubCard } from '../../components/WebHubPage';
 
@@ -55,7 +55,7 @@ const CARDS: CardDef[] = [
 export default function PeopleScreen() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
-  const visibleCards = CARDS.filter((c) => userHasFeature(user, c.feature));
+  const visibleCards = CARDS.filter((c) => canOpen(user, c.feature));
   const [kpis, setKpis] = useState<DashboardResponse['kpis'] | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { employeesApi, Employee, EmployeePayload } from '../services/api';
 import { Colors } from '../constants/colors';
+import { useCan } from '../store/auth';
 
 // ─── Skill type options ───────────────────────────────────────────────────────
 
@@ -69,6 +70,7 @@ function Field({
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function EmployeeFormSheet({ visible, employee, onClose, onSaved }: Props) {
+  const may = useCan();
   const isEdit = !!employee;
 
   // ── Form state ──
@@ -220,15 +222,20 @@ export default function EmployeeFormSheet({ visible, employee, onClose, onSaved 
           </View>
         </View>
 
-        <View style={s.row}>
-          <View style={{ flex: 1 }}>
-            <Field label="Daily Wage (₹)" value={dailyWage} onChangeText={setDailyWage} keyboardType="decimal-pad" placeholder="0" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Field label="CTC/Month (₹)" value={ctc} onChangeText={setCtc} keyboardType="decimal-pad" placeholder="0" />
-          </View>
-        </View>
-        <Field label="Basic Salary (₹)" value={basicSalary} onChangeText={setBasicSalary} keyboardType="decimal-pad" placeholder="0" />
+        {/* Wages are a hidden field (employees.fields.salary). */}
+        {may('employees.fields.salary') && (
+          <>
+            <View style={s.row}>
+              <View style={{ flex: 1 }}>
+                <Field label="Daily Wage (₹)" value={dailyWage} onChangeText={setDailyWage} keyboardType="decimal-pad" placeholder="0" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Field label="CTC/Month (₹)" value={ctc} onChangeText={setCtc} keyboardType="decimal-pad" placeholder="0" />
+              </View>
+            </View>
+            <Field label="Basic Salary (₹)" value={basicSalary} onChangeText={setBasicSalary} keyboardType="decimal-pad" placeholder="0" />
+          </>
+        )}
 
         {/* ── Identity ── */}
         <Text style={s.sectionLabel}>Identity Documents</Text>

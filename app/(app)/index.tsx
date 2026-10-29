@@ -13,7 +13,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthStore, userHasFeature } from '../../store/auth';
+import { useAuthStore, canOpen } from '../../store/auth';
 import { useRecentsStore } from '../../store/recents';
 import { dashboardApi, DashboardResponse } from '../../services/api';
 import { Colors } from '../../constants/colors';
@@ -104,7 +104,7 @@ export default function DashboardScreen() {
 
   const kpis = data?.kpis;
   const visibleKpis = useMemo(
-    () => KPI_CONFIG.filter((k) => userHasFeature(user, k.key)),
+    () => KPI_CONFIG.filter((k) => canOpen(user, k.key)),
     [user]
   );
 

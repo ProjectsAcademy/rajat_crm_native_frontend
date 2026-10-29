@@ -4,8 +4,9 @@ import {
   ScrollView, Dimensions, Switch,
 } from 'react-native';
 import { useState, useEffect } from 'react';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { adminApi, AdminUser, AdminGroup, AdminUserPayload } from '../services/api';
+import { adminApi, AdminUser, AdminGroup, AdminRole, AdminUserPayload } from '../services/api';
 import { Colors } from '../constants/colors';
 
 interface Props {
@@ -27,8 +28,10 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
   const [isActive, setIsActive] = useState(true);
   const [isLegacyAccess, setIsLegacyAccess] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<number[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
 
   const [groups, setGroups] = useState<AdminGroup[]>([]);
+  const [roles, setRoles] = useState<AdminRole[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -44,12 +47,13 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
     setIsActive(user?.isActive ?? true);
     setIsLegacyAccess(user?.isLegacyAccess ?? false);
     setSelectedGroups(user?.groups.map((g) => g.id) ?? []);
+    setSelectedRoles(user?.roles?.map((r) => r.id) ?? []);
     setSaveError('');
     setShowPassword(false);
 
     setLoadingGroups(true);
-    adminApi.groups.list()
-      .then(({ data }) => setGroups(data.groups.filter((g) => g.isActive)))
+    Promise.all([adminApi.groups.list(), adminApi.roles.list()])
+      .then(([g, r]) => { setGroups(g.data.groups.filter((x) => x.isActive)); setRoles(r.data.roles); })
       .catch(() => {})
       .finally(() => setLoadingGroups(false));
   }, [visible, user]);
@@ -73,10 +77,11 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
         if (password) payload.password = password;
         await adminApi.users.update(user.id, payload);
         await adminApi.users.setGroups(user.id, selectedGroups);
+        await adminApi.users.setRoles(user.id, selectedRoles);
       } else {
         await adminApi.users.create({
           username: username.trim(), password, email, firstName, lastName,
-          isLegacyAccess, groupIds: selectedGroups,
+          isLegacyAccess, groupIds: selectedGroups, roleIds: selectedRoles,
         });
       }
       onSaved();
@@ -223,6 +228,41 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
 
       <Text style={st.label}>Groups</Text>
       {renderGroupChecks(st)}
+
+      <Text style={st.label}>Roles for this user only <Text style={st.opt}>(optional)</Text></Text>
+      <Text style={[st.checkSub, { marginBottom: 8 }]}>
+        On top of the groups' roles — for one person's exception, e.g. a role that denies one action.
+      </Text>
+      {roles.length === 0 ? (
+        <Text style={{ fontSize: 13, color: Colors.textMuted, marginBottom: 12 }}>No roles yet — create one under Admin → Roles.</Text>
+      ) : roles.map((r) => {
+        const checked = selectedRoles.includes(r.id);
+        return (
+          <TouchableOpacity
+            key={r.id}
+            style={st.checkRow}
+            onPress={() => setSelectedRoles((p) => (checked ? p.filter((x) => x !== r.id) : [...p, r.id]))}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={20} color={checked ? Colors.accent : Colors.textMuted} />
+            <View style={{ flex: 1 }}>
+              <Text style={st.checkLabel}>{r.name}{r.isActive ? '' : ' (inactive)'}</Text>
+              {!!r.description && <Text style={st.checkSub}>{r.description}</Text>}
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+
+      {isEdit && user && (
+        <TouchableOpacity
+          style={[st.checkRow, { justifyContent: 'center', marginTop: 4 }]}
+          onPress={() => { onClose(); router.push(`/(app)/admin/access?userId=${user.id}` as any); }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="shield-checkmark-outline" size={18} color={Colors.info} />
+          <Text style={[st.checkLabel, { color: Colors.info }]}>See effective access (saved settings)</Text>
+        </TouchableOpacity>
+      )}
     </>
   );
 

@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { invoicesApi, customersApi, vendorsApi, projectsApi, ordersApi, inventoryApi, InvoiceDetail } from '../services/api';
 import { Colors } from '../constants/colors';
 import DatePickerModal from './DatePickerModal';
+import { useCan } from '../store/auth';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // inventoryId is optional — unlike Orders, an invoice line is often a plain
@@ -127,6 +128,9 @@ const sp = StyleSheet.create({
 
 // ── Main Component ───────────────────────────────────────────────────────────────
 export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice, presetOrderId }: Props) {
+  const may = useCan();
+  // Changing a saved invoice's status needs invoices.status.
+  const canStatus = !invoice || may('invoices.status');
   const isEdit = !!invoice;
   const isWeb  = Platform.OS === 'web';
 
@@ -369,7 +373,7 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice, p
       if (isEdit) {
         await invoicesApi.update(invoice!.id, {
           customerId: customerId ?? null, vendorId: vendorId ?? null, projectId: projectId ?? null,
-          invoiceType, status, invoiceDate, dueDate,
+          invoiceType, status: canStatus ? status : undefined, invoiceDate, dueDate,
           paymentTerms, notes, items: itemPayload,
           discountEnabled, discountPercent: discountPercent || '0',
         });
@@ -519,7 +523,7 @@ export default function InvoiceFormSheet({ visible, onClose, onSaved, invoice, p
       <Text style={st.label}>Status</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
         {STATUSES.map(stt => (
-          <TouchableOpacity key={stt.key} style={[st.chip, status === stt.key && st.chipActive]} onPress={() => setStatus(stt.key)}>
+          <TouchableOpacity key={stt.key} style={[st.chip, status === stt.key && st.chipActive, !canStatus && { opacity: 0.5 }]} onPress={() => setStatus(stt.key)} disabled={!canStatus}>
             <Text style={[st.chipText, status === stt.key && st.chipTextActive]}>{stt.label}</Text>
           </TouchableOpacity>
         ))}

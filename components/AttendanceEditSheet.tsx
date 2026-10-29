@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { hrApi } from '../services/api';
 import { Colors } from '../constants/colors';
+import { useCan } from '../store/auth';
 
 // Edits a single attendance record (status / hours / overtime / notes) and
 // supports deleting it. Callers pass a minimal shape so both the Records tab
@@ -43,6 +44,7 @@ function fmtDate(d: string) {
 }
 
 export default function AttendanceEditSheet({ visible, onClose, onSaved, record }: Props) {
+  const may = useCan();
   const isWeb = Platform.OS === 'web';
 
   const [status, setStatus] = useState('P');
@@ -164,10 +166,12 @@ export default function AttendanceEditSheet({ visible, onClose, onSaved, record 
         autoComplete="off" textContentType="none" importantForAutofill="no"
       />
 
-      <TouchableOpacity style={st.deleteBtn} onPress={handleDelete} disabled={saving} activeOpacity={0.7}>
-        <Ionicons name="trash-outline" size={15} color={Colors.error} />
-        <Text style={st.deleteText}>Delete record</Text>
-      </TouchableOpacity>
+      {may('hr.attendance.delete') && (
+        <TouchableOpacity style={st.deleteBtn} onPress={handleDelete} disabled={saving} activeOpacity={0.7}>
+          <Ionicons name="trash-outline" size={15} color={Colors.error} />
+          <Text style={st.deleteText}>Delete record</Text>
+        </TouchableOpacity>
+      )}
     </>
   );
 

@@ -1,12 +1,12 @@
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Modal,
-  ActivityIndicator, KeyboardAvoidingView, Platform,
-  ScrollView, Dimensions,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Switch, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { adminApi, AdminGroup, FeatureDef } from '../services/api';
+import { adminApi, AdminGroup, AdminRole, AdminUser } from '../services/api';
 import { Colors } from '../constants/colors';
+import LedgerSheetFrame from './LedgerSheetFrame';
+
+// Group = a set of users with roles assigned (docs/shared/PERMISSIONS_PLAN.md
+// §4): every member gets every permission of the group's active roles.
 
 interface Props {
   visible: boolean;
@@ -15,20 +15,17 @@ interface Props {
   group?: AdminGroup | null;
 }
 
-const HUB_LABELS: Record<string, string> = {
-  work: 'Work', people: 'People', finance: 'Finance', inventory: 'Inventory',
-};
-
 export default function GroupFormSheet({ visible, onClose, onSaved, group }: Props) {
   const isEdit = !!group;
-  const isWeb = Platform.OS === 'web';
-
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
-
-  const [features, setFeatures] = useState<FeatureDef[]>([]);
-  const [loadingFeatures, setLoadingFeatures] = useState(false);
+  const [isActive, setIsActive] = useState(true);
+  const [roleIds, setRoleIds] = useState<number[]>([]);
+  const [userIds, setUserIds] = useState<number[]>([]);
+  const [roles, setRoles] = useState<AdminRole[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -36,35 +33,32 @@ export default function GroupFormSheet({ visible, onClose, onSaved, group }: Pro
     if (!visible) return;
     setName(group?.name ?? '');
     setDescription(group?.description ?? '');
-    setSelectedFeatures(group?.features ?? []);
+    setIsActive(group?.isActive ?? true);
+    setRoleIds(group?.roles.map((r) => r.id) ?? []);
+    setUserIds(group?.members.map((m) => m.id) ?? []);
+    setUserSearch('');
     setSaveError('');
-
-    setLoadingFeatures(true);
-    adminApi.features()
-      .then(({ data }) => setFeatures(data.features))
-      .catch(() => {})
-      .finally(() => setLoadingFeatures(false));
+    setLoading(true);
+    Promise.all([adminApi.roles.list(), adminApi.users.list()])
+      .then(([r, u]) => { setRoles(r.data.roles); setUsers(u.data.users); })
+      .catch(() => setSaveError('Could not load roles and users.'))
+      .finally(() => setLoading(false));
   }, [visible, group]);
 
-  const toggleFeature = (key: string) => {
-    setSelectedFeatures((prev) => {
-      if (prev.includes(key)) return prev.filter((f) => f !== key);
-      // Selecting a parent covers all its children — drop redundant child grants
-      return [...prev.filter((f) => !f.startsWith(key + '.')), key];
-    });
-  };
+  const toggle = (list: number[], set: (v: number[]) => void, id: number) =>
+    set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
   const handleSave = async () => {
     setSaveError('');
     if (!name.trim()) { setSaveError('Group name is required.'); return; }
-
     setSaving(true);
     try {
       if (isEdit && group) {
-        await adminApi.groups.update(group.id, { name: name.trim(), description });
-        await adminApi.groups.setPermissions(group.id, selectedFeatures);
+        await adminApi.groups.update(group.id, { name: name.trim(), description, isActive });
+        await adminApi.groups.setRoles(group.id, roleIds);
+        await adminApi.groups.setMembers(group.id, userIds);
       } else {
-        await adminApi.groups.create({ name: name.trim(), description, features: selectedFeatures });
+        await adminApi.groups.create({ name: name.trim(), description, roleIds, userIds });
       }
       onSaved();
       onClose();
@@ -75,214 +69,95 @@ export default function GroupFormSheet({ visible, onClose, onSaved, group }: Pro
     }
   };
 
-  const renderErrorBanner = (st: any) =>
-    saveError ? (
-      <View style={st.errorBanner}>
-        <Ionicons name="alert-circle" size={18} color={Colors.error} />
-        <Text style={st.errorBannerText}>{saveError}</Text>
+  const q = userSearch.trim().toLowerCase();
+  const shownUsers = users.filter((u) => !q || u.username.toLowerCase().includes(q) || `${u.firstName} ${u.lastName}`.toLowerCase().includes(q));
+
+  const Check = ({ checked, label, sub, onPress, muted }: { checked: boolean; label: string; sub?: string; onPress: () => void; muted?: boolean }) => (
+    <TouchableOpacity style={[st.checkRow, muted && { opacity: 0.6 }]} onPress={onPress} activeOpacity={0.7}>
+      <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={20} color={checked ? Colors.accent : Colors.textMuted} />
+      <View style={{ flex: 1 }}>
+        <Text style={st.checkLabel}>{label}</Text>
+        {!!sub && <Text style={st.checkSub}>{sub}</Text>}
       </View>
-    ) : null;
-
-  const renderFeatureMatrix = (st: any) => {
-    if (loadingFeatures) {
-      return <ActivityIndicator size="small" color={Colors.accent} style={{ alignSelf: 'flex-start', marginVertical: 8 }} />;
-    }
-    const parents = features.filter((f) => !f.parent);
-    const childrenOf = (key: string) => features.filter((f) => f.parent === key);
-    const hubs = Array.from(new Set(parents.map((f) => f.hub)));
-
-    const renderRow = (f: (typeof features)[number], parentChecked: boolean) => {
-      const checked = selectedFeatures.includes(f.key);
-      const covered = parentChecked && !!f.parent; // implied by the parent grant
-      return (
-        <TouchableOpacity
-          key={f.key}
-          style={[st.checkRow, !!f.parent && st.checkRowChild, covered && { opacity: 0.55 }]}
-          onPress={() => toggleFeature(f.key)}
-          disabled={covered}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={checked || covered ? 'checkbox' : 'square-outline'}
-            size={20}
-            color={checked || covered ? Colors.accent : Colors.textMuted}
-          />
-          <Text style={st.checkLabel}>{f.label}</Text>
-          {covered && <Text style={st.coveredHint}>included</Text>}
-        </TouchableOpacity>
-      );
-    };
-
-    return (
-      <View style={{ marginBottom: 12 }}>
-        {hubs.map((hub) => (
-          <View key={hub}>
-            <Text style={st.hubLabel}>{HUB_LABELS[hub] ?? hub}</Text>
-            {parents.filter((f) => f.hub === hub).map((parent) => {
-              const kids = childrenOf(parent.key);
-              const parentChecked = selectedFeatures.includes(parent.key);
-              return (
-                <View key={parent.key}>
-                  {renderRow(parent, false)}
-                  {kids.map((k) => renderRow(k, parentChecked))}
-                </View>
-              );
-            })}
-          </View>
-        ))}
-      </View>
-    );
-  };
-
-  const formFields = (st: any) => (
-    <>
-      {renderErrorBanner(st)}
-
-      <Text style={st.label}>Group Name <Text style={st.req}>*</Text></Text>
-      <TextInput
-        style={st.inputBox}
-        value={name}
-        onChangeText={setName}
-        placeholder="e.g. Operations"
-        placeholderTextColor={Colors.textMuted}
-        autoComplete="off"
-        textContentType="none"
-        importantForAutofill="no"
-      />
-
-      <Text style={st.label}>Description <Text style={st.opt}>(optional)</Text></Text>
-      <TextInput
-        style={st.inputBox}
-        value={description}
-        onChangeText={setDescription}
-        placeholder="What is this group for?"
-        placeholderTextColor={Colors.textMuted}
-      />
-
-      <Text style={st.label}>Feature Access</Text>
-      <Text style={st.hint}>Members of this group can open the checked modules.</Text>
-      {renderFeatureMatrix(st)}
-    </>
+    </TouchableOpacity>
   );
 
-  // ── Web dialog ──────────────────────────────────────────────────────────────
-  if (isWeb) {
-    const SCREEN_H = Dimensions.get('window').height;
-    return (
-      <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-        <View style={w.backdrop}>
-          <View style={[w.dialog, { maxHeight: SCREEN_H * 0.92 }]}>
-            <View style={w.header}>
-              <View style={w.headerLeft}>
-                <Ionicons name="people-circle-outline" size={18} color={Colors.accent} />
-                <Text style={w.headerTitle}>{isEdit ? 'Edit Group' : 'New Group'}</Text>
-                {isEdit && group && <Text style={w.headerSub}>{group.name}</Text>}
-              </View>
-              <View style={w.headerActions}>
-                <TouchableOpacity style={w.cancelBtn} onPress={onClose} disabled={saving}>
-                  <Text style={w.cancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[w.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-                  {saving ? <ActivityIndicator size="small" color="#111" /> : (
-                    <><Ionicons name="checkmark" size={15} color="#111" /><Text style={w.saveText}>{isEdit ? 'Update Group' : 'Create Group'}</Text></>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-            <ScrollView contentContainerStyle={w.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              {formFields(w)}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-    );
-  }
-
-  // ── Mobile ──────────────────────────────────────────────────────────────────
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={s.header}>
-          <Text style={s.title}>{isEdit ? 'Edit Group' : 'New Group'}</Text>
-          <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-            <Ionicons name="close" size={22} color={Colors.textPrimary} />
-          </TouchableOpacity>
+    <LedgerSheetFrame
+      visible={visible}
+      title={isEdit ? 'Edit Group' : 'New Group'}
+      subtitle={isEdit ? group?.name : undefined}
+      icon="people-circle-outline"
+      saving={saving}
+      saveLabel={isEdit ? 'Update Group' : 'Create Group'}
+      onSave={handleSave}
+      onClose={onClose}
+    >
+      {!!saveError && (
+        <View style={st.errorBanner}>
+          <Ionicons name="alert-circle" size={18} color={Colors.error} />
+          <Text style={st.errorText}>{saveError}</Text>
         </View>
-        <ScrollView style={{ flex: 1, backgroundColor: Colors.background }} contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
-          {formFields(s)}
-          <View style={s.actions}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose} disabled={saving}>
-              <Text style={s.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-              {saving ? <ActivityIndicator size="small" color="#111" /> : <Text style={s.saveText}>{isEdit ? 'Update Group' : 'Save Group'}</Text>}
-            </TouchableOpacity>
+      )}
+
+      <Text style={st.label}>Group Name <Text style={{ color: Colors.error }}>*</Text></Text>
+      <TextInput style={st.input} value={name} onChangeText={setName} placeholder="e.g. Office staff" placeholderTextColor={Colors.textMuted} />
+      <Text style={st.label}>Description <Text style={st.opt}>(optional)</Text></Text>
+      <TextInput style={st.input} value={description} onChangeText={setDescription} placeholder="Who is in this group?" placeholderTextColor={Colors.textMuted} />
+      {isEdit && (
+        <View style={st.switchRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={st.label}>Group Active</Text>
+            <Text style={st.checkSub}>An inactive group gives its members nothing.</Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Modal>
+          <Switch value={isActive} onValueChange={setIsActive} trackColor={{ true: Colors.accent, false: Colors.border }} thumbColor="#fff" />
+        </View>
+      )}
+
+      <Text style={st.label}>Roles</Text>
+      <Text style={st.hint}>Members get every permission of these roles. Build roles under Admin → Roles.</Text>
+      {loading ? <ActivityIndicator color={Colors.accent} style={{ alignSelf: 'flex-start', marginVertical: 8 }} /> : roles.length === 0 ? (
+        <Text style={st.hint}>No roles yet — create one under Admin → Roles.</Text>
+      ) : roles.map((r) => (
+        <Check
+          key={r.id}
+          checked={roleIds.includes(r.id)}
+          label={r.name + (r.isActive ? '' : ' (inactive)')}
+          sub={r.description || `${r.permissions.length} permission(s)`}
+          muted={!r.isActive}
+          onPress={() => toggle(roleIds, setRoleIds, r.id)}
+        />
+      ))}
+
+      <Text style={[st.label, { marginTop: 10 }]}>Members ({userIds.length})</Text>
+      {users.length > 6 && (
+        <TextInput style={st.input} value={userSearch} onChangeText={setUserSearch} placeholder="Search users" placeholderTextColor={Colors.textMuted} />
+      )}
+      {!loading && shownUsers.map((u) => (
+        <Check
+          key={u.id}
+          checked={userIds.includes(u.id)}
+          label={u.username + (u.isActive ? '' : ' (disabled)')}
+          sub={`${u.firstName} ${u.lastName}`.trim() || undefined}
+          muted={!u.isActive}
+          onPress={() => toggle(userIds, setUserIds, u.id)}
+        />
+      ))}
+    </LedgerSheetFrame>
   );
 }
 
-// ── Web styles ────────────────────────────────────────────────────────────────
-const w = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  dialog:   { width: '100%', maxWidth: 560, backgroundColor: Colors.background, borderRadius: 12, overflow: 'hidden', elevation: 32, ...Platform.select({ web: { boxShadow: '0 12px 32px rgba(0,0,0,0.35)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 32 } }) },
+const WEB_NO_OUTLINE: any = Platform.select({ web: { outlineStyle: 'none' } });
 
-  header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 10, paddingHorizontal: 24, paddingVertical: 14, backgroundColor: Colors.primary, borderBottomWidth: 1, borderBottomColor: Colors.primaryLight },
-  headerLeft:    { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle:   { fontSize: 17, fontWeight: '700', color: '#fff' },
-  headerSub:     { fontSize: 12, color: Colors.accent, fontWeight: '600', marginLeft: 4 },
-  headerActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  cancelBtn:     { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
-  cancelText:    { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
-  saveBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 6, backgroundColor: Colors.accent },
-  saveText:      { fontSize: 13, fontWeight: '700', color: '#111' },
-
-  body: { padding: 24 },
-
-  errorBanner:     { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.errorLight, borderWidth: 1, borderColor: Colors.error + '40', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16 },
-  errorBannerText: { flex: 1, fontSize: 13, color: Colors.error, fontWeight: '600' },
-
-  label: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 5, marginTop: 2 },
-  opt:   { fontWeight: '400', color: Colors.textMuted },
-  req:   { color: Colors.error },
-  hint:  { fontSize: 12, color: Colors.textMuted, marginBottom: 8 },
-
-  inputBox: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: Colors.textPrimary, marginBottom: 12, ...Platform.select({ web: { outlineStyle: 'none' } }) },
-
-  hubLabel:      { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 10, marginBottom: 6 },
-  checkRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 6 },
-  checkRowChild: { marginLeft: 26, paddingVertical: 7 },
-  checkLabel:    { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  coveredHint:   { fontSize: 11, color: Colors.textMuted, marginLeft: 'auto' },
-});
-
-// ── Mobile styles ─────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  header:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 60 : 24, paddingBottom: 14, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  title:    { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  closeBtn: { padding: 4 },
-  body:     { padding: 16, paddingBottom: 48 },
-  label:    { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6, marginTop: 4 },
-  opt:      { fontSize: 12, fontWeight: '400', color: Colors.textMuted },
-  req:      { color: Colors.error },
-  hint:     { fontSize: 12, color: Colors.textMuted, marginBottom: 8 },
-
-  errorBanner:     { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.errorLight, borderWidth: 1, borderColor: Colors.error + '40', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
-  errorBannerText: { flex: 1, fontSize: 13, color: Colors.error, fontWeight: '600' },
-
-  inputBox: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15, color: Colors.textPrimary, marginBottom: 14, ...Platform.select({ web: { outlineStyle: 'none' } }) },
-
-  hubLabel:      { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 10, marginBottom: 6 },
-  checkRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 6 },
-  checkRowChild: { marginLeft: 26, paddingVertical: 9 },
-  checkLabel:    { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  coveredHint:   { fontSize: 11, color: Colors.textMuted, marginLeft: 'auto' },
-
-  actions:    { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelBtn:  { flex: 1, paddingVertical: 14, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
-  cancelText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
-  saveBtn:    { flex: 2, paddingVertical: 14, borderRadius: 8, backgroundColor: Colors.accent, alignItems: 'center' },
-  saveText:   { fontSize: 15, fontWeight: '700', color: '#111' },
+const st = StyleSheet.create({
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.errorLight, borderWidth: 1, borderColor: Colors.error + '40', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14 },
+  errorText:   { flex: 1, fontSize: 13, color: Colors.error, fontWeight: '600' },
+  label:   { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 5, marginTop: 2 },
+  opt:     { fontWeight: '400', color: Colors.textMuted },
+  hint:    { fontSize: 12, color: Colors.textMuted, marginBottom: 8 },
+  input:   { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: Colors.textPrimary, marginBottom: 12, ...WEB_NO_OUTLINE },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
+  checkRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8 },
+  checkLabel: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  checkSub:   { fontSize: 12, color: Colors.textMuted, marginTop: 1 },
 });

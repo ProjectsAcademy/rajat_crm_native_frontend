@@ -11,6 +11,7 @@ import {
   hrApi, AttendanceRecord, AttendanceDayEmployee, AttendanceMonthSummaryRow,
 } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
+import { useCan } from '../../../store/auth';
 import AttendanceEditSheet, {
   ATT_STATUSES, DEFAULT_HOURS, EditableAttendance,
 } from '../../../components/AttendanceEditSheet';
@@ -58,6 +59,7 @@ function fmtDate(d: string) {
 interface Draft { status: string; hours: string; overtime: string; }
 
 export default function AttendanceScreen() {
+  const may = useCan();
   useFeatureGuard('hr.attendance');
   const [segment, setSegment] = useState<'mark' | 'records' | 'summary'>('mark');
 
@@ -233,6 +235,7 @@ export default function AttendanceScreen() {
                   key={s.key}
                   style={[styles.statusChip, active && { backgroundColor: s.bg, borderColor: s.color }]}
                   onPress={() => setDraft(item.id, { status: s.key }, true)}
+                  disabled={!may('hr.attendance.create')}
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.statusChipText, active && { color: s.color }]}>{s.key}</Text>
@@ -281,10 +284,12 @@ export default function AttendanceScreen() {
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity style={styles.allPresentBtn} onPress={markAllPresent} activeOpacity={0.75}>
-          <Ionicons name="checkmark-done-outline" size={14} color={Colors.success} />
-          <Text style={styles.allPresentText}>All Present</Text>
-        </TouchableOpacity>
+        {may('hr.attendance.create') && (
+          <TouchableOpacity style={styles.allPresentBtn} onPress={markAllPresent} activeOpacity={0.75}>
+            <Ionicons name="checkmark-done-outline" size={14} color={Colors.success} />
+            <Text style={styles.allPresentText}>All Present</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {dayLoading ? (
@@ -310,19 +315,21 @@ export default function AttendanceScreen() {
         <Text style={[styles.saveMsg, saveMsg === 'Saved.' && { color: Colors.success }]}>
           {saveMsg || (changedRows.length > 0 ? `${changedRows.length} unsaved change${changedRows.length === 1 ? '' : 's'}` : `${Object.keys(drafts).length}/${roster.length} marked`)}
         </Text>
-        <TouchableOpacity
-          style={[styles.saveBtn, (changedRows.length === 0 || saving) && { opacity: 0.5 }]}
-          onPress={handleSave}
-          disabled={changedRows.length === 0 || saving}
-          activeOpacity={0.8}
-        >
-          {saving ? <ActivityIndicator size="small" color="#111" /> : (
-            <>
-              <Ionicons name="checkmark" size={16} color="#111" />
-              <Text style={styles.saveBtnText}>Save Attendance</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {may('hr.attendance.create') && (
+          <TouchableOpacity
+            style={[styles.saveBtn, (changedRows.length === 0 || saving) && { opacity: 0.5 }]}
+            onPress={handleSave}
+            disabled={changedRows.length === 0 || saving}
+            activeOpacity={0.8}
+          >
+            {saving ? <ActivityIndicator size="small" color="#111" /> : (
+              <>
+                <Ionicons name="checkmark" size={16} color="#111" />
+                <Text style={styles.saveBtnText}>Save Attendance</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -333,6 +340,7 @@ export default function AttendanceScreen() {
       <TouchableOpacity
         style={styles.card}
         activeOpacity={0.75}
+        disabled={!may('hr.attendance.edit')}
         onPress={() => setEditRecord({
           id: item.id, date: item.date, attendanceStatus: item.attendanceStatus,
           hoursWorked: item.hoursWorked, overtimeHours: item.overtimeHours,

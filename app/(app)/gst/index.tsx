@@ -8,6 +8,7 @@ import { Colors } from '../../../constants/colors';
 import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import GstFormSheet from '../../../components/GstFormSheet';
+import { useCan } from '../../../store/auth';
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   sales:    { bg: '#E8F5E9', text: '#2E7D32' },
@@ -28,6 +29,7 @@ function fmtDate(d: string) {
 const FILTERS = ['All', 'Sales', 'Purchase', 'Unfiled'];
 
 export default function GstScreen() {
+  const may = useCan();
   const { customerId, customerName } = useLocalSearchParams<{ customerId?: string; customerName?: string }>();
   const [records, setRecords] = useState<GstRecord[]>([]);
   const [summary, setSummary] = useState<any>(null);
@@ -141,9 +143,11 @@ export default function GstScreen() {
         />
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('gst.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       <GstFormSheet
         visible={showForm}

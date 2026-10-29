@@ -10,6 +10,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 import { projectsApi, ProjectSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import ProjectFormSheet from '../../../components/ProjectFormSheet';
+import { useCan } from '../../../store/auth';
 
 const STATUS_FILTERS = [
   { label: 'All', value: undefined },
@@ -79,6 +80,7 @@ function compareProjects(a: ProjectSummary, b: ProjectSummary, key: SortKey, dir
 }
 
 export default function ProjectsScreen() {
+  const may = useCan();
   const isWeb = Platform.OS === 'web';
 
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -277,9 +279,11 @@ export default function ProjectsScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('projects.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       <ProjectFormSheet
         visible={showForm}

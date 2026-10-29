@@ -16,6 +16,7 @@ import { buildLedgerHtml } from '../../../utils/ledgerHtml';
 import { printOrShareHtml, previewHtml } from '../../../utils/printHtml';
 import { confirmAsync, notify } from '../../../utils/dialogs';
 import { confirmAndSendWhatsapp } from '../../../utils/whatsappSend';
+import { useCan } from '../../../store/auth';
 
 type PeriodKey = 'fy' | 'lastfy' | 'all' | 'custom';
 type Busy = 'print' | 'preview' | 'reminder' | 'statement' | null;
@@ -30,6 +31,7 @@ const AFTER_SHEET_MS = 400;
 const AGE_COLORS = { d0_30: Colors.success, d31_60: '#F9A825', d61_90: '#EF6C00', d90_plus: Colors.error };
 
 export default function CustomerLedgerScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const customerId = parseInt(id!, 10);
   const { width } = useWindowDimensions();
@@ -74,17 +76,24 @@ export default function CustomerLedgerScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Whether the line's own action (edit an adjustment, the opening balance,
+  // delete a receipt) is allowed — the line shows its icon only then.
+  const lineEditable = (l: LedgerLine) =>
+    l.type === 'receipt' ? may('ledger.receipts.delete')
+      : l.type === 'adjustment' ? may('ledger.entries.edit') || may('ledger.entries.delete')
+        : l.type === 'opening' ? may('ledger.opening-balance') : true;
+
   const openLine = async (l: LedgerLine) => {
     if ((l.type === 'order' || l.type === 'payment') && l.orderId) {
       router.push(`/(app)/orders/${l.orderId}` as any);
-    } else if (l.type === 'adjustment' && l.refId && l.entryType) {
+    } else if (l.type === 'adjustment' && l.refId && l.entryType && lineEditable(l)) {
       setEntrySheet({
         mode: 'entry',
         entry: { id: l.refId, entryType: l.entryType as LedgerEntryType, date: l.date ?? '', amount: l.debit || l.credit, notes: l.detail },
       });
-    } else if (l.type === 'opening') {
+    } else if (l.type === 'opening' && lineEditable(l)) {
       setEntrySheet({ mode: 'opening' });
-    } else if (l.type === 'receipt' && l.refId) {
+    } else if (l.type === 'receipt' && l.refId && lineEditable(l)) {
       const ok = await confirmAsync(
         `Delete ${l.refNo}?`,
         `${fmtMoney(l.credit)} will be removed from this ledger, and the payments it made on orders will be taken back (those orders become unpaid again).`,
@@ -131,6 +140,8 @@ export default function CustomerLedgerScreen() {
   const onReceiptSaved = (created: { id: number; receiptNo: string; summary: string }) => {
     load();
     if (!data) return;
+    // Without ledger.whatsapp: just what was saved, no send offer.
+    if (!may('ledger.whatsapp')) { setTimeout(() => notify(`Receipt ${created.receiptNo} saved`, created.summary), 400); return; }
     const { customerName, phone } = data.customer;
     const optedOut = !!data.reminder.optedOutAt;
     setTimeout(() => confirmAndSendWhatsapp({
@@ -230,15 +241,27 @@ export default function CustomerLedgerScreen() {
             <Text style={[styles.balValue, { color: balColor }]}>{fmtMoney(bal)}</Text>
 
             <View style={styles.actions}>
-              <ActionBtn icon="wallet-outline" label="Receive Payment" primary busy={busy} onPress={() => setShowReceipt(true)} />
-              <ActionBtn icon="create-outline" label="Adjustment" busy={busy} onPress={() => setEntrySheet({ mode: 'entry', entry: null })} />
-              <ActionBtn icon="flag-outline" label="Opening Balance" busy={busy} onPress={() => setEntrySheet({ mode: 'opening' })} />
-              <ActionBtn icon={Platform.OS === 'web' ? 'print-outline' : 'share-social-outline'} label={Platform.OS === 'web' ? 'Print' : 'Share PDF'} busy={busy} loadingKey="print" onPress={() => runHtml('print')} />
-              <ActionBtn icon="eye-outline" label="Preview" busy={busy} loadingKey="preview" onPress={() => runHtml('preview')} />
-              {bal > 0.005 && (
-                <ActionBtn icon="logo-whatsapp" label="Send Reminder" busy={busy} loadingKey="reminder" onPress={() => sendNow('reminder')} />
+              {may('ledger.receipts.add') && (
+                <ActionBtn icon="wallet-outline" label="Receive Payment" primary busy={busy} onPress={() => setShowReceipt(true)} />
               )}
-              <ActionBtn icon="logo-whatsapp" label="WhatsApp Statement" busy={busy} loadingKey="statement" onPress={() => sendNow('statement')} />
+              {may('ledger.entries.add') && (
+                <ActionBtn icon="create-outline" label="Adjustment" busy={busy} onPress={() => setEntrySheet({ mode: 'entry', entry: null })} />
+              )}
+              {may('ledger.opening-balance') && (
+                <ActionBtn icon="flag-outline" label="Opening Balance" busy={busy} onPress={() => setEntrySheet({ mode: 'opening' })} />
+              )}
+              {may('ledger.print') && (
+                <ActionBtn icon={Platform.OS === 'web' ? 'print-outline' : 'share-social-outline'} label={Platform.OS === 'web' ? 'Print' : 'Share PDF'} busy={busy} loadingKey="print" onPress={() => runHtml('print')} />
+              )}
+              {may('ledger.print') && (
+                <ActionBtn icon="eye-outline" label="Preview" busy={busy} loadingKey="preview" onPress={() => runHtml('preview')} />
+              )}
+              {bal > 0.005 && (
+                may('ledger.whatsapp') && <ActionBtn icon="logo-whatsapp" label="Send Reminder" busy={busy} loadingKey="reminder" onPress={() => sendNow('reminder')} />
+              )}
+              {may('ledger.whatsapp') && (
+                <ActionBtn icon="logo-whatsapp" label="WhatsApp Statement" busy={busy} loadingKey="statement" onPress={() => sendNow('statement')} />
+              )}
             </View>
           </View>
 
@@ -281,69 +304,71 @@ export default function CustomerLedgerScreen() {
           {/* Automatic WhatsApp payment reminder */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Automatic Payment Reminder</Text>
-            <View style={[styles.card, styles.reminderCard]}>
-              <View style={styles.pills}>
-                {REMINDER_OPTIONS.map(([days, label]) => {
-                  const active = days === 0 ? !reminder.enabled : reminder.enabled && reminder.everyDays === days;
-                  return (
-                    <TouchableOpacity
-                      key={days}
-                      style={[styles.pill, active && styles.pillActive]}
-                      onPress={() => { setCustomDays(null); if (!active) setReminder(days !== 0, days || reminder.everyDays); }}
-                    >
-                      <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-                {(() => {
-                  const active = reminder.enabled && !isPresetDays(reminder.everyDays);
-                  return (
-                    <TouchableOpacity
-                      style={[styles.pill, active && styles.pillActive]}
-                      onPress={() => setCustomDays(customDays !== null ? null : isPresetDays(reminder.everyDays) ? '' : String(reminder.everyDays))}
-                    >
-                      <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                        {active ? `Every ${reminder.everyDays} days` : 'Custom'}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })()}
-              </View>
-              {customDays !== null && (
-                <View style={styles.daysRow}>
-                  <Text style={styles.daysLabel}>Every</Text>
-                  <TextInput
-                    style={styles.daysInput}
-                    value={customDays}
-                    onChangeText={(t) => setCustomDays(t.replace(/\D/g, ''))}
-                    onSubmitEditing={saveCustomDays}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    autoFocus
-                    placeholder={`${reminder.minEveryDays}–${reminder.maxEveryDays}`}
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                  <Text style={styles.daysLabel}>days</Text>
-                  <TouchableOpacity style={[styles.pill, styles.pillActive]} onPress={saveCustomDays}>
-                    <Text style={[styles.pillText, styles.pillTextActive]}>Save</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.pill} onPress={() => setCustomDays(null)}>
-                    <Text style={styles.pillText}>Cancel</Text>
-                  </TouchableOpacity>
+            {may('ledger.reminders') && (
+              <View style={[styles.card, styles.reminderCard]}>
+                <View style={styles.pills}>
+                  {REMINDER_OPTIONS.map(([days, label]) => {
+                    const active = days === 0 ? !reminder.enabled : reminder.enabled && reminder.everyDays === days;
+                    return (
+                      <TouchableOpacity
+                        key={days}
+                        style={[styles.pill, active && styles.pillActive]}
+                        onPress={() => { setCustomDays(null); if (!active) setReminder(days !== 0, days || reminder.everyDays); }}
+                      >
+                        <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {(() => {
+                    const active = reminder.enabled && !isPresetDays(reminder.everyDays);
+                    return (
+                      <TouchableOpacity
+                        style={[styles.pill, active && styles.pillActive]}
+                        onPress={() => setCustomDays(customDays !== null ? null : isPresetDays(reminder.everyDays) ? '' : String(reminder.everyDays))}
+                      >
+                        <Text style={[styles.pillText, active && styles.pillTextActive]}>
+                          {active ? `Every ${reminder.everyDays} days` : 'Custom'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
                 </View>
-              )}
-              <Text style={styles.reminderText}>{reminderText(reminder)}</Text>
-              {reminder.optedOutAt && (
-                <Text style={styles.reminderWarn}>
-                  This customer sent STOP on WhatsApp on {fmtDay(reminder.optedOutAt.slice(0, 10))}: no automatic messages. They can send START to turn them back on.
-                </Text>
-              )}
-              {reminder.enabled && !reminder.schedulerOn && (
-                <Text style={styles.reminderWarn}>
-                  Automatic sending is not switched on on this server yet, so nothing goes out automatically.
-                </Text>
-              )}
-            </View>
+                {customDays !== null && (
+                  <View style={styles.daysRow}>
+                    <Text style={styles.daysLabel}>Every</Text>
+                    <TextInput
+                      style={styles.daysInput}
+                      value={customDays}
+                      onChangeText={(t) => setCustomDays(t.replace(/\D/g, ''))}
+                      onSubmitEditing={saveCustomDays}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      autoFocus
+                      placeholder={`${reminder.minEveryDays}–${reminder.maxEveryDays}`}
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                    <Text style={styles.daysLabel}>days</Text>
+                    <TouchableOpacity style={[styles.pill, styles.pillActive]} onPress={saveCustomDays}>
+                      <Text style={[styles.pillText, styles.pillTextActive]}>Save</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.pill} onPress={() => setCustomDays(null)}>
+                      <Text style={styles.pillText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                <Text style={styles.reminderText}>{reminderText(reminder)}</Text>
+                {reminder.optedOutAt && (
+                  <Text style={styles.reminderWarn}>
+                    This customer sent STOP on WhatsApp on {fmtDay(reminder.optedOutAt.slice(0, 10))}: no automatic messages. They can send START to turn them back on.
+                  </Text>
+                )}
+                {reminder.enabled && !reminder.schedulerOn && (
+                  <Text style={styles.reminderWarn}>
+                    Automatic sending is not switched on on this server yet, so nothing goes out automatically.
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Period */}
@@ -401,7 +426,8 @@ export default function CustomerLedgerScreen() {
                   line={l}
                   wide={wide}
                   onPress={() => openLine(l)}
-                  onWhatsapp={(l.type === 'receipt' || l.type === 'payment') && l.refId ? () => sendLineWhatsapp(l) : undefined}
+                  editable={lineEditable(l)}
+                  onWhatsapp={(l.type === 'receipt' || l.type === 'payment') && l.refId && may('ledger.whatsapp') ? () => sendLineWhatsapp(l) : undefined}
                 />
               ))}
 
@@ -537,8 +563,8 @@ const LINE_ICONS: Record<string, any> = {
   order: 'receipt-outline', payment: 'cash-outline', receipt: 'wallet-outline', adjustment: 'create-outline', opening: 'flag-outline',
 };
 
-function LineRow({ line: l, wide, onPress, onWhatsapp }: { line: LedgerLine; wide: boolean; onPress: () => void; onWhatsapp?: () => void }) {
-  const trailing = l.type === 'receipt' ? 'trash-outline' : l.type === 'adjustment' || l.type === 'opening' ? 'pencil-outline' : 'chevron-forward';
+function LineRow({ line: l, wide, onPress, onWhatsapp, editable }: { line: LedgerLine; wide: boolean; onPress: () => void; onWhatsapp?: () => void; editable: boolean }) {
+  const trailing = !editable ? null : l.type === 'receipt' ? 'trash-outline' : l.type === 'adjustment' || l.type === 'opening' ? 'pencil-outline' : 'chevron-forward';
   const trailingColor = l.type === 'receipt' ? Colors.error : Colors.textMuted;
   const whatsapp = onWhatsapp ? (
     <TouchableOpacity onPress={onWhatsapp} hitSlop={8} accessibilityLabel="Send payment receipt on WhatsApp">
@@ -556,7 +582,7 @@ function LineRow({ line: l, wide, onPress, onWhatsapp }: { line: LedgerLine; wid
         <Text style={[styles.td, styles.cAmt]}>{l.debit ? fmtMoney(l.debit) : ''}</Text>
         <Text style={[styles.td, styles.cAmt, { color: Colors.success }]}>{l.credit ? fmtMoney(l.credit) : ''}</Text>
         <Text style={[styles.td, styles.cBal]}>{fmtDrCr(l.balance)}</Text>
-        <View style={styles.cIcon}>{whatsapp}<Ionicons name={trailing} size={14} color={trailingColor} /></View>
+        <View style={styles.cIcon}>{whatsapp}{trailing && <Ionicons name={trailing} size={14} color={trailingColor} />}</View>
       </TouchableOpacity>
     );
   }
@@ -578,7 +604,7 @@ function LineRow({ line: l, wide, onPress, onWhatsapp }: { line: LedgerLine; wid
         <Text style={styles.mBal}>Bal {fmtDrCr(l.balance)}</Text>
       </View>
       {whatsapp}
-      <Ionicons name={trailing} size={14} color={trailingColor} />
+      {trailing && <Ionicons name={trailing} size={14} color={trailingColor} />}
     </TouchableOpacity>
   );
 }

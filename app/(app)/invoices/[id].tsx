@@ -10,6 +10,7 @@ import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
 import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
 import { buildInvoiceHtml } from '../../../utils/invoiceHtml';
+import { useCan } from '../../../store/auth';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,       text: Colors.textMuted },
@@ -23,6 +24,7 @@ function fmtAmt(v: string) { const n=parseFloat(v||'0'); if(n>=100000) return `â
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
 
 export default function InvoiceDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -237,28 +239,36 @@ export default function InvoiceDetailScreen() {
           )}
 
           <View style={styles.headerActions}>
-            <TouchableOpacity style={[styles.previewBtn, previewing && { opacity: 0.6 }]} onPress={handlePreview} disabled={previewing}>
-              {previewing ? <ActivityIndicator size="small" color={Colors.accent} /> : <Ionicons name="eye-outline" size={15} color={Colors.accent} />}
-              <Text style={styles.previewBtnText}>Preview</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.printBtn, printing && { opacity: 0.6 }]} onPress={handlePrint} disabled={printing}>
-              {printing ? <ActivityIndicator size="small" color="#111" /> : <Ionicons name="print-outline" size={15} color="#111" />}
-              <Text style={styles.printBtnText}>{Platform.OS === 'web' ? 'Print' : 'Share PDF'}</Text>
-            </TouchableOpacity>
+            {may('invoices.print') && (
+              <TouchableOpacity style={[styles.previewBtn, previewing && { opacity: 0.6 }]} onPress={handlePreview} disabled={previewing}>
+                {previewing ? <ActivityIndicator size="small" color={Colors.accent} /> : <Ionicons name="eye-outline" size={15} color={Colors.accent} />}
+                <Text style={styles.previewBtnText}>Preview</Text>
+              </TouchableOpacity>
+            )}
+            {may('invoices.print') && (
+              <TouchableOpacity style={[styles.printBtn, printing && { opacity: 0.6 }]} onPress={handlePrint} disabled={printing}>
+                {printing ? <ActivityIndicator size="small" color="#111" /> : <Ionicons name="print-outline" size={15} color="#111" />}
+                <Text style={styles.printBtnText}>{Platform.OS === 'web' ? 'Print' : 'Share PDF'}</Text>
+              </TouchableOpacity>
+            )}
             {invoice.invoiceType === 'sales' && invoice.customer && (
-              <TouchableOpacity style={[styles.whatsappBtn, sendingWhatsapp && { opacity: 0.6 }]} onPress={handleSendWhatsapp} disabled={sendingWhatsapp}>
+              may('invoices.whatsapp') && <TouchableOpacity style={[styles.whatsappBtn, sendingWhatsapp && { opacity: 0.6 }]} onPress={handleSendWhatsapp} disabled={sendingWhatsapp}>
                 {sendingWhatsapp ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="logo-whatsapp" size={15} color="#fff" />}
                 <Text style={styles.whatsappBtnText}>WhatsApp</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="create-outline" size={15} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.6 }]} onPress={handleDelete} disabled={deleting}>
-              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
-              <Text style={styles.deleteBtnText}>Delete</Text>
-            </TouchableOpacity>
+            {may('invoices.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="create-outline" size={15} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+            {may('invoices.delete') && (
+              <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.6 }]} onPress={handleDelete} disabled={deleting}>
+                {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
+                <Text style={styles.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

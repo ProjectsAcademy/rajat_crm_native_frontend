@@ -7,6 +7,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 import { stockApi, StockMovement, StockSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import StockEntryFormSheet from '../../../components/StockEntryFormSheet';
+import { useCan } from '../../../store/auth';
 
 const TX = {
   in:         { bg: Colors.successLight, text: Colors.success,  icon: 'arrow-down-circle-outline' as const },
@@ -21,6 +22,7 @@ function fmtDate(d: string) {
 }
 
 export default function StockLedgerScreen() {
+  const may = useCan();
   const [movements,   setMovements]   = useState<StockMovement[]>([]);
   const [filter,      setFilter]      = useState('All');
   const [search,      setSearch]      = useState('');
@@ -91,20 +93,24 @@ export default function StockLedgerScreen() {
 
         {/* Edit / Delete actions — only for manual entries */}
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => setEditingEntry(item)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="create-outline" size={16} color={Colors.accent} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => handleDelete(item)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="trash-outline" size={16} color={Colors.error} />
-          </TouchableOpacity>
+          {may('stock.edit') && (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => setEditingEntry(item)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="create-outline" size={16} color={Colors.accent} />
+            </TouchableOpacity>
+          )}
+          {may('stock.delete') && (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => handleDelete(item)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="trash-outline" size={16} color={Colors.error} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -185,9 +191,11 @@ export default function StockLedgerScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowAdd(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('stock.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowAdd(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       <StockEntryFormSheet
         visible={showAdd || !!editingEntry}

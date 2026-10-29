@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { ordersApi, customersApi, projectsApi, inventoryApi, vendorsApi, OrderDetail } from '../services/api';
 import { Colors } from '../constants/colors';
+import { useCan } from '../store/auth';
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 interface LocalItem {
@@ -149,6 +150,11 @@ const sp = StyleSheet.create({
 
 // ── Main Component ───────────────────────────────────────────────────────────────
 export default function OrderFormSheet({ visible, onClose, onSaved, order }: Props) {
+  const may = useCan();
+  // Vendor work needs both its action and seeing its costs; changing the
+  // status of a saved order needs orders.status (PERMISSIONS_PLAN.md).
+  const canVendorWork = may('orders.vendor-work') && may('orders.fields.vendor-cost');
+  const canStatus = !order || may('orders.status');
   const isEdit = !!order;
   const isWeb  = Platform.OS === 'web';
   // Vendor Work rows: one line on a wide web dialog, stacked card otherwise
@@ -398,10 +404,10 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
     setSaving(true);
     try {
       if (isEdit) {
-        await ordersApi.update(order!.id, { customerId: customerId ?? null, projectId: projectId ?? null, orderDate: isoDate, deliveryDate: isoDelivery, status, notes, items: itemPayload, vendorWorks: vendorWorkPayload });
+        await ordersApi.update(order!.id, { customerId: customerId ?? null, projectId: projectId ?? null, orderDate: isoDate, deliveryDate: isoDelivery, status: canStatus ? status : undefined, notes, items: itemPayload, vendorWorks: canVendorWork ? vendorWorkPayload : undefined });
         onSaved();
       } else {
-        const { data } = await ordersApi.create({ customerId: customerId ?? undefined, projectId: projectId ?? undefined, orderDate: isoDate, deliveryDate: isoDelivery ?? undefined, status, notes, items: itemPayload, invoice: invoicePayload, vendorWorks: vendorWorkPayload });
+        const { data } = await ordersApi.create({ customerId: customerId ?? undefined, projectId: projectId ?? undefined, orderDate: isoDate, deliveryDate: isoDelivery ?? undefined, status, notes, items: itemPayload, invoice: invoicePayload, vendorWorks: canVendorWork ? vendorWorkPayload : undefined });
         onSaved(data.order.id);
       }
       onClose();
@@ -449,7 +455,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
   // Records which third party (vendor) did part of this order's work, what
   // they did, and what they charge us. One row per vendor job; web shows each
   // row on one line, mobile stacks vendor above description + amount.
-  const vendorWorkSectionJsx = (
+  const vendorWorkSectionJsx = canVendorWork && (
     <View style={vw.section}>
       <View style={vw.header}>
         <View style={{ flex: 1 }}>
@@ -519,7 +525,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
   );
 
   // ── Invoice + GST section — shared between web and mobile layouts (see below) ────
-  const invoiceSectionJsx = !isEdit && (
+  const invoiceSectionJsx = !isEdit && may('invoices.create') && (
     <View style={inv.section}>
       <TouchableOpacity style={inv.toggleRow} onPress={() => setCreateInvoice(v => !v)} activeOpacity={0.7}>
         <Ionicons name={createInvoice ? 'checkbox' : 'square-outline'} size={20} color={createInvoice ? Colors.accent : Colors.textMuted} />
@@ -713,7 +719,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
                   <Text style={w.label}>Status</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                     {STATUSES.map(st => (
-                      <TouchableOpacity key={st.key} style={[w.chip, status === st.key && w.chipActive]} onPress={() => setStatus(st.key)}>
+                      <TouchableOpacity key={st.key} style={[w.chip, status === st.key && w.chipActive, !canStatus && { opacity: 0.5 }]} onPress={() => setStatus(st.key)} disabled={!canStatus}>
                         <Text style={[w.chipText, status === st.key && w.chipTextActive]}>{st.label}</Text>
                       </TouchableOpacity>
                     ))}
@@ -1021,7 +1027,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', gap: 8, paddingRight: 16 }}>
               {STATUSES.map(st => (
-                <TouchableOpacity key={st.key} style={[s.chip, status === st.key && s.chipActive]} onPress={() => setStatus(st.key)}>
+                <TouchableOpacity key={st.key} style={[s.chip, status === st.key && s.chipActive, !canStatus && { opacity: 0.5 }]} onPress={() => setStatus(st.key)} disabled={!canStatus}>
                   <Text style={[s.chipText, status === st.key && s.chipTextActive]}>{st.label}</Text>
                 </TouchableOpacity>
               ))}

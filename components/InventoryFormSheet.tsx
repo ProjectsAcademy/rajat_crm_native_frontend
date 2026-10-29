@@ -19,6 +19,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { inventoryApi, InventoryDetail } from '../services/api';
 import { Colors } from '../constants/colors';
+import { useCan } from '../store/auth';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -203,6 +204,7 @@ interface Props {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function InventoryFormSheet({ visible, onClose, onSaved, item }: Props) {
+  const may = useCan();
   const isEdit = !!item;
 
   const [name,         setName]         = useState('');
@@ -401,20 +403,24 @@ export default function InventoryFormSheet({ visible, onClose, onSaved, item }: 
       )}
 
       <View style={s.toggleRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.toggleLabel}>Show on WhatsApp</Text>
-          <Text style={s.toggleSub}>Customers see this item with its description and rate under "Our items" in the WhatsApp menu</Text>
-        </View>
+        {may('inventory.whatsapp-listing') && (
+          <View style={{ flex: 1 }}>
+            <Text style={s.toggleLabel}>Show on WhatsApp</Text>
+            <Text style={s.toggleSub}>Customers see this item with its description and rate under "Our items" in the WhatsApp menu</Text>
+          </View>
+        )}
         <Switch value={showOnWhatsapp} onValueChange={setShowOnWhatsapp} trackColor={{ true: Colors.success, false: Colors.border }} thumbColor="#fff" />
       </View>
 
       {/* Status toggle — edit only */}
       {isEdit && (
         <View style={s.toggleRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.toggleLabel}>Active Status</Text>
-            <Text style={s.toggleSub}>Inactive items won't appear in order pickers</Text>
-          </View>
+          {may('inventory.deactivate') && (
+            <View style={{ flex: 1 }}>
+              <Text style={s.toggleLabel}>Active Status</Text>
+              <Text style={s.toggleSub}>Inactive items won't appear in order pickers</Text>
+            </View>
+          )}
           <Switch value={isActive} onValueChange={setIsActive} trackColor={{ true: Colors.success, false: Colors.border }} thumbColor="#fff" />
         </View>
       )}

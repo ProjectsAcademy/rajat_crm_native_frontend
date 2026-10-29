@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { estimatesApi, EstimateDetail } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import EstimateFormSheet from '../../../components/EstimateFormSheet';
+import { useCan } from '../../../store/auth';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:    { bg: Colors.border,       text: Colors.textMuted },
@@ -25,6 +26,7 @@ function fmtDate(d: string) {
 }
 
 export default function EstimateDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [estimate, setEstimate] = useState<EstimateDetail | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -101,14 +103,18 @@ export default function EstimateDetailScreen() {
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="create-outline" size={15} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.6 }]} onPress={handleDelete} disabled={deleting}>
-              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
-              <Text style={styles.deleteBtnText}>Delete</Text>
-            </TouchableOpacity>
+            {may('estimates.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="create-outline" size={15} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+            {may('estimates.delete') && (
+              <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.6 }]} onPress={handleDelete} disabled={deleting}>
+                {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
+                <Text style={styles.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

@@ -16,7 +16,10 @@ export default function AdminLayout() {
     <Stack screenOptions={STACK_SCREEN_OPTIONS}>
       <Stack.Screen name="index" options={{ title: 'Admin' }} />
       <Stack.Screen name="users" options={{ title: 'Users' }} />
-      <Stack.Screen name="groups" options={{ title: 'Groups & Permissions' }} />
+      <Stack.Screen name="groups" options={{ title: 'Groups' }} />
+      <Stack.Screen name="roles" options={{ title: 'Roles & Permissions' }} />
+      <Stack.Screen name="access" options={{ title: 'Effective Access' }} />
+      <Stack.Screen name="audit" options={{ title: 'Activity Log' }} />
     </Stack>
   );
 }

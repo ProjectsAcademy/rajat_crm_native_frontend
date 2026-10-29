@@ -12,6 +12,7 @@ import SalaryComponentFormSheet from '../../../components/SalaryComponentFormShe
 import SalaryPaymentSheet from '../../../components/SalaryPaymentSheet';
 import MonthYearPickerModal from '../../../components/MonthYearPickerModal';
 import { usePayrollMonth, currentMonth } from '../../../store/payrollMonth';
+import { useCan } from '../../../store/auth';
 
 const isWeb = Platform.OS === 'web';
 
@@ -40,8 +41,11 @@ function fmtMonthLabel(month: string): string {
 }
 
 export default function SalaryComponentsScreen() {
+  const may = useCan();
   useFeatureGuard('hr.salary-components');
-  const [segment, setSegment] = useState<'payroll' | 'components'>('payroll');
+  // The payroll tab needs hr.salary-components.payroll.
+  const canPayroll = may('hr.salary-components.payroll');
+  const [segment, setSegment] = useState<'payroll' | 'components'>(canPayroll ? 'payroll' : 'components');
 
   // ── Payroll state ── (month is shared with the Salary Payments page)
   const month = usePayrollMonth((s) => s.month);
@@ -100,7 +104,7 @@ export default function SalaryComponentsScreen() {
 
   const renderSegments = () => (
     <View style={styles.segmentRow}>
-      {([['payroll', 'Payroll'], ['components', 'Components']] as const).map(([key, label]) => (
+      {([['payroll', 'Payroll'], ['components', 'Components']] as const).filter(([key]) => key !== 'payroll' || canPayroll).map(([key, label]) => (
         <TouchableOpacity
           key={key}
           style={[styles.segment, segment === key && styles.segmentActive]}
@@ -113,14 +117,16 @@ export default function SalaryComponentsScreen() {
       {segment === 'components' && (
         <>
           <View style={{ flex: 1 }} />
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => { setEditComponent(null); setShowForm(true); }}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={15} color="#111" />
-            <Text style={styles.addBtnText}>Add Component</Text>
-          </TouchableOpacity>
+          {may('hr.salary-components.create') && (
+            <TouchableOpacity
+              style={styles.addBtn}
+              onPress={() => { setEditComponent(null); setShowForm(true); }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={15} color="#111" />
+              <Text style={styles.addBtnText}>Add Component</Text>
+            </TouchableOpacity>
+          )}
         </>
       )}
     </View>
@@ -142,15 +148,18 @@ export default function SalaryComponentsScreen() {
             <Ionicons name="time-outline" size={12} color="#7A5400" />
             <Text style={styles.partialText}>Paid {fmtMoney(r.paidTotal)} of {fmtMoney(r.net)}</Text>
           </View>
-          <TouchableOpacity style={styles.payBtn} onPress={() => setPayRow(r)} activeOpacity={0.8}>
-            <Text style={styles.payBtnText}>Pay {fmtMoney(r.remaining)}</Text>
-          </TouchableOpacity>
+          {may('hr.salary-payments.create') && (
+            <TouchableOpacity style={styles.payBtn} onPress={() => setPayRow(r)} activeOpacity={0.8}>
+              <Text style={styles.payBtnText}>Pay {fmtMoney(r.remaining)}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       );
     }
     if (parseFloat(r.employee.dailyWage) === 0 && r.net === 0) {
       return <Text style={styles.noWage}>no wage set</Text>;
     }
+    if (!may('hr.salary-payments.create')) return null;
     return (
       <TouchableOpacity style={styles.payBtn} onPress={() => setPayRow(r)} activeOpacity={0.8}>
         <Text style={styles.payBtnText}>Record Payment</Text>
@@ -290,6 +299,7 @@ export default function SalaryComponentsScreen() {
     return (
       <TouchableOpacity
         style={[styles.card, !item.isActive && { opacity: 0.55 }]}
+        disabled={!may('hr.salary-components.edit')}
         onPress={() => { setEditComponent(item); setShowForm(true); }}
         activeOpacity={0.75}
       >

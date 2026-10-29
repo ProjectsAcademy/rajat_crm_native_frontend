@@ -6,8 +6,9 @@ import { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 
-// Shell shared by the ledger's form sheets (ReceiptFormSheet,
-// LedgerEntrySheet): the same two layouts InvoiceFormSheet uses — a centred
+// Shell shared by form sheets (the ledger's ReceiptFormSheet and
+// LedgerEntrySheet, the Admin role and group sheets): the same two layouts
+// InvoiceFormSheet uses — a centred
 // dialog with header actions on web, a full-screen slide-up modal with
 // bottom buttons on native. Only the form body differs per sheet.
 
@@ -22,18 +23,20 @@ interface Props {
   onClose: () => void;
   // Optional left-hand footer action, e.g. Delete in edit mode
   extraAction?: { label: string; onPress: () => void; destructive?: boolean };
+  // Web dialog width (default 640).
+  maxWidth?: number;
   children: ReactNode;
 }
 
 export default function LedgerSheetFrame({
-  visible, title, subtitle, icon, saving, saveLabel, onSave, onClose, extraAction, children,
+  visible, title, subtitle, icon, saving, saveLabel, onSave, onClose, extraAction, maxWidth = 640, children,
 }: Props) {
   if (Platform.OS === 'web') {
     const maxHeight = Dimensions.get('window').height * 0.92;
     return (
       <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
         <View style={w.backdrop}>
-          <View style={[w.dialog, { maxHeight }]}>
+          <View style={[w.dialog, { maxHeight, maxWidth }]}>
             <View style={w.header}>
               <View style={w.headerLeft}>
                 <Ionicons name={icon} size={18} color={Colors.accent} />
@@ -101,7 +104,7 @@ export default function LedgerSheetFrame({
 const w = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   dialog: {
-    width: '100%', maxWidth: 640, backgroundColor: Colors.background, borderRadius: 12, overflow: 'hidden',
+    width: '100%', backgroundColor: Colors.background, borderRadius: 12, overflow: 'hidden',
     ...Platform.select({ web: { boxShadow: '0 12px 32px rgba(0,0,0,0.35)' } }),
   },
   header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 24, paddingVertical: 14, backgroundColor: Colors.primary },

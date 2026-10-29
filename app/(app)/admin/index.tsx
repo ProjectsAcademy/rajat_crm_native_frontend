@@ -5,52 +5,53 @@ import { Ionicons } from '@expo/vector-icons';
 import { adminApi } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 
+// Admin hub (super admin only): users, groups, roles, effective access and
+// the activity log (docs/shared/PERMISSIONS_PLAN.md §7).
 export default function AdminHubScreen() {
-  const [userCount, setUserCount] = useState<number | null>(null);
-  const [groupCount, setGroupCount] = useState<number | null>(null);
+  const [counts, setCounts] = useState<{ users?: number; groups?: number; roles?: number }>({});
 
   useFocusEffect(
     useCallback(() => {
-      adminApi.users.list().then(({ data }) => setUserCount(data.total)).catch(() => {});
-      adminApi.groups.list().then(({ data }) => setGroupCount(data.total)).catch(() => {});
+      adminApi.users.list().then(({ data }) => setCounts((c) => ({ ...c, users: data.total }))).catch(() => {});
+      adminApi.groups.list().then(({ data }) => setCounts((c) => ({ ...c, groups: data.total }))).catch(() => {});
+      adminApi.roles.list().then(({ data }) => setCounts((c) => ({ ...c, roles: data.total }))).catch(() => {});
     }, [])
   );
+
+  const cards: { route: string; icon: React.ComponentProps<typeof Ionicons>['name']; title: string; count?: number; sub: string; color: string; bg: string }[] = [
+    { route: 'users', icon: 'person-outline', title: 'Users', count: counts.users, sub: 'accounts · passwords · their groups and own roles', color: Colors.accent, bg: Colors.accentLight },
+    { route: 'groups', icon: 'people-circle-outline', title: 'Groups', count: counts.groups, sub: 'sets of users · the roles each group gets', color: Colors.info, bg: Colors.infoLight },
+    { route: 'roles', icon: 'key-outline', title: 'Roles & Permissions', count: counts.roles, sub: 'what a role may do: view · create · edit · delete · each action', color: Colors.success, bg: Colors.successLight },
+    { route: 'access', icon: 'shield-checkmark-outline', title: 'Effective Access', sub: 'what one user can do, and why · "Can X do Y?"', color: '#6A1B9A', bg: '#F3E5F5' },
+    { route: 'audit', icon: 'time-outline', title: 'Activity Log', sub: 'every login and change, refused attempts too', color: '#7A5400', bg: Colors.warningLight },
+  ];
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <Text style={styles.intro}>
-        Manage who can sign in and which modules each group of users can access.
+        Users belong to groups; groups and users get roles; a role says what may be done in each module.
+        A Deny in any role wins over every Allow.
       </Text>
 
-      <TouchableOpacity style={styles.card} onPress={() => router.push('/(app)/admin/users' as any)} activeOpacity={0.8}>
-        <View style={styles.iconBox}>
-          <Ionicons name="person-outline" size={26} color={Colors.accent} />
-        </View>
-        <View style={styles.cardBody}>
-          <Text style={styles.cardTitle}>Users</Text>
-          <Text style={styles.cardCount}>{userCount ?? '—'}</Text>
-          <Text style={styles.cardSub}>create accounts · reset passwords · assign groups</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.card} onPress={() => router.push('/(app)/admin/groups' as any)} activeOpacity={0.8}>
-        <View style={[styles.iconBox, { backgroundColor: Colors.infoLight }]}>
-          <Ionicons name="people-circle-outline" size={26} color={Colors.info} />
-        </View>
-        <View style={styles.cardBody}>
-          <Text style={styles.cardTitle}>Groups & Permissions</Text>
-          <Text style={[styles.cardCount, { color: Colors.info }]}>{groupCount ?? '—'}</Text>
-          <Text style={styles.cardSub}>define which modules each group can access</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-      </TouchableOpacity>
+      {cards.map((c) => (
+        <TouchableOpacity key={c.route} style={[styles.card, { borderLeftColor: c.color }]} onPress={() => router.push(`/(app)/admin/${c.route}` as any)} activeOpacity={0.8}>
+          <View style={[styles.iconBox, { backgroundColor: c.bg }]}>
+            <Ionicons name={c.icon} size={26} color={c.color} />
+          </View>
+          <View style={styles.cardBody}>
+            <Text style={styles.cardTitle}>{c.title}</Text>
+            {c.count !== undefined && <Text style={[styles.cardCount, { color: c.color }]}>{c.count}</Text>}
+            <Text style={styles.cardSub}>{c.sub}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
+      ))}
 
       <View style={styles.note}>
         <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} />
         <Text style={styles.noteText}>
-          Super admins always have full access. Users without any group keep full
-          access until strict mode is enabled on the server.
+          Super admins always have full access and cannot be limited. Changes reach a signed-in user within a
+          minute, or when they reopen the app.
         </Text>
       </View>
     </ScrollView>

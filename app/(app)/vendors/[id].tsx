@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { vendorsApi, VendorDetailResponse } from '../../../services/api';
-import { useAuthStore, userHasFeature } from '../../../store/auth';
+import { useAuthStore, canOpen, useCan } from '../../../store/auth';
 import { Colors } from '../../../constants/colors';
 import VendorFormSheet from '../../../components/VendorFormSheet';
 
@@ -22,9 +22,10 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function VendorDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [vendor, setVendor]         = useState<VendorDetailResponse['vendor'] | null>(null);
-  const canOpenOrders = userHasFeature(useAuthStore((st) => st.user), 'orders');
+  const canOpenOrders = canOpen(useAuthStore((st) => st.user), 'orders');
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [showEdit, setShowEdit]     = useState(false);
@@ -134,13 +135,15 @@ export default function VendorDetailScreen() {
 
           {/* Action buttons */}
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="create-outline" size={15} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
+            {may('vendors.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="create-outline" size={15} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
 
             {vendor.isActive ? (
-              <TouchableOpacity
+              may('vendors.edit') && <TouchableOpacity
                 style={[styles.deactivateBtn, deactivating && { opacity: 0.6 }]}
                 onPress={handleDeactivate} disabled={deactivating}
               >
@@ -148,7 +151,7 @@ export default function VendorDetailScreen() {
                 <Text style={styles.deactivateBtnText}>Deactivate</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
+              may('vendors.edit') && <TouchableOpacity
                 style={[styles.reactivateBtn, deactivating && { opacity: 0.6 }]}
                 onPress={handleReactivate} disabled={deactivating}
               >
@@ -157,13 +160,15 @@ export default function VendorDetailScreen() {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity
-              style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
-              onPress={handleDelete} disabled={deleting}
-            >
-              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
-              <Text style={styles.deleteBtnText}>Delete</Text>
-            </TouchableOpacity>
+            {may('vendors.delete') && (
+              <TouchableOpacity
+                style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
+                onPress={handleDelete} disabled={deleting}
+              >
+                {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
+                <Text style={styles.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

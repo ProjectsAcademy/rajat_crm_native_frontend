@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { inventoryApi, InventoryItem, api } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import InventoryFormSheet from '../../../components/InventoryFormSheet';
+import { useCan } from '../../../store/auth';
 
 const isWeb = Platform.OS === 'web';
 
@@ -63,6 +64,7 @@ function ItemThumb({ item }: { item: InventoryItem }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function InventoryScreen() {
+  const may = useCan();
   // Web at phone width: less side padding, header buttons wrap under the title.
   const narrow = useWindowDimensions().width < 600;
   const [items, setItems]         = useState<InventoryItem[]>([]);
@@ -146,18 +148,22 @@ export default function InventoryScreen() {
             <Text style={styles.webSubtitle}>Item catalog & stock levels</Text>
           </View>
           <View style={styles.webHeaderActions}>
-            <TouchableOpacity style={styles.webLedgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.75}>
-              <Ionicons name="git-branch-outline" size={14} color={Colors.info} />
-              <Text style={styles.webLedgerText}>Stock Ledger</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.webAddBtn} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-              <Ionicons name="add" size={16} color="#111" />
-              <Text style={styles.webAddText}>Add Item</Text>
-            </TouchableOpacity>
+            {may('stock.view') && (
+              <TouchableOpacity style={styles.webLedgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.75}>
+                <Ionicons name="git-branch-outline" size={14} color={Colors.info} />
+                <Text style={styles.webLedgerText}>Stock Ledger</Text>
+              </TouchableOpacity>
+            )}
+            {may('inventory.create') && (
+              <TouchableOpacity style={styles.webAddBtn} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+                <Ionicons name="add" size={16} color="#111" />
+                <Text style={styles.webAddText}>Add Item</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       ) : (
-        <TouchableOpacity style={styles.ledgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.8}>
+        may('stock.view') && <TouchableOpacity style={styles.ledgerBtn} onPress={() => router.push('/(app)/inventory/stock' as any)} activeOpacity={0.8}>
           <Ionicons name="git-branch-outline" size={14} color={Colors.info} />
           <Text style={styles.ledgerBtnText}>Stock Ledger — all movements</Text>
           <Ionicons name="chevron-forward" size={13} color={Colors.info} style={{ marginLeft: 'auto' } as any} />
@@ -206,7 +212,7 @@ export default function InventoryScreen() {
       )}
 
       {/* FAB — mobile only; web has the header Add Item button */}
-      {!isWeb && (
+      {!isWeb && may('inventory.create') && (
         <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
           <Ionicons name="add" size={26} color="#111" />
         </TouchableOpacity>

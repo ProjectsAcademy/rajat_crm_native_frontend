@@ -10,6 +10,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 import { customersApi, Customer } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import CustomerFormSheet from '../../../components/CustomerFormSheet';
+import { useCan } from '../../../store/auth';
 
 const ACTIVE_FILTERS = [
   { label: 'All', value: undefined },
@@ -18,6 +19,7 @@ const ACTIVE_FILTERS = [
 ];
 
 export default function CustomersScreen() {
+  const may = useCan();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>(undefined);
@@ -158,9 +160,11 @@ export default function CustomersScreen() {
       )}
 
       {/* FAB — Add Customer */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('customers.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       {/* Create form sheet */}
       <CustomerFormSheet

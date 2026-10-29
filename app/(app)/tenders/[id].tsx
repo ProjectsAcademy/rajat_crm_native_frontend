@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { tendersApi, Tender } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
-import { useAuthStore } from '../../../store/auth';
+import { useAuthStore, useCan } from '../../../store/auth';
 import TenderFormSheet from '../../../components/TenderFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -47,6 +47,7 @@ function fmtDate(d: string) {
 }
 
 export default function TenderDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [tender, setTender] = useState<Tender | null>(null);
   const [loading, setLoading] = useState(true);
@@ -131,12 +132,14 @@ export default function TenderDetailScreen() {
 
           {/* Action buttons */}
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
+            {may('tenders.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
             {canDelete && (
-              <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
+              may('tenders.delete') && <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
                 {deleting
                   ? <ActivityIndicator size="small" color={Colors.error} />
                   : <><Ionicons name="trash-outline" size={14} color={Colors.error} /><Text style={styles.deleteBtnText}>Delete</Text></>

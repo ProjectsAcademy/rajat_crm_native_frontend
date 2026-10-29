@@ -7,6 +7,7 @@ import LedgerSheetFrame from './LedgerSheetFrame';
 import DatePickerModal from './DatePickerModal';
 import { ENTRY_TYPES, fmtDay, todayIso } from '../utils/ledgerFormat';
 import { confirmAsync, notify } from '../utils/dialogs';
+import { useCan } from '../store/auth';
 
 // Manual ledger lines for one customer:
 //  mode 'entry'   → discount / write-off (Cr) or extra charge / refund (Dr);
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export default function LedgerEntrySheet({ visible, customerId, customerName, mode, entry, opening, onClose, onSaved }: Props) {
+  const may = useCan();
   const isOpening = mode === 'opening';
   const isEdit = isOpening ? !!opening && opening.amount !== 0 : !!entry;
 
@@ -113,7 +115,7 @@ export default function LedgerEntrySheet({ visible, customerId, customerName, mo
       saveLabel="Save"
       onSave={handleSave}
       onClose={onClose}
-      extraAction={isEdit ? { label: isOpening ? 'Remove' : 'Delete', onPress: handleDelete, destructive: true } : undefined}
+      extraAction={isEdit && may(isOpening ? 'ledger.opening-balance' : 'ledger.entries.delete') ? { label: isOpening ? 'Remove' : 'Delete', onPress: handleDelete, destructive: true } : undefined}
     >
       {isOpening ? (
         <>

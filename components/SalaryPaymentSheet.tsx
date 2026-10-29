@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { hrApi, PayrollRow, PayrollPayment } from '../services/api';
 import { Colors } from '../constants/colors';
 import DatePickerModal from './DatePickerModal';
+import { useCan } from '../store/auth';
 
 // Records or edits one salary installment for an employee's month. Multiple
 // installments are allowed; the server rejects anything beyond the remaining
@@ -47,6 +48,7 @@ function fmtMoney(n: number | string): string {
 }
 
 export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, row, payment }: Props) {
+  const may = useCan();
   const isWeb = Platform.OS === 'web';
   const isEdit = !!payment;
 
@@ -242,7 +244,7 @@ export default function SalaryPaymentSheet({ visible, onClose, onSaved, month, r
       />
 
       {isEdit && (
-        <TouchableOpacity style={st.deleteBtn} onPress={handleDelete} disabled={saving} activeOpacity={0.7}>
+        may('hr.salary-payments.delete') && <TouchableOpacity style={st.deleteBtn} onPress={handleDelete} disabled={saving} activeOpacity={0.7}>
           <Ionicons name="trash-outline" size={15} color={Colors.error} />
           <Text style={st.deleteText}>Delete payment entry</Text>
         </TouchableOpacity>

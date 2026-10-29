@@ -9,6 +9,7 @@ import { hrApi, employeesApi, SalaryComponent } from '../services/api';
 import { Colors } from '../constants/colors';
 import SearchPickerModal, { PickerItem } from './SearchPickerModal';
 import DatePickerModal from './DatePickerModal';
+import { useCan } from '../store/auth';
 
 // Create/edit a salary component (monthly allowance or deduction) for an
 // employee. Amounts apply to every month the component is effective in.
@@ -50,6 +51,7 @@ function autoDate(t: string): string {
 }
 
 export default function SalaryComponentFormSheet({ visible, onClose, onSaved, component }: Props) {
+  const may = useCan();
   const isEdit = !!component;
   const isWeb = Platform.OS === 'web';
 
@@ -304,10 +306,12 @@ export default function SalaryComponentFormSheet({ visible, onClose, onSaved, co
               thumbColor="#fff"
             />
           </View>
-          <TouchableOpacity style={st.deleteBtn} onPress={handleDelete} disabled={saving} activeOpacity={0.7}>
-            <Ionicons name="trash-outline" size={15} color={Colors.error} />
-            <Text style={st.deleteText}>Delete component</Text>
-          </TouchableOpacity>
+          {may('hr.salary-components.delete') && (
+            <TouchableOpacity style={st.deleteBtn} onPress={handleDelete} disabled={saving} activeOpacity={0.7}>
+              <Ionicons name="trash-outline" size={15} color={Colors.error} />
+              <Text style={st.deleteText}>Delete component</Text>
+            </TouchableOpacity>
+          )}
         </>
       )}
     </>

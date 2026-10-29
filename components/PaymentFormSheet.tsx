@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ordersApi, OrderPayment } from '../services/api';
 import { Colors } from '../constants/colors';
 import { confirmAsync, notify } from '../utils/dialogs';
+import { useCan } from '../store/auth';
 
 interface Props {
   visible: boolean;
@@ -46,6 +47,7 @@ function autoDate(text: string): string {
 }
 
 export default function PaymentFormSheet({ visible, orderId, payment, onClose, onSaved }: Props) {
+  const may = useCan();
   const isEdit = !!payment;
 
   const [amount, setAmount] = useState('');
@@ -192,7 +194,7 @@ export default function PaymentFormSheet({ visible, orderId, payment, onClose, o
           </View>
 
           {isEdit && (
-            <TouchableOpacity style={[s.deleteBtn, busy && { opacity: 0.6 }]} onPress={handleDelete} disabled={busy}>
+            may('orders.payments.delete') && <TouchableOpacity style={[s.deleteBtn, busy && { opacity: 0.6 }]} onPress={handleDelete} disabled={busy}>
               {deleting
                 ? <ActivityIndicator size="small" color={Colors.error} />
                 : <>

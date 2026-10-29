@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { employeesApi, Employee } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import EmployeeFormSheet from '../../../components/EmployeeFormSheet';
+import { useCan } from '../../../store/auth';
 
 const SKILL_COLORS: Record<string, { bg: string; text: string }> = {
   unskilled:   { bg: '#F3F4F6',           text: '#374151' },
@@ -38,6 +39,7 @@ function fmtAmount(val: string | number) {
 }
 
 export default function EmployeeDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -158,12 +160,14 @@ export default function EmployeeDetailScreen() {
 
           {/* Action buttons */}
           <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)} activeOpacity={0.8}>
-              <Ionicons name="create-outline" size={15} color="#111" />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
+            {may('employees.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)} activeOpacity={0.8}>
+                <Ionicons name="create-outline" size={15} color="#111" />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
             {employee.isActive ? (
-              <TouchableOpacity
+              may('employees.deactivate') && <TouchableOpacity
                 style={[styles.deactivateBtn, actioning && { opacity: 0.5 }]}
                 onPress={handleDeactivate}
                 disabled={actioning}
@@ -175,7 +179,7 @@ export default function EmployeeDetailScreen() {
                 <Text style={styles.deactivateBtnText}>Deactivate</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
+              may('employees.deactivate') && <TouchableOpacity
                 style={[styles.reactivateBtn, actioning && { opacity: 0.5 }]}
                 onPress={handleReactivate}
                 disabled={actioning}
@@ -190,15 +194,17 @@ export default function EmployeeDetailScreen() {
           </View>
 
           {/* Permanent delete */}
-          <TouchableOpacity
-            style={[styles.deleteBtn, actioning && { opacity: 0.5 }]}
-            onPress={handleDelete}
-            disabled={actioning}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="trash-outline" size={14} color={Colors.error} />
-            <Text style={styles.deleteBtnText}>Delete Permanently</Text>
-          </TouchableOpacity>
+          {may('employees.delete') && (
+            <TouchableOpacity
+              style={[styles.deleteBtn, actioning && { opacity: 0.5 }]}
+              onPress={handleDelete}
+              disabled={actioning}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="trash-outline" size={14} color={Colors.error} />
+              <Text style={styles.deleteBtnText}>Delete Permanently</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Compensation stats */}
