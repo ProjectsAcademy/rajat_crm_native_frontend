@@ -34,6 +34,7 @@ code, checked by `npm run verify` — tells you which files and lines to open.
 | 10 | [WORKSPACE_GUIDE.md](WORKSPACE_GUIDE.md) | Working with both repos from their parent folder; source of the workspace-root `AGENTS.md` | When your tool opens the parent folder, or on a new machine |
 | 11 | [CODE_MAP.md](CODE_MAP.md) | GENERATED index: every API endpoint (handler line, permission, tables, app files calling it), screens, components, models, helpers | Search it at the start of every task; never edit it — `npm run map` |
 | 12 | [WHATSAPP_AUTOMATION_PLAN.md](WHATSAPP_AUTOMATION_PLAN.md) | The agreed step-by-step plan for WhatsApp automation (customer and staff side), its security rules, templates and status | Before any WhatsApp work; update the step's status when you finish it |
+| 13 | [PERMISSIONS_PLAN.md](PERMISSIONS_PLAN.md) | Draft plan for fine-grained permissions (per-action keys, deny, conditions, audit log), its phases, status and the client's open decisions | Before any permission / RBAC work |
 
 Repository-specific references (not mirrored):
 

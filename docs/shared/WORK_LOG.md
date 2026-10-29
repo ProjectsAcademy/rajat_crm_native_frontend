@@ -6,6 +6,32 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — Plan: fine-grained permissions (PERMISSIONS_PLAN.md)
+
+- **Request:** the owner tested five role cases with `RBAC_ENFORCE=true` on
+  dev — all fine. The client then asked for more: inside a module, control
+  of each action (view / create / edit / delete; for example no WhatsApp
+  button on invoices for some users), "like AWS and Azure policies", and
+  asked for a deep plan.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — new `docs/shared/PERMISSIONS_PLAN.md` (action
+  catalog of about 110 keys drafted from every endpoint and app action,
+  allow / deny with deny winning, per-user exceptions, a fixed menu of
+  conditions, field hiding, audit log, Admin matrix with templates and
+  effective access, app gating, phases P0–P6, client decisions), README
+  index, ARCHITECTURE pointer, KNOWN_ISSUES A.2.
+- **Database:** none (the plan lists additive migrations for later).
+- **Decisions:** none yet; §10 of the plan lists the client's.
+- **Tested:** n/a (plan). The catalog was built from CODE_MAP's endpoint
+  list and a search of the app for print, share and WhatsApp buttons.
+- **Not tested / risks:** the catalog is a draft until the client confirms
+  the roles and actions.
+- **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** owner takes §10 to the client; then P1 (engine and catalog,
+  no visible change) can start while P0 is enforced on production.
+
+---
+
 ## 2026-10-29 — RBAC: readers for the forms' pickers (plan step 0.2)
 
 - **Request:** the owner: finish the RBAC work while the templates are in
