@@ -6,6 +6,19 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — KNOWN_ISSUES D: answered question removed
+
+- **Request:** the owner asked what is still open; the list had a stale
+  question.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — KNOWN_ISSUES D: "same database for dev and prod?"
+  removed (answered 2026-10-28: two separate databases, A.1 and
+  INFRASTRUCTURE_AND_DEPLOY.md §4).
+- **Database:** none. **Tested:** n/a. **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
 ## 2026-10-29 — WhatsApp "Our items": item names only
 
 - **Request:** the owner: when a customer asks for items on WhatsApp, show

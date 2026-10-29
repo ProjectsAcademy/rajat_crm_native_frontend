@@ -174,6 +174,5 @@ anything older than a few weeks.
 
 ## D. Open questions for the owner
 
-- Do dev and prod use the same Supabase database or two databases?
 - Current web hosting (see A.6).
 - Should vendor work costs feed a vendor payable / profit report later?
