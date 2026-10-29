@@ -35,8 +35,8 @@ anything older than a few weeks.
    Next: `RBAC_ENFORCE=true` on dev with a limited test user, then
    production. Dev: five role test cases passed (owner, 2026-10-29). The
    client then asked for per-action control (CRUD per module, WhatsApp /
-   print buttons per user): PERMISSIONS_PLAN.md (draft, client decisions
-   open).
+   print buttons per user): PERMISSIONS_PLAN.md — direction agreed the
+   same day: full freedom, the client builds roles and groups from Admin.
 3. **WhatsApp invoice sending** (manual button) — status as of 2026-10-28:
    **working on the dev server.** Template `invoice_share` is APPROVED
    (Utility, `en`, Document header + 4 body variables — matches

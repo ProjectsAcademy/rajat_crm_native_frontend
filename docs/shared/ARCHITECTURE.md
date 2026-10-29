@@ -96,7 +96,8 @@ Public endpoints: `GET /api/health`, `POST /api/auth/login`.
 - Rollout status of the two flags: see KNOWN_ISSUES_AND_PENDING.md.
 - Planned next: per-action permissions (view / create / edit / delete and
   actions such as WhatsApp or print), deny, conditions and an audit log —
-  PERMISSIONS_PLAN.md (draft, not agreed yet).
+  PERMISSIONS_PLAN.md (direction agreed 2026-10-29: roles and groups built
+  by the client in Admin).
 
 ## Data model (PostgreSQL via Prisma)
 

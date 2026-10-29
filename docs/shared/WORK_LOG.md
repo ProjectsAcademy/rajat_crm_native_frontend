@@ -6,6 +6,33 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — Permissions plan: client wants full freedom (roles + groups)
+
+- **Request:** the client's answer to PERMISSIONS_PLAN.md §10, through the
+  owner: full freedom — they create any roles, set any CRUD / action
+  permission later, and create groups too, all from the admin account as
+  today.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — PERMISSIONS_PLAN.md: direction recorded; §4
+  rewritten to an Azure-like model (roles = permission sets with allow /
+  deny and conditions; groups = sets of users; roles assigned to groups or
+  directly to users; today's groups migrate to one role each with no change
+  in access); no fixed templates ("copy role" instead); conditions and
+  hidden fields become settings the client makes per role; §10 answers and
+  defaults (hide buttons; audit log 2 years, super admins only); release P0
+  before P1 lands. README, ARCHITECTURE, KNOWN_ISSUES A.2 pointers.
+- **Database:** none.
+- **Decisions:** client, 2026-10-29 — full freedom from the super admin
+  account. Defaults for hide-vs-grey and audit retention stay open.
+- **Tested:** n/a (plan).
+- **Not tested / risks:** "roles and groups" read as two separate things
+  (Azure model); to confirm with the client before P2.
+- **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** owner: release P0 (readers) to production and enforce;
+  then P1.
+
+---
+
 ## 2026-10-29 — Plan: fine-grained permissions (PERMISSIONS_PLAN.md)
 
 - **Request:** the owner tested five role cases with `RBAC_ENFORCE=true` on

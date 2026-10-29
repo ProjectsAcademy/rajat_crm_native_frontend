@@ -1,8 +1,13 @@
 # Permissions Plan — fine-grained access (policies)
 
-Draft written 2026-10-29 at the owner's request, for the client's wish:
-"control every action inside a module, like AWS / Azure policies". **Not
-agreed yet:** §10 lists the client's decisions. Before starting a phase, settle
+Written 2026-10-29 at the owner's request, for the client's wish: "control
+every action inside a module, like AWS / Azure policies". **Direction agreed
+with the client (2026-10-29): full freedom** — the client creates any roles
+and groups themselves and sets any permission (view / create / edit /
+delete and every other action) later, all from the super admin account in
+Admin, as today. So the system ships the mechanism and the catalog, not
+fixed roles. §10 records what that settles and the defaults for the rest.
+Before starting a phase, settle
 its open decisions with the owner, set its status to "in progress", and
 when done set "done (date, commits)" and add a WORK_LOG entry. Rules that a
 finished phase creates move to ARCHITECTURE.md "Permissions (RBAC)"; this file
@@ -14,7 +19,7 @@ keeps the plan and the status.
 |---|---|---|---|
 | P0 | Today's RBAC enforced (module keys + readers) | both | in progress — WHATSAPP_AUTOMATION_PLAN.md step 0.2 |
 | P1 | Action catalog, policy engine, an action on every endpoint | backend | not started |
-| P2 | Admin: permission matrix, deny, templates, effective access | both | not started |
+| P2 | Roles and groups (Azure-like) + Admin editors, deny, effective access | both | not started |
 | P3 | App: every button and menu follows the actions | app | not started |
 | P4 | Audit log and its viewer | both | not started |
 | P5 | Conditions: own records, amount limits, edit window, status locks | both | not started — client decisions |
@@ -43,11 +48,11 @@ The client wants:
 |---|---|---|---|
 | Named actions | `s3:GetObject` | `Microsoft.Storage/.../read` | `invoices.whatsapp`, `orders.payments.add` |
 | Wildcards | `s3:*` | `*/read` | a parent key covers its children: `orders` = every `orders.*` (already how `hr` covers `hr.attendance`) |
-| Roles | policies on groups / users | role assignments | groups (roles) + per-user exceptions |
+| Roles | policies attached to groups / users | roles assigned to groups / users | **roles** (permission sets) assigned to **groups** or directly to **users** (§4) |
 | Explicit deny wins | yes | deny assignments | yes: deny on a user or any of their groups beats every allow |
 | Default deny | yes | yes | yes (implicit deny) |
 | Conditions | `Condition` blocks | ABAC conditions | a fixed menu (§5): own records, amount limit, edit window, status lock |
-| Built-in roles | managed policies | built-in roles | role templates (§7) |
+| Built-in roles | managed policies | built-in roles | none fixed — the client builds every role; "copy role" (§7) |
 | Simulator | policy simulator | "check access" | "Effective access" per user and "Can X do Y?" (§7) |
 | Activity log | CloudTrail | activity log | audit log (§6) |
 
@@ -97,22 +102,39 @@ Deletes of money records (payments, receipts, ledger entries, invoices) are
 separate keys on purpose: the usual setup is "many may add, only the owner
 may delete".
 
-## 4. Grants and how a request is decided
+## 4. Roles, groups and users (P2) — and how a request is decided
+
+Today a group is both a set of people and a set of permissions. The client
+wants to build both freely, so they become two things, as in Azure:
+
+- **Role** = a named set of permissions: for every action Allow or Deny,
+  optionally with conditions (§5). Examples the client might build:
+  "Invoice clerk", "No deletes", "Read only".
+- **Group** = a named set of users ("Office staff", "Site team"), with the
+  roles assigned to it.
+- **User** = member of any groups, plus roles assigned directly (one person's
+  exception = a role assigned to that user, for example a role that denies
+  `invoices.delete`).
 
 **Data (all additive migrations):**
 
-- `group_permissions` gets `effect` (`allow` / `deny`, default `allow`) and
-  `conditions` (JSON, null = none).
-- New `user_permissions` (user, key, effect, conditions): exceptions for one
-  person ("Ramesh is an Accountant but may not delete invoices").
+- `roles` (name, description, active), `role_permissions` (role, key,
+  `effect` allow / deny, `conditions` JSON or null).
+- `group_roles` (group, role) and `user_roles` (user, role).
+- `groups` and `user_groups` stay as they are.
+- Migration of today's data, with no change in anyone's access: every
+  existing group gets a role with the same name and the same keys, assigned
+  to that group. `group_permissions` is then no longer read (kept until the
+  next cleanup, for rollback).
 
 **Decision order** — one function, `authorize(user, action, record?)`, used
-by every route and by `/api/auth/me`:
+by every route and by `/api/auth/me`. A user's roles = roles assigned
+directly + roles of their active groups (active roles only):
 
 1. inactive user → deny
 2. super admin → allow (cannot be limited; at least one stays active)
-3. an explicit **deny** on the user or any active group covering the action
-   (a deny on `invoices` covers every `invoices.*`) → deny
+3. an explicit **deny** in any of the user's roles covering the action (a
+   deny on `invoices` covers every `invoices.*`) → deny
 4. an **allow** covering the action whose conditions pass → allow
 5. legacy access and `RBAC_STRICT` not `true` → allow
 6. otherwise → deny
@@ -121,7 +143,13 @@ Shadow mode stays: with `RBAC_ENFORCE` off, step 6 logs
 `[rbac-shadow] deny <user> -> <action>` and allows, per action, so each phase
 can be watched before it is enforced.
 
-## 5. Conditions (P5 — a fixed menu, no free text)
+Only super admins manage users, groups and roles (as today; the client's
+wish). Making that delegable would be a later decision.
+
+## 5. Conditions (P5 — options the client sets on a permission)
+
+The client sets them in the role editor on any allow that supports them; the
+system offers this fixed menu (no free-text rules):
 
 | Condition | Example | Needs |
 |---|---|---|
@@ -136,7 +164,15 @@ message ("You can edit only orders you created", "Discounts above Rs.
 2,000 need the owner"). A later option instead of a plain refusal: ask the
 owner to approve on WhatsApp (WHATSAPP_AUTOMATION_PLAN.md step 5.2).
 
-## 6. Audit log (P4)
+## 6. Hidden fields (P6) and audit log (P4)
+
+**Hidden fields** are catalog keys too (`inventory.fields.purchase-rate`,
+`orders.fields.vendor-cost`, `employees.fields.salary`,
+`customers.fields.balance`, ...), so the client allows or denies them per
+role like any action. The server leaves the value out of the answer; the
+app shows "—".
+
+**Audit log:**
 
 New `audit_logs`: time, user, action key, entity, id, a short summary
 (before → after for money and status), device / IP. Recorded: logins,
@@ -147,20 +183,24 @@ receipts, ledger entries, salary payments), status changes, WhatsApp sends
 
 ## 7. Admin screens (P2)
 
-- **Group matrix:** rows = modules by hub; columns View · Create · Edit ·
-  Delete · "More" (expands that module's extra actions). Each cell: not set
-  / Allow / Deny. A row's first cell is the parent key ("everything").
-  Conditions (P5) through a small settings button on the cell.
-- **Templates:** Owner / Manager, Accountant, Order Taker, Store Keeper,
-  Purchase Manager, HR Clerk, Viewer (read only). "New group from template",
-  "Copy group".
-- **User screen:** groups, exceptions (allow / deny), and an **Effective
-  access** tab: every module with what the user can do and where it comes
-  from ("group Accountants", "denied for this user").
-- **Can X do Y?:** choose a user and an action (optionally a record) →
-  allowed or not, and the reason.
-- **Export / import** of groups as JSON, to copy roles from dev to
+All under Admin, super admin only, as today.
+
+- **Roles:** create, edit, copy, deactivate, delete. The editor is a matrix:
+  rows = modules by hub; columns View · Create · Edit · Delete · "More"
+  (expands that module's other actions and hidden fields). Each cell: not
+  set / Allow / Deny; the row's first cell is the parent key ("everything
+  in this module"). Conditions (P5) through a small settings button on an
+  allowed cell. Search by action name.
+- **Groups:** create, edit, delete; members; roles assigned.
+- **Users:** groups, roles assigned directly, and an **Effective access**
+  tab: per module what the user can do and where it comes from ("role
+  Invoice clerk via group Office staff", "denied by role No deletes").
+- **Can X do Y?:** a user and an action (optionally a record) → allowed or
+  not, and why.
+- **Export / import** roles and groups as JSON, to copy them from dev to
   production.
+- No fixed roles are shipped: the client builds them (with "copy role" to
+  start from an existing one).
 - Changes apply within 60 s on the server (existing cache); the app reloads
   the user's actions when it comes back to the foreground, so nobody has to
   log out and in again.
@@ -195,29 +235,31 @@ receipts, ledger entries, salary payments), status changes, WhatsApp sends
   action is allowed and a user without it gets 403; deny beats allow; a
   parent covers its children; conditions (P5).
 
-## 10. Decisions for the client (before P2 / P5 / P6)
+## 10. Client decisions
 
-1. **Roles:** which roles they want and what each does (the templates in
-   §7 are the starting proposal).
-2. **Deletes:** who may delete anything with money (orders, invoices,
-   payments, receipts)? Would "cancel" be enough for everyone but the owner?
-3. **Own records only:** for which roles?
-4. **Amount limits:** on which actions (discount, write-off, payment entry,
-   purchase) and how much?
-5. **Edit locks:** invoices after paid / cancelled? Orders after delivered?
-   Anything after N days?
-6. **Hidden fields:** cost / purchase rates, vendor-work costs, salaries,
-   customer balances — hidden from whom?
-7. **Per-user exceptions:** needed, or groups only?
-8. **Hide or grey out** buttons without permission (proposal: hide).
-9. **Audit log:** what to record, how long to keep it, who may see it.
-10. **Approvals:** for some actions, ask the owner instead of refusing
-    (links to WHATSAPP_AUTOMATION_PLAN.md step 5.2)?
+Client's answer (2026-10-29): **full freedom** — they create roles and
+groups themselves and set any permission later, from the super admin account.
+What that settles, and the defaults for what it does not:
+
+| # | Question | Answer |
+|---|---|---|
+| 1 | Which roles? | The client builds them; none are shipped |
+| 2 | Who may delete money records? | The client sets it per role (`*.delete` keys) |
+| 3 | Own records only? | A condition the client sets per permission (P5) |
+| 4 | Amount limits? | A condition the client sets per permission (P5) |
+| 5 | Edit locks? | Conditions the client sets (edit window, status lock — P5) |
+| 6 | Hidden fields? | Catalog keys the client allows / denies per role (P6) |
+| 7 | Per-user exceptions? | Yes — roles assigned directly to a user |
+| 8 | Hide or grey out buttons? | Default: hide (owner's WhatsApp example); open |
+| 9 | Audit log: what, how long, who sees it? | Default: everything in §6, kept 2 years, super admins only; open |
+| 10 | Approvals instead of refusals? | Later (WHATSAPP_AUTOMATION_PLAN.md step 5.2) |
 
 ## 11. Order, rollout and risks
 
 **Order:** P0 → P1 → P2 → P3 (the client sees CRUD and button control) → P4
 → P5 → P6. P1 alone changes nothing visible; P2 + P3 deliver the request.
+Release P0 to production before P1 lands on `dev_01` (the owner releases
+from that branch), so production gets the readers fix on its own.
 
 **Rollout of every phase:** dev in shadow mode → dev enforced with test
 cases per role (as on 2026-10-29) → backend to production → app release →
@@ -225,8 +267,9 @@ production enforced. Backend first, as always.
 
 **Risks:**
 
-- More keys, more admin mistakes → templates, effective access, "Can X do
-  Y?", deny-wins shown in the matrix.
+- Full freedom means more room for admin mistakes → effective access, "Can
+  X do Y?", deny-wins shown in the matrix, "copy role", the audit log of
+  permission changes, and super admins who cannot be limited.
 - A route or button forgotten → verify fails on routes without an action;
   generated tests; the screen-call audit.
 - Old APKs show buttons the server refuses → clear messages; release the app
