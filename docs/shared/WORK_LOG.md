@@ -6,6 +6,49 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — Staff WhatsApp number (automation plan step 0.3)
+
+- **Request:** the owner asked to carry on with the next pending phase of the
+  WhatsApp automation plan. Step 0.2 (RBAC enforced) is owner work in Admin
+  and the server `.env`, so step 0.3 was built.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `82c2bd1`: `prisma/schema.prisma` + migration
+  `20261029100000_user_whatsapp_phone` (`users.phone` VARCHAR(12), unique,
+  nullable), `src/routes/admin.ts` (create / edit accept `phone`, stored as
+  `91XXXXXXXXXX`, '' clears, wrong format or a number used by another user →
+  400), `src/lib/whatsappBot.ts` (`findStaffByPhone`, `sendStaffMenu`;
+  checked before the customer lookup; STOP / START from a customer's number
+  still reach the opt-out), `test/whatsapp-staff.test.ts`. App `fef2785`:
+  `components/UserFormSheet.tsx` (WhatsApp Number field, same rule as the
+  server), `app/(app)/admin/users.tsx` (number under the name),
+  `services/api.ts` (`AdminUser.phone`, `AdminUserPayload.phone`). Docs:
+  WHATSAPP_AUTOMATION_PLAN 0.3, FEATURES (bot, Admin), BACKEND_REFERENCE §5,
+  LOCAL_DEV_AND_TESTING §4.
+- **Database:** additive migration (one nullable column + unique index);
+  applied by the deploy's `prisma migrate deploy`. Checked against
+  `schema.prisma` on a throwaway database (`prisma migrate diff`: empty).
+- **Decisions:** which staff get a number is filled in by the owner in Admin
+  (plan decision closed); a number on both a user and a customer gets the
+  staff menu (plan); STOP / START still work for the customer (rule 7).
+- **Tested:** `npm test` (6 new tests: saved as `91…`, blank = none, wrong
+  format and duplicates refused on create and edit, staff menu, user +
+  customer number → staff menu without customer data, STOP still opts out,
+  deactivated user → "not registered" or the customer menu). Mutation
+  checks: without the staff branch, the STOP exception, the active-user
+  filter or the duplicate message on edit, a test fails. Web UI at 390 px
+  and 1280 px on a throwaway database with synthetic users: field, error
+  banner for "12345", the server's duplicate message, saved number shown as
+  "+91 98765…" in the list and as 10 digits when editing again, clearing.
+- **Not tested / risks:** native Android form (`phone-pad` keyboard); a real
+  WhatsApp message from a staff number (dev server, after deploy).
+- **Deploy status:** on `dev_01`. Backend before app (the old backend
+  ignores `phone`, so a number typed in the new app would not be saved).
+- **Follow-ups:** owner saves their number on their user, adds it to
+  `WHATSAPP_ALLOWED_RECIPIENTS` on dev if missing, sends "hi" to the dev
+  number; then step 1.1 (owner daily summary — template needed).
+
+---
+
 ## 2026-10-28 — Second production release (backend and app code)
 
 - **Request:** the owner merged `dev_01` into `main` in both repos after the

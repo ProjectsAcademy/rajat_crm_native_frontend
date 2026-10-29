@@ -293,6 +293,13 @@ menu with data options only — no "talk to us" option; no AI/LLM.
   If several customers share the number, each is shown, skipping the ones with
   no ledger activity. Unknown numbers get one fixed message per 24 h with the
   business phone numbers, and no data.
+- Staff (since 2026-10-29, WHATSAPP_AUTOMATION_PLAN.md step 0.3): a number
+  saved on an **active** app user (Admin → Users → WhatsApp Number,
+  `users.phone`, one user per number) gets the staff menu instead — also when
+  a customer has the same number. The staff menu has no options yet (steps
+  1.1 / 3.2 add them); it answers with one text naming the app user. STOP /
+  START from a number that is also a customer's still change the customer
+  opt-out. A deactivated user's number is treated like any other number.
 - Replies are normal (non-template) messages inside the 24-hour customer
   service window, so no template approval is needed and Meta does not charge
   for them.
@@ -337,6 +344,6 @@ menu with data options only — no "talk to us" option; no AI/LLM.
 
 ## Admin (super admin only)
 
-Users (create, edit, activate, groups, legacy-access flag, password in Django
-format) and Groups (feature permissions matrix built from `features.ts`). The
+Users (create, edit, activate, groups, legacy-access flag, WhatsApp number
+for the bot's staff menu, password in Django format) and Groups (feature permissions matrix built from `features.ts`). The
 last active super admin cannot be removed.

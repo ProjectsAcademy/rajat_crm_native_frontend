@@ -18,7 +18,7 @@ menu bot with "Our items".
 |---|---|---|---|
 | 0.1 | Release to production; move the bot to production | both | in progress — backend and app code released, production number and bot set up 2026-10-28; APK build next |
 | 0.2 | Switch RBAC from shadow mode to enforced | both | waiting for the owner |
-| 0.3 | Staff WhatsApp identity (`users.phone`) | client | not started |
+| 0.3 | Staff WhatsApp identity (`users.phone`) | client | built (2026-10-29, backend `82c2bd1`, app `fef2785`) — owner to save numbers in Admin → Users and check on dev |
 | 0.4 | Customer opt-out (STOP / START) | customer | done (2026-10-28, backend `063e79d`, app `20a79e6`) |
 | 1.1 | Owner daily summary + alerts | client | not started — template needed |
 | 1.2 | Order status updates | customer | not started — template needed |
@@ -102,9 +102,17 @@ menu bot with "Our items".
   → Users; the bot recognises an active user's number before checking
   customers and answers with a staff menu (empty until step 1.1 / 3.2 fill it).
   A number saved on both a user and a customer gets the staff menu.
-- **Decisions to settle:** which staff get a number first (owner only?).
+- **Decisions:** which staff get a number is data, not code — the owner
+  fills it in Admin → Users. STOP / START from a number that is also a
+  customer's still reaches the customer opt-out (rule 7).
+- **Built (2026-10-29):** as above; the staff menu is one text message
+  ("Hello <name>, this WhatsApp number belongs to the … app user
+  "<username>". Staff options will appear here as they are added …").
+  `test/whatsapp-staff.test.ts`.
 - **Done when:** the owner's number gets the staff menu; a deactivated
-  user's number gets the "not registered" answer.
+  user's number gets the "not registered" answer. Both pass in the tests;
+  still to check once on the dev server (the number must also be in
+  `WHATSAPP_ALLOWED_RECIPIENTS` there).
 
 ### 0.4 Customer opt-out
 

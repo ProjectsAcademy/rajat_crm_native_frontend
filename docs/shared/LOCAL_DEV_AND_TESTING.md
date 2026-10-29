@@ -138,7 +138,9 @@ the same checks without relying on memory.
   and once-a-day claim), the bot's "Our items" and STOP / START through
   signed webhook messages (`test/whatsapp-bot-items.test.ts`,
   `test/whatsapp-opt-out.test.ts`), the test-server recipient limit
-  (`test/whatsapp-allowed-recipients.test.ts`). All test files share one throwaway
+  (`test/whatsapp-allowed-recipients.test.ts`), the staff WhatsApp number
+  (`test/whatsapp-staff.test.ts`: Admin saves / refuses it, staff menu, STOP
+  still works, deactivated users). All test files share one throwaway
   database, run one after another: a scheduler test switches off every
   reminder but its own first. The PDF tests are skipped when Playwright's Chromium
   is not installed (`npx playwright install chromium`).
