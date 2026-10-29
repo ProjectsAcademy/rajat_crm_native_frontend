@@ -37,6 +37,13 @@ anything older than a few weeks.
    client then asked for per-action control (CRUD per module, WhatsApp /
    print buttons per user): PERMISSIONS_PLAN.md — direction agreed the
    same day: full freedom, the client builds roles and groups from Admin.
+   **Permissions v2 built the same day** (P1–P6, on `dev_01`): per-action
+   catalog, roles and groups, deny, conditions, hidden fields, audit log,
+   every button gated. Release: backend first — its migration turns every
+   existing group into a role of the same name, so nobody's access changes
+   — then the app. Then on dev: build roles in Admin, test with limited
+   users, `RBAC_ENFORCE=true`; then production. `RBAC_STRICT=true` only
+   when no user relies on Legacy Access.
 3. **WhatsApp invoice sending** (manual button) — status as of 2026-10-28:
    **working on the dev server.** Template `invoice_share` is APPROVED
    (Utility, `en`, Document header + 4 body variables — matches
@@ -129,12 +136,24 @@ anything older than a few weeks.
     `undefined` for an emptied Email, Address, Aadhar or PAN, so clearing one
     of them in edit mode keeps the old value. Phone was fixed on 2026-10-29
     (it decides the WhatsApp staff menu); the others are untouched.
-11. Inventory screens show stock buttons to inventory-only users and item
-    edit buttons to stock-only users (the module opens with either key); the
-    server answers "Access denied" (RBAC enforced). Hide them with
-    `userHasFeature` when such users exist.
+11. HR sub-screens (`app/(app)/hr/attendance.tsx`, ...) opened by URL by a
+    user who lacks that sub-module show the API's "You do not have
+    permission" error instead of redirecting: the HR layout guards `hr` (any
+    sub-module) and the HR hub hides the cards. Add
+    `useFeatureGuard('hr.attendance')` etc. per screen if it matters.
+12. `group_permissions` is no longer read since permissions v2 (2026-10-29).
+    Dropping it is a non-additive migration: only after both servers run v2
+    and nobody needs the rollback.
+13. An app build from before permissions v2 shows every button of a module
+    to limited users; the server refuses with a message. Release the new
+    app soon after the backend.
 
 ## C. Looks wrong but is intended
+
+- **"Only records they created" never matches records from before
+  2026-10-29**: `created_by_id` was added that day, older rows have none.
+  A role with that condition cannot edit old records — by design (nobody
+  can say who made them).
 
 - **Frontend TypeScript baseline: 85 errors** from `npx tsc --noEmit` (as of
   2026-10-22). All are TS2769 caused by the mandated

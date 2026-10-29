@@ -18,12 +18,18 @@ keeps the plan and the status.
 | Phase | What | Side | Status |
 |---|---|---|---|
 | P0 | Today's RBAC enforced (module keys + readers) | both | in progress — WHATSAPP_AUTOMATION_PLAN.md step 0.2 |
-| P1 | Action catalog, policy engine, an action on every endpoint | backend | not started |
-| P2 | Roles and groups (Azure-like) + Admin editors, deny, effective access | both | not started |
-| P3 | App: every button and menu follows the actions | app | not started |
-| P4 | Audit log and its viewer | both | not started |
-| P5 | Conditions: own records, amount limits, edit window, status locks | both | not started — client decisions |
-| P6 | Hidden fields (cost, salary, balances) | both | not started — client decisions |
+| P1 | Action catalog, policy engine, an action on every endpoint | backend | done (2026-10-29, backend `61895d0`) |
+| P2 | Roles and groups (Azure-like) + Admin editors, deny, effective access | both | done (2026-10-29, backend `61895d0` `5b7ba6a`, app `6e8b4f9`) |
+| P3 | App: every button and menu follows the actions | app | done (2026-10-29, app `6e8b4f9`) |
+| P4 | Audit log and its viewer | both | done (2026-10-29) |
+| P5 | Conditions: own records, amount limits, edit window, status locks | both | done (2026-10-29) — the client sets them per role |
+| P6 | Hidden fields (vendor work costs, wages) | both | done (2026-10-29) |
+
+All of P1–P6 were built in one go on 2026-10-29 at the owner's request
+("work without stopping"); WORK_LOG has the entry. What was built is
+described in ARCHITECTURE.md "Permissions (RBAC)" and FEATURES.md "Admin";
+this file keeps the plan. Still open: P0 (enforce on production) and the
+follow-ups in KNOWN_ISSUES A.2.
 
 ## 1. Today and the gap
 
@@ -62,6 +68,13 @@ module. The matrix (§7) writes the same data; JSON is only for export /
 import (copying roles from dev to production).
 
 ## 3. Action catalog (draft — confirm with the client)
+
+> Built 2026-10-29: the code (`src/lib/features.ts`, shown in Admin → Roles)
+> is the source of truth. Differences from the draft below: no
+> `orders.payments.view` (payments show with the order); hidden fields only
+> `orders.fields.vendor-cost` and `employees.fields.salary` (customer
+> balances already sit behind `ledger`); `hr.salary-components.payroll`
+> added; customers' "delete" is deactivate / reactivate.
 
 Every action is a key `module.action` (sub-resources `module.sub.action`).
 Standard actions: `view`, `create`, `edit`, `delete`. The catalog lives in

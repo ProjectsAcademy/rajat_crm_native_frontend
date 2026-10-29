@@ -59,13 +59,14 @@ If a task seems to require breaking one, stop and ask the owner first.
    Never `new PrismaClient()` anywhere else. Twenty-two separate clients
    exhausted Supabase's 15-connection pooler and took dev AND prod down on
    2026-09-16. This fix was once reverted by mistake — do not revert it.
-2. **Every new route file** uses `router.use(requireAuth,
-   requirePermission('<feature-key>'))` — or `requireModulePermission(
-   '<feature-key>', { readers: [...] })` when other modules' forms list its
-   records (readers may only GET) — and every new feature key is added to
-   `src/lib/features.ts` (the Admin UI reads that list). A form that lists
-   another module's records needs that module as a reader, or users of a
-   limited group get "Access denied" once `RBAC_ENFORCE=true`.
+2. **Every route checks its action**: `router.get('/', can('orders.view'),
+   ...)`. A new action goes into the catalog `src/lib/features.ts` (the
+   Admin role editor reads it) AND is enforced on the server (`can()` on the
+   route, `ensure()` in the handler when it depends on the body or the
+   record) AND in the app (`useCan()` on the button) in the same task. A
+   list another module's form picks from gets that form's create / edit
+   actions as picker readers (`can('x.view', ...PICKERS)`). `npm run verify`
+   fails on a route without a check (ARCHITECTURE.md "Permissions").
 3. **Passwords stay Django PBKDF2** (`src/utils/django_password.ts`). Never
    switch to bcrypt/argon2.
 4. **Keep `BigInt.prototype.toJSON`** at the top of `src/app.ts` (media file
@@ -111,8 +112,11 @@ If a task seems to require breaking one, stop and ask the owner first.
 4. **Non-auth inputs** use `autoComplete="off"` (search fields
    `"new-password"`), `textContentType="none"`, `importantForAutofill="no"`.
    Login fields keep real autofill.
-5. **Permission-gate UI** with `userHasFeature(user, key)` and module layouts
-   with `useFeatureGuard(key)`. The backend is the real enforcement.
+5. **Permission-gate UI** per action: `const may = useCan();
+   {may('invoices.whatsapp') && <Button/>}`; menus and hub cards with
+   `canOpen(user, module)`; module layouts with `useFeatureGuard(key)`.
+   Hide, do not grey out (owner, 2026-10-29). The backend is the real
+   enforcement.
 6. **Alerts/confirms on web**: React Native Web's `Alert.alert` does nothing.
    Use `utils/dialogs.ts` (`notify`, `confirmAsync`) or a `Platform.OS ===
    'web'` branch with `window.alert/confirm`.

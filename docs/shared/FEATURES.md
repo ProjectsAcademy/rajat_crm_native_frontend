@@ -349,9 +349,23 @@ menu with data options only — no "talk to us" option; no AI/LLM.
 
 ## Admin (super admin only)
 
-Users (create, edit, activate, groups, legacy-access flag, password in Django
-format) and Groups (feature permissions matrix built from `features.ts`). The
-last active super admin cannot be removed. A group's key also lets its users
-read (not change) the lists its forms pick from — for example `orders` reads
-customers, items, projects and vendors (since 2026-10-29, ARCHITECTURE.md
-"Permissions (RBAC)").
+Since 2026-10-29 (PERMISSIONS_PLAN.md; client's decision: full freedom):
+
+- **Users**: create, edit, activate, password (Django format), legacy-access
+  flag, groups, and roles for that user only (exceptions on top of the
+  groups). The last active super admin cannot be removed.
+- **Groups**: name, members, roles; inactive groups give nothing.
+- **Roles & Permissions**: the client builds every role (none are shipped;
+  "copy" starts from an existing one). The editor lists every module with
+  View · Create · Edit · Delete and "More" (other actions and hidden
+  fields); a cell cycles not set → Allow → Deny; "All" sets the whole
+  module. An Allow can carry conditions where the action offers them: only
+  records they created, within N days of creation, only while the status
+  is ..., up to an amount. Export / import roles and groups as JSON (dev →
+  production; members by username only on request).
+- **Effective Access**: per user and module what they can do, and from which
+  role and group; "Can this user do ...?" with an optional record.
+- **Activity Log**: every login and change (refused ones too), filters by
+  user, module and refused only; kept two years.
+- Buttons without permission are hidden in the app (owner's choice); the
+  server refuses anyway with a message naming the action or the condition.

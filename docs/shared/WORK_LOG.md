@@ -6,6 +6,73 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — Permissions v2: roles, groups, per-action control, conditions, hidden fields, audit log
+
+- **Request:** the client wants full freedom: build any roles and groups and
+  set any permission (view / create / edit / delete and every action, e.g.
+  the invoice WhatsApp button) from the admin account. The owner chose roles
+  and groups as two things (Azure-like), everything on `dev_01`, and asked
+  for the whole plan to be built without waiting for replies, plus a simple
+  page explaining roles, groups and users.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `61895d0`, `5b7ba6a`: catalog `src/lib/features.ts`
+  (modules, about 110 actions, 2 hidden fields, conditions per action);
+  engine `src/middleware/permissions.ts` (`decide`, `can`, `ensure`,
+  `holds`, `factsOf`); every route with its action and body / record checks
+  in the handlers; admin API for roles, groups, user roles, effective
+  access, check, audit, export / import; `src/lib/auditLog.ts`;
+  `/me` `permissionModel: 2`; `scripts/code-map.js` (action per endpoint,
+  in-handler checks, unchecked endpoints) and `scripts/verify.js` (fails on
+  an endpoint without a check). App `6e8b4f9`: Admin screens (roles with
+  the matrix editor and conditions, groups, users, effective access with
+  "Can X do Y?", activity log, export / import), `store/auth.ts` (`can`,
+  `useCan`, `canOpen`, `refresh` on foreground), every create / edit /
+  delete / status / payment / receipt / adjustment / WhatsApp / print /
+  file / stock button gated, order form (vendor work, status, invoice
+  option), employee form (wages), `components/MediaSection.tsx`,
+  `components/LedgerSheetFrame.tsx` (`maxWidth`). Docs: PERMISSIONS_PLAN
+  (status P1–P6 done), ARCHITECTURE "Permissions" rewritten, RULES 2 and 5,
+  both AGENTS.md, FEATURES "Admin", BACKEND_REFERENCE, FRONTEND_REFERENCE
+  §3 and §5, INFRASTRUCTURE_AND_DEPLOY (release notes), LOCAL_DEV_AND_TESTING
+  §4, KNOWN_ISSUES A.2, B.11–13 (old B.11 fixed by the gating), C.
+- **Database:** three additive migrations — `20261029140000_roles` (new
+  tables; every group copied into a role of the same name with the same
+  keys and assigned to it: no access changes; checked on a throwaway
+  database with synthetic groups, including an inactive one),
+  `20261029150000_created_by` (`created_by_id` on nine tables),
+  `20261029160000_audit_logs`. `prisma migrate diff` against the schema:
+  empty.
+- **Decisions:** client — full freedom from the super admin account; owner
+  — roles and groups separate, build on `dev_01`, buttons hidden (not
+  greyed out), audit log kept 2 years and visible to super admins only.
+  Mine (documented in ARCHITECTURE): a Deny also beats legacy access and
+  picker reads; editing vendor work also needs seeing its costs; hidden
+  wages are ignored in writes; "own" uses `created_by_id`, so records from
+  before today never match.
+- **Tested:** `npm test` 86 passed + 1 todo (new: 13 per-action /
+  condition / hidden-field tests, 7 admin API tests, 3 audit log tests; the
+  8 earlier RBAC tests now run on roles). Mutation checks, each caught:
+  deny ignored, own condition skipped, deny bypassed through pickers, status
+  change unchecked, any condition accepted, receipt limit unchecked, a route
+  without `can()` (verify). Web UI on a throwaway database with synthetic
+  data (backend on 3011 — port 3001 was the owner's own server, untouched):
+  Admin hub, roles list and role editor at 1280 and 390 px, a role built in
+  the editor (View / Create / Edit, Delete denied, Edit with "3 days" and
+  "pending") saved exactly so, group editor, effective access, activity
+  log; a limited user (Invoice clerk via a group + a "No deletes" role):
+  Finance shows only Orders and Invoices, the invoice has no Edit / Delete /
+  WhatsApp / Print / Preview, the order has only "Make Invoice" and shows
+  vendor cost as "—", /customers sends them home.
+- **Not tested / risks:** native Android layouts of the new Admin screens
+  and gated buttons (web only); conditions in the app for every action
+  (server tests cover them); the production data migration on real groups
+  (synthetic only). Release order matters: backend, then app.
+- **Deploy status:** on `dev_01`, not pushed.
+- **Follow-ups:** owner: push, test on dev with real-looking roles, release
+  backend then app, then `RBAC_ENFORCE=true`; KNOWN_ISSUES B.11–13.
+
+---
+
 ## 2026-10-29 — Permissions plan: client wants full freedom (roles + groups)
 
 - **Request:** the client's answer to PERMISSIONS_PLAN.md §10, through the
