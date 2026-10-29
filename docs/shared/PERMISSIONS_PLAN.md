@@ -24,6 +24,7 @@ keeps the plan and the status.
 | P4 | Audit log and its viewer | both | done (2026-10-29) |
 | P5 | Conditions: own records, amount limits, edit window, status locks | both | done (2026-10-29) — the client sets them per role |
 | P6 | Hidden fields (vendor work costs, wages) | both | done (2026-10-29) |
+| P7 | Cleanup: drop the old `group_permissions` table (§12) | backend | waiting — not before 4 weeks of v2 enforced on production |
 
 All of P1–P6 were built in one go on 2026-10-29 at the owner's request
 ("work without stopping"); WORK_LOG has the entry. What was built is
@@ -266,6 +267,22 @@ What that settles, and the defaults for what it does not:
 | 8 | Hide or grey out buttons? | Default: hide (owner's WhatsApp example); open |
 | 9 | Audit log: what, how long, who sees it? | Default: everything in §6, kept 2 years, super admins only; open |
 | 10 | Approvals instead of refusals? | Later (WHATSAPP_AUTOMATION_PLAN.md step 5.2) |
+
+## 12. P7 — cleanup of the old permission table
+
+`group_permissions` (pre-v2: group → module keys) has not been read since
+v2; it stays only as a safety net (KNOWN_ISSUES B.11).
+
+- **When:** at least 4 weeks after v2 runs on production with
+  `RBAC_ENFORCE=true`, with no rollback and no permission problems reported
+  in that time. Put the release date in this row when it happens, so the
+  date is known.
+- **Steps:** a migration `DROP TABLE "group_permissions"`; remove the
+  `GroupPermission` model and the `permissions` relation on `Group` from
+  `prisma/schema.prisma`; KNOWN_ISSUES B.11 out; WORK_LOG entry. This is
+  the one non-additive migration of the plan: release it to dev first, then
+  production, like any other.
+- **After it:** a rollback to a pre-v2 backend is no longer possible.
 
 ## 11. Order, rollout and risks
 

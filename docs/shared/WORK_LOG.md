@@ -6,6 +6,22 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — Permissions plan: cleanup step P7
+
+- **Request:** the owner asked whether the plan says to clean up the old
+  table after a few weeks if everything works.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — PERMISSIONS_PLAN.md: status row P7 and §12
+  (when: 4 weeks of v2 enforced on production without problems; steps:
+  drop `group_permissions`, remove its model; after it no rollback to
+  pre-v2).
+- **Database:** none now; P7 itself will drop a table.
+- **Tested:** n/a.
+- **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** P7 when its condition is met.
+
+---
+
 ## 2026-10-29 — KNOWN_ISSUES B.11 was wrong; B.12 explained
 
 - **Request:** the owner asked how B.11 (HR screens opened by URL) would be
