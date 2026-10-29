@@ -17,7 +17,7 @@ menu bot with "Our items".
 | Step | What | Side | Status |
 |---|---|---|---|
 | 0.1 | Release to production; move the bot to production | both | in progress — backend and app code released, production number and bot set up 2026-10-28; APK build next |
-| 0.2 | Switch RBAC from shadow mode to enforced | both | waiting for the owner |
+| 0.2 | Switch RBAC from shadow mode to enforced | both | in progress — pickers fixed (readers, 2026-10-29); owner: enforce on dev, then production |
 | 0.3 | Staff WhatsApp identity (employees' phone) | client | done (2026-10-29, backend `d12a09e`, app `529c08c`; checked on dev by the owner) |
 | 0.4 | Customer opt-out (STOP / START) | customer | done (2026-10-28, backend `063e79d`, app `20a79e6`) |
 | 1.1 | Owner daily summary + alerts | client | not started — template needed |
@@ -99,6 +99,9 @@ menu bot with "Our items".
   `[rbac-shadow]` lines in `pm2 logs` for a few days, then
   `RBAC_ENFORCE=true` (KNOWN_ISSUES A.2). `RBAC_STRICT=true` only when no
   user relies on legacy access.
+- **Built (2026-10-29):** readers for the forms' pickers and purchase
+  stock entries (ARCHITECTURE.md "Permissions (RBAC)"), so limited groups
+  keep working once enforced.
 - **Done when:** production runs with `RBAC_ENFORCE=true`.
 
 ### 0.3 Staff WhatsApp identity

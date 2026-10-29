@@ -18,22 +18,22 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | auth | `/api/auth` | src/routes/auth.ts | auth only, public | 3 | authApi | — |
 | admin | `/api/admin` | src/routes/admin.ts | super admin | 11 | adminApi | app/(app)/admin/ |
 | dashboard | `/api/dashboard` | src/routes/dashboard.ts | auth only, revenue | 4 | dashboardApi | — |
-| customers | `/api/customers` | src/routes/customers.ts | customers | 5 | customersApi | app/(app)/customers/ |
-| tenders | `/api/tenders` | src/routes/tenders.ts | tenders | 5 | tendersApi | app/(app)/tenders/ |
-| projects | `/api/projects` | src/routes/projects.ts | projects | 5 | projectsApi | app/(app)/projects/ |
-| vendors | `/api/vendors` | src/routes/vendors.ts | vendors | 5 | vendorsApi | app/(app)/vendors/ |
-| employees | `/api/employees` | src/routes/employees.ts | employees | 5 | employeesApi | app/(app)/employees/ |
-| inventory | `/api/inventory` | src/routes/inventory.ts | inventory | 7 | inventoryApi | app/(app)/inventory/ |
-| orders | `/api/orders` | src/routes/orders.ts | orders | 10 | ordersApi | app/(app)/orders/ |
+| customers | `/api/customers` | src/routes/customers.ts | customers (+ readers) | 5 | customersApi | app/(app)/customers/ |
+| tenders | `/api/tenders` | src/routes/tenders.ts | tenders (+ readers) | 5 | tendersApi | app/(app)/tenders/ |
+| projects | `/api/projects` | src/routes/projects.ts | projects (+ readers) | 5 | projectsApi | app/(app)/projects/ |
+| vendors | `/api/vendors` | src/routes/vendors.ts | vendors (+ readers) | 5 | vendorsApi | app/(app)/vendors/ |
+| employees | `/api/employees` | src/routes/employees.ts | employees (+ readers) | 5 | employeesApi | app/(app)/employees/ |
+| inventory | `/api/inventory` | src/routes/inventory.ts | inventory (+ readers) | 7 | inventoryApi | app/(app)/inventory/ |
+| orders | `/api/orders` | src/routes/orders.ts | orders (+ readers) | 10 | ordersApi | app/(app)/orders/ |
 | invoices | `/api/invoices` | src/routes/invoices.ts | invoices | 6 | invoicesApi | app/(app)/invoices/ |
 | purchases | `/api/purchases` | src/routes/purchases.ts | purchases | 5 | purchasesApi | app/(app)/purchases/ |
 | hr | `/api/hr` | src/routes/hr.ts | hr.attendance, hr.epf-esic, hr.incentives, hr.salary-components, hr.salary-payments | 25 | hrApi | app/(app)/hr/ |
 | estimates | `/api/estimates` | src/routes/estimates.ts | estimates | 5 | estimatesApi | app/(app)/estimates/ |
 | gst | `/api/gst` | src/routes/gst.ts | gst | 5 | gstApi | app/(app)/gst/ |
-| stock | `/api/stock` | src/routes/stock.ts | stock | 4 | stockApi | — |
+| stock | `/api/stock` | src/routes/stock.ts | stock (+ readers) | 4 | stockApi | — |
 | vehicles | `/api/vehicles` | src/routes/vehicles.ts | vehicles | 2 | vehiclesApi | app/(app)/vehicles/ |
 | maintenance | `/api/maintenance` | src/routes/maintenance.ts | maintenance | 2 | maintenanceApi | app/(app)/maintenance/ |
-| media | `/api/media` | src/routes/media.ts | inventory, requireEntityPermission (media.ts:86) | 4 | — | — |
+| media | `/api/media` | src/routes/media.ts | inventory, requireEntityPermission (media.ts:89) | 4 | — | — |
 | calendar | `/api/calendar` | src/routes/calendar.ts | calendar or calendar-write or calendar-manage, calendar-write or calendar-manage | 4 | calendarApi | — |
 | ledger | `/api/ledger` | src/routes/ledger.ts | ledger | 14 | ledgerApi | app/(app)/ledger/ |
 
@@ -83,78 +83,78 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 10 | customers | Customer | — | customersApi.list (api.ts:80) ← app/(app)/customers/index.tsx, components/EstimateFormSheet.tsx, components/GstFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx |
-| GET /:id | 51 | customers | Customer | — | customersApi.detail (api.ts:82) ← app/(app)/customers/[id].tsx |
-| POST / | 87 | customers | Customer (w) | nextCustomerCode | customersApi.create (api.ts:83) ← components/CustomerFormSheet.tsx |
-| PUT /:id | 135 | customers | Customer (w) | — | customersApi.update (api.ts:84) ← app/(app)/customers/[id].tsx, components/CustomerFormSheet.tsx |
-| DELETE /:id | 165 | customers | Customer (w), CustomerLedgerEntry, CustomerReceipt, Estimate, Invoice, Order | — | customersApi.deactivate (api.ts:86) ← app/(app)/customers/[id].tsx |
+| GET / | 11 | customers or orders or invoices or estimates or gst | Customer | — | customersApi.list (api.ts:80) ← app/(app)/customers/index.tsx, components/EstimateFormSheet.tsx, components/GstFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx |
+| GET /:id | 52 | customers or orders or invoices or estimates or gst | Customer | — | customersApi.detail (api.ts:82) ← app/(app)/customers/[id].tsx |
+| POST / | 88 | customers | Customer (w) | nextCustomerCode | customersApi.create (api.ts:83) ← components/CustomerFormSheet.tsx |
+| PUT /:id | 136 | customers | Customer (w) | — | customersApi.update (api.ts:84) ← app/(app)/customers/[id].tsx, components/CustomerFormSheet.tsx |
+| DELETE /:id | 166 | customers | Customer (w), CustomerLedgerEntry, CustomerReceipt, Estimate, Invoice, Order | — | customersApi.deactivate (api.ts:86) ← app/(app)/customers/[id].tsx |
 
 ### tenders — `/api/tenders` — src/routes/tenders.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 30 | tenders | Tender | — | tendersApi.list (api.ts:136) ← app/(app)/tenders/index.tsx, components/ProjectFormSheet.tsx |
-| GET /:id | 69 | tenders | Tender | — | tendersApi.detail (api.ts:138) ← app/(app)/tenders/[id].tsx |
-| POST / | 133 | tenders | Tender (w) | parseDateField, validateTenderFields | tendersApi.create (api.ts:139) ← components/TenderFormSheet.tsx |
-| PUT /:id | 172 | tenders | Tender (w) | parseDateField, validateTenderFields | tendersApi.update (api.ts:140) ← components/TenderFormSheet.tsx |
-| DELETE /:id | 223 | tenders | Tender (w), Project, TenderMedia | deleteFromMinio | tendersApi.remove (api.ts:141) ← app/(app)/tenders/[id].tsx |
+| GET / | 31 | tenders or projects | Tender | — | tendersApi.list (api.ts:136) ← app/(app)/tenders/index.tsx, components/ProjectFormSheet.tsx |
+| GET /:id | 70 | tenders or projects | Tender | — | tendersApi.detail (api.ts:138) ← app/(app)/tenders/[id].tsx |
+| POST / | 134 | tenders | Tender (w) | parseDateField, validateTenderFields | tendersApi.create (api.ts:139) ← components/TenderFormSheet.tsx |
+| PUT /:id | 173 | tenders | Tender (w) | parseDateField, validateTenderFields | tendersApi.update (api.ts:140) ← components/TenderFormSheet.tsx |
+| DELETE /:id | 224 | tenders | Tender (w), Project, TenderMedia | deleteFromMinio | tendersApi.remove (api.ts:141) ← app/(app)/tenders/[id].tsx |
 
 ### projects — `/api/projects` — src/routes/projects.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 23 | projects | Project | — | projectsApi.list (api.ts:207) ← app/(app)/projects/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx |
-| GET /:id | 60 | projects | Project | — | projectsApi.detail (api.ts:209) ← app/(app)/projects/[id].tsx |
-| POST / | 81 | projects | Project (w), Tender | parseDateField | projectsApi.create (api.ts:210) ← components/ProjectFormSheet.tsx |
-| PUT /:id | 142 | projects | Project (w), Tender | parseDateField | projectsApi.update (api.ts:211) ← components/ProjectFormSheet.tsx |
-| DELETE /:id | 216 | projects | Project (w), Estimate, Invoice, Order | — | projectsApi.remove (api.ts:212) ← app/(app)/projects/[id].tsx |
+| GET / | 24 | projects or orders or invoices or estimates | Project | — | projectsApi.list (api.ts:207) ← app/(app)/projects/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx |
+| GET /:id | 61 | projects or orders or invoices or estimates | Project | — | projectsApi.detail (api.ts:209) ← app/(app)/projects/[id].tsx |
+| POST / | 82 | projects | Project (w), Tender | parseDateField | projectsApi.create (api.ts:210) ← components/ProjectFormSheet.tsx |
+| PUT /:id | 143 | projects | Project (w), Tender | parseDateField | projectsApi.update (api.ts:211) ← components/ProjectFormSheet.tsx |
+| DELETE /:id | 217 | projects | Project (w), Estimate, Invoice, Order | — | projectsApi.remove (api.ts:212) ← app/(app)/projects/[id].tsx |
 
 ### vendors — `/api/vendors` — src/routes/vendors.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 10 | vendors | Vendor | — | vendorsApi.list (api.ts:162) ← app/(app)/vendors/index.tsx, components/GstFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx, components/PurchaseFormSheet.tsx |
-| GET /:id | 48 | vendors | Vendor | — | vendorsApi.detail (api.ts:164) ← app/(app)/vendors/[id].tsx, components/PurchaseFormSheet.tsx |
-| POST / | 73 | vendors | Vendor (w) | — | vendorsApi.create (api.ts:165) ← components/VendorFormSheet.tsx |
-| PUT /:id | 117 | vendors | Vendor (w) | — | vendorsApi.update (api.ts:166) ← app/(app)/vendors/[id].tsx, components/VendorFormSheet.tsx |
-| DELETE /:id | 152 | vendors | Vendor (w), Invoice, OrderVendorWork, Purchase | — | vendorsApi.delete (api.ts:168) ← app/(app)/vendors/[id].tsx |
+| GET / | 11 | vendors or orders or invoices or gst or purchases | Vendor | — | vendorsApi.list (api.ts:162) ← app/(app)/vendors/index.tsx, components/GstFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx, components/PurchaseFormSheet.tsx |
+| GET /:id | 49 | vendors or orders or invoices or gst or purchases | Vendor | — | vendorsApi.detail (api.ts:164) ← app/(app)/vendors/[id].tsx, components/PurchaseFormSheet.tsx |
+| POST / | 74 | vendors | Vendor (w) | — | vendorsApi.create (api.ts:165) ← components/VendorFormSheet.tsx |
+| PUT /:id | 118 | vendors | Vendor (w) | — | vendorsApi.update (api.ts:166) ← app/(app)/vendors/[id].tsx, components/VendorFormSheet.tsx |
+| DELETE /:id | 153 | vendors | Vendor (w), Invoice, OrderVendorWork, Purchase | — | vendorsApi.delete (api.ts:168) ← app/(app)/vendors/[id].tsx |
 
 ### employees — `/api/employees` — src/routes/employees.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 10 | employees | Employee | — | employeesApi.list (api.ts:184) ← app/(app)/employees/index.tsx, components/SalaryComponentFormSheet.tsx |
-| GET /:id | 48 | employees | Employee | — | employeesApi.detail (api.ts:186) ← app/(app)/employees/[id].tsx |
-| POST / | 64 | employees | Employee (w) | — | employeesApi.create (api.ts:187) ← components/EmployeeFormSheet.tsx |
-| PUT /:id | 117 | employees | Employee (w) | — | employeesApi.update (api.ts:188) ← components/EmployeeFormSheet.tsx, employeesApi.deactivate (api.ts:189) ← app/(app)/employees/[id].tsx, employeesApi.reactivate (api.ts:190) ← app/(app)/employees/[id].tsx |
-| DELETE /:id | 155 | employees | Employee (w), EpfEsic, SalaryIncentive, SalaryPayment | — | employeesApi.permanentDelete (api.ts:191) ← app/(app)/employees/[id].tsx |
+| GET / | 11 | employees or hr.salary-components | Employee | — | employeesApi.list (api.ts:184) ← app/(app)/employees/index.tsx, components/SalaryComponentFormSheet.tsx |
+| GET /:id | 49 | employees or hr.salary-components | Employee | — | employeesApi.detail (api.ts:186) ← app/(app)/employees/[id].tsx |
+| POST / | 65 | employees | Employee (w) | — | employeesApi.create (api.ts:187) ← components/EmployeeFormSheet.tsx |
+| PUT /:id | 118 | employees | Employee (w) | — | employeesApi.update (api.ts:188) ← components/EmployeeFormSheet.tsx, employeesApi.deactivate (api.ts:189) ← app/(app)/employees/[id].tsx, employeesApi.reactivate (api.ts:190) ← app/(app)/employees/[id].tsx |
+| DELETE /:id | 156 | employees | Employee (w), EpfEsic, SalaryIncentive, SalaryPayment | — | employeesApi.permanentDelete (api.ts:191) ← app/(app)/employees/[id].tsx |
 
 ### inventory — `/api/inventory` — src/routes/inventory.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 19 | inventory | Inventory, InventoryMedia, Stock | — | inventoryApi.list (api.ts:147) ← app/(app)/inventory/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx, components/PurchaseFormSheet.tsx, components/StockEntryFormSheet.tsx |
-| GET /categories | 98 | inventory | Inventory | — | inventoryApi.categories (api.ts:155) ← components/InventoryFormSheet.tsx |
-| GET /:id | 115 | inventory | Inventory, InventoryMedia, Stock | calcStock | inventoryApi.detail (api.ts:149) ← app/(app)/inventory/[id].tsx, components/StockEntryFormSheet.tsx |
-| POST / | 152 | inventory | Inventory (w), Stock (w) | — | inventoryApi.create (api.ts:150) ← components/InventoryFormSheet.tsx |
-| PUT /:id | 210 | inventory | Inventory (w) | — | inventoryApi.update (api.ts:151) ← app/(app)/inventory/[id].tsx, components/InventoryFormSheet.tsx |
-| DELETE /:id | 238 | inventory | Inventory (w), OrderItem | — | inventoryApi.deactivate (api.ts:153) ← app/(app)/inventory/[id].tsx |
-| DELETE /:id/permanent | 266 | inventory | Inventory (w), OrderItem, Stock | — | inventoryApi.permanentDelete (api.ts:154) ← app/(app)/inventory/[id].tsx |
+| GET / | 20 | inventory or orders or invoices or estimates or purchases or stock | Inventory, InventoryMedia, Stock | — | inventoryApi.list (api.ts:147) ← app/(app)/inventory/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx, components/OrderFormSheet.tsx, components/PurchaseFormSheet.tsx, components/StockEntryFormSheet.tsx |
+| GET /categories | 99 | inventory or orders or invoices or estimates or purchases or stock | Inventory | — | inventoryApi.categories (api.ts:155) ← components/InventoryFormSheet.tsx |
+| GET /:id | 116 | inventory or orders or invoices or estimates or purchases or stock | Inventory, InventoryMedia, Stock | calcStock | inventoryApi.detail (api.ts:149) ← app/(app)/inventory/[id].tsx, components/StockEntryFormSheet.tsx |
+| POST / | 153 | inventory | Inventory (w), Stock (w) | — | inventoryApi.create (api.ts:150) ← components/InventoryFormSheet.tsx |
+| PUT /:id | 211 | inventory | Inventory (w) | — | inventoryApi.update (api.ts:151) ← app/(app)/inventory/[id].tsx, components/InventoryFormSheet.tsx |
+| DELETE /:id | 239 | inventory | Inventory (w), OrderItem | — | inventoryApi.deactivate (api.ts:153) ← app/(app)/inventory/[id].tsx |
+| DELETE /:id/permanent | 267 | inventory | Inventory (w), OrderItem, Stock | — | inventoryApi.permanentDelete (api.ts:154) ← app/(app)/inventory/[id].tsx |
 
 ### orders — `/api/orders` — src/routes/orders.ts
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 23 | orders | Order | — | ordersApi.list (api.ts:254) ← app/(app)/orders/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx |
-| GET /:id | 51 | orders | Order | — | ordersApi.detail (api.ts:256) ← app/(app)/orders/[id].tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx |
-| POST / | 174 | orders | GstRecord (w), Invoice (w), Order (w) | calcItemTotals, nextOrderNo, nextInvoiceNoTx, calcInvoiceTotals, readVendorWorks | ordersApi.create (api.ts:257) ← components/OrderFormSheet.tsx |
-| PUT /:id | 272 | orders | Order (w), OrderItem (w), OrderVendorWork (w), OrderPayment | calcItemTotals, readVendorWorks | ordersApi.update (api.ts:258) ← components/OrderFormSheet.tsx |
-| DELETE /:id | 346 | orders | Order (w), OrderItem (w), OrderMedia (w), OrderPayment (w) | deleteFromMinio | ordersApi.remove (api.ts:259) ← app/(app)/orders/[id].tsx |
-| POST /:id/payments | 374 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.addPayment (api.ts:260) ← components/PaymentFormSheet.tsx |
-| POST /:id/send-whatsapp | 399 | orders | — | sendError, sendOrderConfirmation | ordersApi.sendWhatsapp (api.ts:264) ← app/(app)/orders/[id].tsx |
-| POST /:id/payments/:paymentId/send-whatsapp | 410 | orders | — | sendError, sendPaymentReceivedForPayment | ordersApi.sendPaymentWhatsapp (api.ts:266) ← app/(app)/orders/[id].tsx |
-| PUT /:id/payments/:paymentId | 422 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.updatePayment (api.ts:261) ← components/PaymentFormSheet.tsx |
-| DELETE /:id/payments/:paymentId | 460 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.removePayment (api.ts:262) ← components/PaymentFormSheet.tsx |
+| GET / | 24 | orders or invoices or estimates | Order | — | ordersApi.list (api.ts:254) ← app/(app)/orders/index.tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx |
+| GET /:id | 52 | orders or invoices or estimates | Order | — | ordersApi.detail (api.ts:256) ← app/(app)/orders/[id].tsx, components/EstimateFormSheet.tsx, components/InvoiceFormSheet.tsx |
+| POST / | 175 | orders | GstRecord (w), Invoice (w), Order (w) | calcItemTotals, nextOrderNo, nextInvoiceNoTx, calcInvoiceTotals, readVendorWorks | ordersApi.create (api.ts:257) ← components/OrderFormSheet.tsx |
+| PUT /:id | 273 | orders | Order (w), OrderItem (w), OrderVendorWork (w), OrderPayment | calcItemTotals, readVendorWorks | ordersApi.update (api.ts:258) ← components/OrderFormSheet.tsx |
+| DELETE /:id | 347 | orders | Order (w), OrderItem (w), OrderMedia (w), OrderPayment (w) | deleteFromMinio | ordersApi.remove (api.ts:259) ← app/(app)/orders/[id].tsx |
+| POST /:id/payments | 375 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.addPayment (api.ts:260) ← components/PaymentFormSheet.tsx |
+| POST /:id/send-whatsapp | 400 | orders | — | sendError, sendOrderConfirmation | ordersApi.sendWhatsapp (api.ts:264) ← app/(app)/orders/[id].tsx |
+| POST /:id/payments/:paymentId/send-whatsapp | 411 | orders | — | sendError, sendPaymentReceivedForPayment | ordersApi.sendPaymentWhatsapp (api.ts:266) ← app/(app)/orders/[id].tsx |
+| PUT /:id/payments/:paymentId | 423 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.updatePayment (api.ts:261) ← components/PaymentFormSheet.tsx |
+| DELETE /:id/payments/:paymentId | 461 | orders | OrderPayment (w) | recalcOrderPaid | ordersApi.removePayment (api.ts:262) ← components/PaymentFormSheet.tsx |
 
 ### invoices — `/api/invoices` — src/routes/invoices.ts
 
@@ -231,10 +231,10 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| GET / | 32 | stock | Stock | — | stockApi.list (api.ts:311) ← app/(app)/inventory/stock.tsx, app/(app)/purchases/[id].tsx |
-| POST / | 79 | stock | Stock (w) | currentStockForItem | stockApi.create (api.ts:313) ← components/StockEntryFormSheet.tsx, components/StockMovementSheet.tsx |
-| PUT /:id | 131 | stock | Stock (w) | currentStockForItem | stockApi.update (api.ts:314) ← components/StockEntryFormSheet.tsx |
-| DELETE /:id | 186 | stock | Stock (w) | currentStockForItem | stockApi.remove (api.ts:316) ← app/(app)/inventory/[id].tsx, app/(app)/inventory/stock.tsx, app/(app)/purchases/[id].tsx |
+| GET / | 46 | stock or inventory or purchases | Stock | — | stockApi.list (api.ts:311) ← app/(app)/inventory/stock.tsx, app/(app)/purchases/[id].tsx |
+| POST / | 93 | stock or purchases | Stock (w) | refusePurchaseOnly, currentStockForItem | stockApi.create (api.ts:313) ← components/StockEntryFormSheet.tsx, components/StockMovementSheet.tsx |
+| PUT /:id | 146 | stock or purchases | Stock (w) | refusePurchaseOnly, currentStockForItem | stockApi.update (api.ts:314) ← components/StockEntryFormSheet.tsx |
+| DELETE /:id | 202 | stock or purchases | Stock (w) | refusePurchaseOnly, currentStockForItem | stockApi.remove (api.ts:316) ← app/(app)/inventory/[id].tsx, app/(app)/inventory/stock.tsx, app/(app)/purchases/[id].tsx |
 
 ### vehicles — `/api/vehicles` — src/routes/vehicles.ts
 
@@ -254,10 +254,10 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 
 | Endpoint | Line | Permission | Tables | Calls | App function → used by |
 |---|---|---|---|---|---|
-| POST /upload | 95 | requireEntityPermission (media.ts:86) | — | keyToUrl, getModel, getFk, serializeMedia, getEntityFolderName, compressImage | direct /api/media/upload ← hooks/useMediaUpload.ts |
-| DELETE /:entity/:id | 156 | requireEntityPermission (media.ts:86) | — | deleteFromMinio, getModel | direct /api/media/:/: ← components/MediaSection.tsx |
-| GET /presign/:entity/:id | 177 | requireEntityPermission (media.ts:86) | — | getPresignedUrl, getModel | direct /api/media/presign/inventory/: ← app/(app)/inventory/index.tsx, direct /api/media/presign/:/: ← components/MediaSection.tsx |
-| PUT /inventory/:mediaId/primary | 197 | inventory | InventoryMedia (w) | — | direct /api/media/inventory/:/primary ← components/MediaSection.tsx |
+| POST /upload | 98 | requireEntityPermission (media.ts:89) | — | keyToUrl, getModel, getFk, serializeMedia, getEntityFolderName, compressImage | direct /api/media/upload ← hooks/useMediaUpload.ts |
+| DELETE /:entity/:id | 159 | requireEntityPermission (media.ts:89) | — | deleteFromMinio, getModel | direct /api/media/:/: ← components/MediaSection.tsx |
+| GET /presign/:entity/:id | 180 | requireEntityPermission (media.ts:89) | — | getPresignedUrl, getModel | direct /api/media/presign/inventory/: ← app/(app)/inventory/index.tsx, direct /api/media/presign/:/: ← components/MediaSection.tsx |
+| PUT /inventory/:mediaId/primary | 200 | inventory | InventoryMedia (w) | — | direct /api/media/inventory/:/primary ← components/MediaSection.tsx |
 
 ### calendar — `/api/calendar` — src/routes/calendar.ts
 
@@ -420,7 +420,7 @@ frontend files · 5 Data models · 6 Backend helpers · 7 Loose ends
 | CustomerLedgerEntry | customer_ledger_entries | 393 | — | Customer | routes/ledger.ts | lib/ledger.ts, routes/customers.ts |
 | Invoice | invoices | 413 | invoiceNo | Customer, InvoiceItem[], InvoiceMedia[], Order, Project, Vendor | routes/invoices.ts, routes/orders.ts | lib/whatsappBot.ts, routes/customers.ts, routes/dashboard.ts, routes/media.ts, routes/projects.ts, routes/vendors.ts |
 | InvoiceItem | invoice_items | 451 | — | Inventory, Invoice | routes/invoices.ts | — |
-| Purchase | purchases | 469 | purchaseNo | PurchaseItem[], Vendor | routes/purchases.ts | routes/dashboard.ts, routes/vendors.ts |
+| Purchase | purchases | 469 | purchaseNo | PurchaseItem[], Vendor | routes/purchases.ts | routes/dashboard.ts, routes/stock.ts, routes/vendors.ts |
 | PurchaseItem | purchase_items | 492 | — | Inventory, Purchase | routes/purchases.ts | — |
 | EmployeeAttendance | employee_attendances | 515 | — | Employee, Project | routes/hr.ts | routes/dashboard.ts |
 | SalaryComponent | salary_components | 534 | — | Employee | routes/hr.ts | — |
@@ -531,11 +531,13 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | getPermissionKeys | src/middleware/permissions.ts:78 | — | getEffectiveAccess, featureSatisfied | routes/auth.ts |
 | requirePermission | src/middleware/permissions.ts:87 | — | getEffectiveAccess, featureSatisfied | route middleware |
 | requireAnyPermission | src/middleware/permissions.ts:119 | — | getEffectiveAccess, featureSatisfied | route middleware |
-| requireSuperAdmin | src/middleware/permissions.ts:148 | — | getEffectiveAccess | route middleware |
+| requireModulePermission | src/middleware/permissions.ts:151 | — | — | route middleware |
+| userHasPermission | src/middleware/permissions.ts:161 | — | getEffectiveAccess, featureSatisfied | routes/stock.ts |
+| requireSuperAdmin | src/middleware/permissions.ts:176 | — | getEffectiveAccess | route middleware |
 | serializeUser | src/routes/admin.ts:18 | — | — | routes/admin.ts |
 | serializeGroup | src/routes/admin.ts:199 | — | — | routes/admin.ts |
 | canManageAny | src/routes/calendar.ts:15 | — | getEffectiveAccess, featureSatisfied | routes/calendar.ts |
-| nextCustomerCode | src/routes/customers.ts:73 | Customer | — | routes/customers.ts |
+| nextCustomerCode | src/routes/customers.ts:74 | Customer | — | routes/customers.ts |
 | withCustomerNames | src/routes/dashboard.ts:147 | Customer | — | routes/dashboard.ts |
 | nextEstimateNo | src/routes/estimates.ts:15 | Estimate | — | routes/estimates.ts |
 | calcItems | src/routes/estimates.ts:35 | — | — | routes/estimates.ts |
@@ -544,7 +546,7 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | applyDiscount | src/routes/estimates.ts:64 | — | — | routes/estimates.ts |
 | splitGst | src/routes/gst.ts:80 | — | — | routes/gst.ts |
 | computeMonthPayroll | src/routes/hr.ts:359 | Employee, EmployeeAttendance, SalaryComponent, SalaryPayment | — | routes/hr.ts |
-| calcStock | src/routes/inventory.ts:9 | — | — | routes/inventory.ts |
+| calcStock | src/routes/inventory.ts:10 | — | — | routes/inventory.ts |
 | nextInvoiceNo | src/routes/invoices.ts:25 | Invoice | — | routes/invoices.ts |
 | calcItems | src/routes/invoices.ts:58 | — | — | routes/invoices.ts |
 | invalidDiscountPercentError | src/routes/invoices.ts:76 | — | — | routes/invoices.ts |
@@ -561,22 +563,23 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | serializeMedia | src/routes/media.ts:44 | — | — | routes/media.ts |
 | getEntityFolderName | src/routes/media.ts:50 | Inventory, Invoice, Order, Tender | — | routes/media.ts |
 | compressImage | src/routes/media.ts:72 | — | — | routes/media.ts |
-| requireEntityPermission | src/routes/media.ts:86 | — | — | not called |
-| calcItemTotals | src/routes/orders.ts:70 | — | — | routes/orders.ts |
-| nextOrderNo | src/routes/orders.ts:105 | Order | — | routes/orders.ts |
-| nextInvoiceNoTx | src/routes/orders.ts:116 | Invoice | — | routes/orders.ts |
-| calcInvoiceTotals | src/routes/orders.ts:132 | — | — | routes/orders.ts |
-| readVendorWorks | src/routes/orders.ts:155 | Vendor | — | routes/orders.ts |
-| parseDateField | src/routes/projects.ts:15 | — | — | routes/projects.ts |
+| requireEntityPermission | src/routes/media.ts:89 | — | — | not called |
+| calcItemTotals | src/routes/orders.ts:71 | — | — | routes/orders.ts |
+| nextOrderNo | src/routes/orders.ts:106 | Order | — | routes/orders.ts |
+| nextInvoiceNoTx | src/routes/orders.ts:117 | Invoice | — | routes/orders.ts |
+| calcInvoiceTotals | src/routes/orders.ts:133 | — | — | routes/orders.ts |
+| readVendorWorks | src/routes/orders.ts:156 | Vendor | — | routes/orders.ts |
+| parseDateField | src/routes/projects.ts:16 | — | — | routes/projects.ts |
 | calcTotals | src/routes/purchases.ts:16 | — | — | routes/purchases.ts |
 | derivePaymentStatus | src/routes/purchases.ts:25 | — | — | routes/purchases.ts |
 | d | src/routes/purchases.ts:31 | — | — | routes/purchases.ts |
 | ensureInventoryItem | src/routes/purchases.ts:40 | Inventory (w) | — | routes/purchases.ts |
 | applyStockTransition | src/routes/purchases.ts:71 | PurchaseItem (w), Stock (w) | d, ensureInventoryItem | routes/purchases.ts |
-| calcStock | src/routes/stock.ts:13 | — | — | routes/stock.ts |
-| currentStockForItem | src/routes/stock.ts:22 | Stock | calcStock | routes/stock.ts |
-| parseDateField | src/routes/tenders.ts:22 | — | — | routes/tenders.ts |
-| validateTenderFields | src/routes/tenders.ts:94 | — | — | routes/tenders.ts |
+| refusePurchaseOnly | src/routes/stock.ts:14 | Purchase | userHasPermission | routes/stock.ts |
+| calcStock | src/routes/stock.ts:27 | — | — | routes/stock.ts |
+| currentStockForItem | src/routes/stock.ts:36 | Stock | calcStock | routes/stock.ts |
+| parseDateField | src/routes/tenders.ts:23 | — | — | routes/tenders.ts |
+| validateTenderFields | src/routes/tenders.ts:95 | — | — | routes/tenders.ts |
 | verifyDjangoPassword | src/utils/django_password.ts:7 | — | timingSafeEqual | routes/auth.ts |
 | hashDjangoPassword | src/utils/django_password.ts:28 | — | — | routes/admin.ts |
 | timingSafeEqual | src/utils/django_password.ts:35 | — | — | utils/django_password.ts |

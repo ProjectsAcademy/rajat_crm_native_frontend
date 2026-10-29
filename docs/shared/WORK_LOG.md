@@ -6,6 +6,58 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — RBAC: readers for the forms' pickers (plan step 0.2)
+
+- **Request:** the owner: finish the RBAC work while the templates are in
+  review. Their production Admin → Users screenshot: three active users
+  (super admin, one Legacy Access, one "Calendar & Revenue" group), the
+  rest disabled.
+- **Done by:** Claude Code (Opus 5.5)
+- **Finding:** a cross-check of every screen's API calls against its
+  module guard (from CODE_MAP) showed that many forms list another
+  module's records — orders/invoices/estimates pick customers, items,
+  projects, vendors (and orders); GST picks customers and vendors;
+  purchases pick vendors and items and manage stock entries; projects pick
+  tenders; salary components pick employees. In shadow mode these pass; with
+  `RBAC_ENFORCE=true` a user in a limited group (say "Ord-Att-Pur-Emp")
+  could not even choose a customer for a new order. The other cross-calls
+  are already hidden by `userHasFeature` in the app (ledger on customer
+  detail and Finance, invoice from an order, calendar writes).
+- **Decisions:** owner, 2026-10-29 — such modules may read those lists, not
+  change them; purchases users may add, edit and delete a purchase's stock
+  entries.
+- **Changes:** backend `9187ed5`: `src/middleware/permissions.ts`
+  (`requireModulePermission`, `userHasPermission`), routers customers,
+  inventory, projects, vendors, orders, tenders, employees, stock (readers;
+  `refusePurchaseOnly`), media (item photos for stock users),
+  `test/rbac.test.ts`, `scripts/code-map.js` (permission per method; app
+  `215aae8` mirrors it). Docs: RULES 2, AGENTS.md rule 5, ARCHITECTURE
+  (readers table), FEATURES (Admin), BACKEND_REFERENCE §1, KNOWN_ISSUES A.2
+  and B.11 (new), WHATSAPP_AUTOMATION_PLAN 0.2, LOCAL_DEV_AND_TESTING §4,
+  CODE_MAP.
+- **Database:** none.
+- **Tested:** `npm test` (8 new tests with `RBAC_ENFORCE=true`: an orders
+  user reads customers, items, projects, vendors but cannot create, edit or
+  delete them, nor read employees, the ledger or item photos; no group →
+  403; salary components reads employees only; stock user reads items and
+  photos; purchases user adds / edits / deletes a purchase's stock entry
+  but not a manual one or one for a purchase that does not exist; stock
+  user writes any). Mutation checks: removing a reader, letting readers
+  write, skipping the purchase check or its existence check, or dropping
+  the photo reader each fail a test. The audit run again: only the
+  UI-gated calls remain.
+- **Not tested / risks:** shadow mode for the new purchase check (logged
+  and allowed, like requirePermission); the app with a limited user on a
+  real server — next step on dev.
+- **Deploy status:** on `dev_01`; no app change needed (the app already
+  calls these endpoints).
+- **Follow-ups:** owner: production `RBAC_*` values and the `[rbac-shadow]`
+  summary; `RBAC_ENFORCE=true` on dev with a limited test user, then
+  production. KNOWN_ISSUES B.11 if inventory-only or stock-only users are
+  created.
+
+---
+
 ## 2026-10-29 — Staff WhatsApp message: short company name
 
 - **Request:** the owner checked step 0.3 on the dev number (an employee

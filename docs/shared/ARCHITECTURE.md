@@ -28,7 +28,8 @@
 2. Global middleware: `helmet`, `cors({ origin: '*' })`, `morgan('dev')`,
    JSON and urlencoded body parsers.
 3. Route group mounted at `/api/<module>`. Almost every router starts with
-   `router.use(requireAuth, requirePermission('<feature-key>'))`.
+   `router.use(requireAuth, requirePermission('<feature-key>'))`, or
+   `requireModulePermission('<feature-key>', { readers })` (below).
 4. `requireAuth` (`src/middleware/auth.ts`) verifies the JWT
    (`JWT_SECRET`, default lifetime `JWT_EXPIRES_IN=7d`) and sets
    `req.user = { id, username, email, isStaff, isSuperuser }`.
@@ -66,6 +67,27 @@ Public endpoints: `GET /api/health`, `POST /api/auth/login`.
   4. a granted key covers the requested key → allowed
   5. otherwise: if `RBAC_ENFORCE` is not `true` → allowed but logged as
      `[rbac-shadow] deny ...` (shadow mode); if `true` → 403.
+- **Readers** (owner, 2026-10-29): a module whose forms list another
+  module's records may read them — GET only, never change them:
+
+  | Module (`/api/...`) | May also be read (GET) by |
+  |---|---|
+  | customers | orders, invoices, estimates, gst |
+  | inventory | orders, invoices, estimates, purchases, stock |
+  | projects | orders, invoices, estimates |
+  | vendors | orders, invoices, gst, purchases |
+  | orders | invoices, estimates |
+  | tenders | projects |
+  | employees | hr.salary-components |
+  | stock | inventory, purchases |
+  | media of inventory items | stock |
+
+  `requireModulePermission(key, { readers, writers })` in
+  `src/middleware/permissions.ts`. Stock also has a writer: a purchases user
+  may add, edit and delete the stock entries of an existing purchase (the
+  purchase screen), nothing else (`refusePurchaseOnly`, `src/routes/stock.ts`,
+  using `userHasPermission`). The ledger has no readers: customer balances
+  stay behind `ledger`.
 - Errors inside the RBAC check fail open (logged) so a bug there cannot take
   down working features.
 - Frontend: `userHasFeature(user, key)` hides UI; `useFeatureGuard(key)` in each

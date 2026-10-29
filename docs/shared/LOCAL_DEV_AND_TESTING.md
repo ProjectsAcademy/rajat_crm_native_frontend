@@ -140,7 +140,9 @@ the same checks without relying on memory.
   `test/whatsapp-opt-out.test.ts`), the test-server recipient limit
   (`test/whatsapp-allowed-recipients.test.ts`), the staff menu for
   employees' numbers (`test/whatsapp-staff.test.ts`: employee only, employee
-  + customer, STOP still works, deactivated employee, cleared phone). All test files share one throwaway
+  + customer, STOP still works, deactivated employee, cleared phone), RBAC
+  enforced (`test/rbac.test.ts`: readers may GET but not write, no-group
+  users get 403, the ledger stays closed, purchase stock entries). All test files share one throwaway
   database, run one after another: a scheduler test switches off every
   reminder but its own first. The PDF tests are skipped when Playwright's Chromium
   is not installed (`npx playwright install chromium`).

@@ -60,8 +60,12 @@ If a task seems to require breaking one, stop and ask the owner first.
    exhausted Supabase's 15-connection pooler and took dev AND prod down on
    2026-09-16. This fix was once reverted by mistake — do not revert it.
 2. **Every new route file** uses `router.use(requireAuth,
-   requirePermission('<feature-key>'))`, and every new feature key is added
-   to `src/lib/features.ts` (the Admin UI reads that list).
+   requirePermission('<feature-key>'))` — or `requireModulePermission(
+   '<feature-key>', { readers: [...] })` when other modules' forms list its
+   records (readers may only GET) — and every new feature key is added to
+   `src/lib/features.ts` (the Admin UI reads that list). A form that lists
+   another module's records needs that module as a reader, or users of a
+   limited group get "Access denied" once `RBAC_ENFORCE=true`.
 3. **Passwords stay Django PBKDF2** (`src/utils/django_password.ts`). Never
    switch to bcrypt/argon2.
 4. **Keep `BigInt.prototype.toJSON`** at the top of `src/app.ts` (media file

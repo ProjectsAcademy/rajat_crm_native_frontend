@@ -351,4 +351,7 @@ menu with data options only — no "talk to us" option; no AI/LLM.
 
 Users (create, edit, activate, groups, legacy-access flag, password in Django
 format) and Groups (feature permissions matrix built from `features.ts`). The
-last active super admin cannot be removed.
+last active super admin cannot be removed. A group's key also lets its users
+read (not change) the lists its forms pick from — for example `orders` reads
+customers, items, projects and vendors (since 2026-10-29, ARCHITECTURE.md
+"Permissions (RBAC)").

@@ -27,6 +27,13 @@ anything older than a few weeks.
    `pm2 logs`, then set `RBAC_ENFORCE=true`, and `RBAC_STRICT=true` only when
    no user relies on legacy access. New key `ledger` must be granted to groups
    that should see the customer ledger.
+   2026-10-29: production Admin shows three active users — the super admin,
+   one Legacy Access user, one user in a "Calendar & Revenue" group — all
+   others disabled. Before enforcing, the forms' pickers were found to call
+   other modules (an order form lists customers, items, projects, vendors);
+   fixed the same day with readers (ARCHITECTURE.md "Permissions (RBAC)").
+   Next: `RBAC_ENFORCE=true` on dev with a limited test user, then
+   production.
 3. **WhatsApp invoice sending** (manual button) — status as of 2026-10-28:
    **working on the dev server.** Template `invoice_share` is APPROVED
    (Utility, `en`, Document header + 4 body variables — matches
@@ -119,6 +126,10 @@ anything older than a few weeks.
     `undefined` for an emptied Email, Address, Aadhar or PAN, so clearing one
     of them in edit mode keeps the old value. Phone was fixed on 2026-10-29
     (it decides the WhatsApp staff menu); the others are untouched.
+11. Inventory screens show stock buttons to inventory-only users and item
+    edit buttons to stock-only users (the module opens with either key); the
+    server answers "Access denied" (RBAC enforced). Hide them with
+    `userHasFeature` when such users exist.
 
 ## C. Looks wrong but is intended
 
