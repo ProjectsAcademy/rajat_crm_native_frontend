@@ -6,6 +6,25 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — Staff WhatsApp message: short company name
+
+- **Request:** the owner checked step 0.3 on the dev number (an employee
+  with their number got the staff message) and asked for "RAJAT
+  Electricals" instead of the full name in it.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend: `src/lib/whatsappBot.ts` (`STAFF_BUSINESS`, staff
+  message only), `test/whatsapp-staff.test.ts` (the whole text). Docs:
+  WHATSAPP_AUTOMATION_PLAN step 0.3 (done, checked on dev).
+- **Database:** none.
+- **Decisions:** owner, 2026-10-29 — staff see "RAJAT Electricals";
+  customer messages keep "RAJAT Electric Decoration & Power Point".
+- **Tested:** `npm test -- whatsapp-staff`.
+- **Not tested / risks:** none beyond the earlier step 0.3 entry.
+- **Deploy status:** on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
 ## 2026-10-29 — Staff WhatsApp menu for employees, not app users (step 0.3)
 
 - **Request:** the owner: the staff number is for employees, not for app

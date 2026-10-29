@@ -18,7 +18,7 @@ menu bot with "Our items".
 |---|---|---|---|
 | 0.1 | Release to production; move the bot to production | both | in progress — backend and app code released, production number and bot set up 2026-10-28; APK build next |
 | 0.2 | Switch RBAC from shadow mode to enforced | both | waiting for the owner |
-| 0.3 | Staff WhatsApp identity (employees' phone) | client | built (2026-10-29, backend `d12a09e`, app `529c08c`) — owner to check on dev |
+| 0.3 | Staff WhatsApp identity (employees' phone) | client | done (2026-10-29, backend `d12a09e`, app `529c08c`; checked on dev by the owner) |
 | 0.4 | Customer opt-out (STOP / START) | customer | done (2026-10-28, backend `063e79d`, app `20a79e6`) |
 | 1.1 | Owner daily summary + alerts | client | not started — template needed |
 | 1.2 | Order status updates | customer | not started — template needed |
@@ -112,8 +112,11 @@ menu bot with "Our items".
   employee and a customer gets the staff menu; STOP / START from it still
   reach the customer opt-out (rule 7). Two active employees with one number
   → the older record. The staff menu is one text message for now ("Hello
-  <name>, this WhatsApp number is saved on … employee EMP001. Staff options
-  will appear here as they are added."). `test/whatsapp-staff.test.ts`.
+  <name>, this WhatsApp number is saved on RAJAT Electricals employee
+  EMP001. Staff options will appear here as they are added." — the short
+  company name, owner 2026-10-29; customers keep seeing "RAJAT Electric
+  Decoration & Power Point"). Checked on dev by the owner 2026-10-29.
+  `test/whatsapp-staff.test.ts`.
 - **Done when:** an employee's number gets the staff menu; a deactivated
   employee's number gets the "not registered" answer. Both pass in the
   tests; still to check once on the dev server (the number must also be in
