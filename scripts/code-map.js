@@ -107,7 +107,7 @@ function collectFunctions(file, text) {
 for (const dir of ['src/lib', 'src/utils', 'src/middleware']) {
   for (const f of walk(path.join(BE, dir), ['.ts'])) collectFunctions(f, read(f));
 }
-const MIDDLEWARE = new Set(['requireAuth', 'requireStaff', 'requirePermission', 'requireAnyPermission', 'requireSuperAdmin']);
+const MIDDLEWARE = new Set(['requireAuth', 'requireStaff', 'requirePermission', 'requireAnyPermission', 'requireModulePermission', 'requireSuperAdmin']);
 
 function helperCalls(body, ownFile) {
   const names = [];
@@ -130,8 +130,14 @@ const mounts = [...appText.matchAll(/^app\.use\('([^']+)',\s*(\w+)\)/gm)]
 // Permission middleware on a router.use()/route line. `fileText` resolves
 // requireAnyPermission(SOME_KEYS) to `const SOME_KEYS = ['a', 'b']`, and a
 // file's own require*() middleware is shown by name.
-function permissionOf(text, fileText, rel) {
+// requireModulePermission('x', { readers, writers }) depends on the method:
+// GET → x or a reader, anything else → x (or a writer).
+function permissionOf(text, fileText, rel, method = '') {
   const keys = [...text.matchAll(/requirePermission\('([^']+)'\)/g)].map((m) => m[1]);
+  for (const m of text.matchAll(/requireModulePermission\('([^']+)'(?:,\s*\{([^}]*)\})?\)/g)) {
+    const list = (name) => [...(((new RegExp(`${name}:\\s*\\[([^\\]]*)\\]`).exec(m[2] || '') || [])[1] || '').matchAll(/'([^']+)'/g))].map((x) => x[1]);
+    keys.push([m[1], ...(method === 'get' ? list('readers') : list('writers'))].join(' or '));
+  }
   for (const m of text.matchAll(/requireAnyPermission\(([^)]*)\)/g)) {
     let arg = m[1].trim();
     if (!arg.includes("'")) arg = (new RegExp(`const ${arg}\\b[^=]*=\\s*\\[([^\\]]*)\\]`).exec(fileText) || [])[1] || arg;
@@ -153,17 +159,23 @@ for (const { prefix, file } of mounts) {
   collectFunctions(fullFile, text);
   const tops = topLevelStarts(text);
 
-  const uses = [...text.matchAll(/^router\.use\((?:'([^']+)',\s*)?([^\n]*)\);/gm)].map((m) => ({ scope: m[1] || '', perms: permissionOf(m[2], text, rel), auth: /requireAuth/.test(m[2]) }));
+  const uses = [...text.matchAll(/^router\.use\((?:'([^']+)',\s*)?([^\n]*)\);/gm)].map((m) => ({
+    scope: m[1] || '', perms: (method) => permissionOf(m[2], text, rel, method), auth: /requireAuth/.test(m[2]),
+    module: (/requireModulePermission\('([^']+)'/.exec(m[2]) || [])[1],
+  }));
   const routes = [...text.matchAll(/^router\.(get|post|put|patch|delete)\('([^']*)',?([^\n]*)/gm)];
   const mod = { file, rel, prefix, endpoints: [], perms: new Set() };
   routes.forEach((m) => {
     const body = bodyFrom(text, tops, m.index);
     const sub = m[2];
     const scoped = uses.filter((u) => !u.scope || sub === u.scope || sub.startsWith(`${u.scope}/`));
-    const perms = [...scoped.flatMap((u) => u.perms), ...permissionOf(m[3], text, rel)];
+    const perms = [...scoped.flatMap((u) => u.perms(m[1])), ...permissionOf(m[3], text, rel, m[1])];
     const auth = scoped.some((u) => u.auth) || /requireAuth/.test(m[3]);
     const permission = perms.length ? perms.join(' + ') : auth ? 'auth only (any check is in the handler)' : 'public';
-    mod.perms.add(perms.length ? perms.join(' + ') : auth ? 'auth only' : 'public');
+    // A requireModulePermission router is listed under its own key; the
+    // endpoint rows show who else may read (GET) or write.
+    const own = scoped.find((u) => u.module)?.module;
+    mod.perms.add(own ? `${own} (+ readers)` : perms.length ? perms.join(' + ') : auth ? 'auth only' : 'public');
     const fullPath = (prefix + (sub === '/' ? '' : sub)) || '/';
     const ep = {
       method: m[1].toUpperCase(), sub, fullPath, file: rel, line: lineAt(text, m.index), permission,
