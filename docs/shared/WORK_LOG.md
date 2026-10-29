@@ -6,6 +6,28 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — KNOWN_ISSUES B.11 was wrong; B.12 explained
+
+- **Request:** the owner asked how B.11 (HR screens opened by URL) would be
+  solved and why B.12 (`group_permissions`) exists.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — KNOWN_ISSUES: B.11 removed (every HR screen
+  already calls `useFeatureGuard('hr.<sub-module>')`; I had listed it
+  without checking), old B.12 / B.13 are now B.11 (why the table stays and
+  when to drop it) / B.12 (owner releases the new APK right after the
+  backend).
+- **Database:** none.
+- **Tested:** web UI on a throwaway database (backend on 3011): a user with
+  only a "Salary only" role (`hr.salary-components`) sees only "Salary
+  Structure" in HR; `/hr/attendance`, `/hr/salary-payments`,
+  `/hr/incentives`, `/hr/epf-esic` send them to Home;
+  `/hr/salary-components` opens.
+- **Not tested / risks:** none.
+- **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
 ## 2026-10-29 — Permissions v2: roles, groups, per-action control, conditions, hidden fields, audit log
 
 - **Request:** the client wants full freedom: build any roles and groups and

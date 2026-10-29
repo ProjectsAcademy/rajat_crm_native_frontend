@@ -136,17 +136,17 @@ anything older than a few weeks.
     `undefined` for an emptied Email, Address, Aadhar or PAN, so clearing one
     of them in edit mode keeps the old value. Phone was fixed on 2026-10-29
     (it decides the WhatsApp staff menu); the others are untouched.
-11. HR sub-screens (`app/(app)/hr/attendance.tsx`, ...) opened by URL by a
-    user who lacks that sub-module show the API's "You do not have
-    permission" error instead of redirecting: the HR layout guards `hr` (any
-    sub-module) and the HR hub hides the cards. Add
-    `useFeatureGuard('hr.attendance')` etc. per screen if it matters.
-12. `group_permissions` is no longer read since permissions v2 (2026-10-29).
-    Dropping it is a non-additive migration: only after both servers run v2
-    and nobody needs the rollback.
-13. An app build from before permissions v2 shows every button of a module
-    to limited users; the server refuses with a message. Release the new
-    app soon after the backend.
+11. `group_permissions` (the pre-v2 table: group → module keys) is no longer
+    read since permissions v2 (2026-10-29); migration `20261029140000_roles`
+    copied it into roles. It stays on purpose: (a) RULES.md 3 — migrations
+    are additive; (b) while a deploy runs, the old process still reads it
+    until pm2 restarts; (c) rollback — if v2 had to be reverted, the
+    previous backend would find its data unchanged (as of the release; role
+    changes made after it are not written back). Drop it in a cleanup
+    migration once both servers have run v2 for a few weeks.
+12. An app build from before permissions v2 shows every button of a module
+    to limited users; the server refuses with a message. Fix: the new APK
+    right after the backend release (owner's plan, 2026-10-29).
 
 ## C. Looks wrong but is intended
 
