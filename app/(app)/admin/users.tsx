@@ -79,12 +79,6 @@ export default function AdminUsersScreen() {
             {!item.isActive && <View style={[styles.badge, { backgroundColor: Colors.errorLight }]}><Text style={[styles.badgeText, { color: Colors.error }]}>Disabled</Text></View>}
           </View>
           {!!fullName && <Text style={styles.sub}>{fullName}</Text>}
-          {!!item.phone && (
-            <View style={styles.phoneRow}>
-              <Ionicons name="logo-whatsapp" size={12} color={Colors.textMuted} />
-              <Text style={styles.sub}>+91 {item.phone.slice(2)}</Text>
-            </View>
-          )}
           <View style={styles.groupRow}>
             {item.isSuperuser ? (
               <Text style={styles.groupHint}>Full access to all modules</Text>
@@ -180,7 +174,6 @@ const styles = StyleSheet.create({
   nameRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   username: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   sub:      { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
-  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   badge:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 },
   badgeText: { fontSize: 10, fontWeight: '700' },
   groupRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
