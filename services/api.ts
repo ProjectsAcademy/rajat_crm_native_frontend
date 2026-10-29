@@ -447,12 +447,16 @@ export interface AdminUser {
   id: number; username: string; email: string;
   firstName: string; lastName: string;
   isActive: boolean; isStaff: boolean; isSuperuser: boolean; isLegacyAccess: boolean;
+  /** Staff WhatsApp number as 91XXXXXXXXXX (the bot's staff menu), null = none. */
+  phone: string | null;
   lastLogin: string | null; dateJoined: string;
   groups: { id: number; name: string }[];
 }
 export interface AdminUserPayload {
   username?: string; password?: string; email?: string;
   firstName?: string; lastName?: string; isActive?: boolean; isLegacyAccess?: boolean;
+  /** Any Indian mobile format; '' clears it. */
+  phone?: string;
   groupIds?: number[];
 }
 export interface AdminGroup {

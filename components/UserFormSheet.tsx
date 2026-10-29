@@ -24,6 +24,7 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isLegacyAccess, setIsLegacyAccess] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<number[]>([]);
@@ -41,6 +42,8 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
     setEmail(user?.email ?? '');
     setFirstName(user?.firstName ?? '');
     setLastName(user?.lastName ?? '');
+    // Stored as 91XXXXXXXXXX; shown as the 10-digit number.
+    setPhone(user?.phone ? user.phone.slice(2) : '');
     setIsActive(user?.isActive ?? true);
     setIsLegacyAccess(user?.isLegacyAccess ?? false);
     setSelectedGroups(user?.groups.map((g) => g.id) ?? []);
@@ -65,17 +68,21 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
     if (!isEdit && !username.trim()) { setSaveError('Username is required.'); return; }
     if (!isEdit && password.length < 8) { setSaveError('Password must be at least 8 characters.'); return; }
     if (isEdit && password && password.length < 8) { setSaveError('New password must be at least 8 characters.'); return; }
+    // Same rule as the server (normalizeIndianMobile).
+    if (phone.trim() && !/^(91)?[6-9]\d{9}$/.test(phone.replace(/\D/g, ''))) {
+      setSaveError('WhatsApp number must be a 10-digit Indian mobile number.'); return;
+    }
 
     setSaving(true);
     try {
       if (isEdit && user) {
-        const payload: Partial<AdminUserPayload> = { email, firstName, lastName, isActive, isLegacyAccess };
+        const payload: Partial<AdminUserPayload> = { email, firstName, lastName, phone, isActive, isLegacyAccess };
         if (password) payload.password = password;
         await adminApi.users.update(user.id, payload);
         await adminApi.users.setGroups(user.id, selectedGroups);
       } else {
         await adminApi.users.create({
-          username: username.trim(), password, email, firstName, lastName,
+          username: username.trim(), password, email, firstName, lastName, phone,
           isLegacyAccess, groupIds: selectedGroups,
         });
       }
@@ -192,6 +199,21 @@ export default function UserFormSheet({ visible, onClose, onSaved, user }: Props
         textContentType="none"
         importantForAutofill="no"
       />
+
+      <Text style={st.label}>WhatsApp Number <Text style={st.opt}>(optional)</Text></Text>
+      <TextInput
+        style={[st.inputBox, { marginBottom: 4 }]}
+        value={phone}
+        onChangeText={setPhone}
+        placeholder="10-digit mobile number"
+        placeholderTextColor={Colors.textMuted}
+        keyboardType="phone-pad"
+        maxLength={16}
+        autoComplete="off"
+        textContentType="none"
+        importantForAutofill="no"
+      />
+      <Text style={[st.checkSub, { marginBottom: 12 }]}>Messages from this number to the business WhatsApp get the staff menu. One user per number.</Text>
 
       {isEdit && (
         <View style={st.switchRow}>
