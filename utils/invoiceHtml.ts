@@ -58,6 +58,15 @@ export function iconChip(svgPath: string): string {
   return `<span class="icon-chip"><svg width="12" height="12" viewBox="0 0 16 16">${svgPath}</svg></span>`;
 }
 
+/**
+ * Strips auto-prefixed item codes like "ITEM-260505-060006 - " or "ITEM001 - "
+ * from the description so customer-facing invoices only show the clean item name/description.
+ */
+export function cleanParticulars(desc: string | null | undefined): string {
+  if (!desc) return '';
+  return desc.replace(/^ITEM[-_\d][-\w]*\s*[-–—:]\s*/i, '').trim();
+}
+
 export function buildInvoiceHtml(invoice: InvoiceDetail): string {
   const isSales = invoice.invoiceType !== 'purchase';
   const partyName = isSales ? (invoice.customer?.customerName ?? '') : (invoice.vendor?.name ?? '');
@@ -66,7 +75,7 @@ export function buildInvoiceHtml(invoice: InvoiceDetail): string {
   const itemRows = invoice.items.map((it, i) => `
     <tr>
       <td class="c">${i + 1}</td>
-      <td class="l">${esc(it.description || '')}</td>
+      <td class="l">${esc(cleanParticulars(it.description))}</td>
       <td class="c">${fmtQty(it.quantity)}</td>
       <td class="r">${fmtAmt(it.unitPrice)}</td>
       <td class="r">${fmtAmt(it.total)}</td>

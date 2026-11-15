@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ordersApi, customersApi, projectsApi, inventoryApi, vendorsApi, OrderDetail } from '../services/api';
 import { Colors } from '../constants/colors';
 import { useCan } from '../store/auth';
+import { cleanParticulars } from '../utils/invoiceHtml';
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 interface LocalItem {
@@ -36,8 +37,8 @@ interface Props {
   onSaved: (newOrderId?: number) => void;
   order?: OrderDetail | null;
 }
-interface SearchItem { id: number; label: string; sub?: string }
-interface InvExtra   { unit: string; stock: number; price: string }
+interface SearchItem { id: number; label: string; sub?: string; name?: string }
+interface InvExtra   { unit: string; stock: number; price: string; name?: string }
 
 // ── Constants ───────────────────────────────────────────────────────────────────
 const STATUSES = [
@@ -280,7 +281,7 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
         const effectivePrice = (parseFloat(it.unitPrice || '0') || 0) * days;
         return {
           key: it.key,
-          description: it.description || it.inventoryLabel || '',
+          description: it.description ? cleanParticulars(it.description) : (cleanParticulars(it.inventoryLabel) || ''),
           quantity: it.quantity || '1',
           unitPrice: effectivePrice ? String(effectivePrice) : '',
         };
@@ -330,8 +331,8 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
         .then(({ data }) => {
           const map: Record<number, InvExtra> = {};
           const list = data.inventory.map(inv => {
-            map[inv.id] = { unit: inv.unit, stock: inv.currentStock, price: inv.unitPrice };
-            return { id: inv.id, label: `${inv.itemCode} - ${inv.name}`, sub: `Avail: ${inv.currentStock} ${inv.unit}` };
+            map[inv.id] = { unit: inv.unit, stock: inv.currentStock, price: inv.unitPrice, name: inv.name };
+            return { id: inv.id, label: `${inv.itemCode} - ${inv.name}`, sub: `Avail: ${inv.currentStock} ${inv.unit}`, name: inv.name };
           });
           setInventoryList(list);
           setInventoryMap(map);
@@ -438,7 +439,15 @@ export default function OrderFormSheet({ visible, onClose, onSaved, order }: Pro
         onSelect={item => {
           if (item && editingItemKey) {
             const extra = inventoryMap[item.id];
-            const patch = { inventoryId: item.id, inventoryLabel: item.label, inventoryUnit: extra?.unit ?? 'pcs', inventoryStock: extra?.stock ?? null, unitPrice: extra?.price ?? '' };
+            const cleanName = item.name || extra?.name || cleanParticulars(item.label);
+            const patch = {
+              inventoryId: item.id,
+              inventoryLabel: item.label,
+              inventoryUnit: extra?.unit ?? 'pcs',
+              inventoryStock: extra?.stock ?? null,
+              unitPrice: extra?.price ?? '',
+              description: cleanName,
+            };
             if (editingItemKey === '__new__') {
               // Create a brand-new item pre-filled with this inventory
               setItems(p => [...p, { ...makeItem(), ...patch }]);

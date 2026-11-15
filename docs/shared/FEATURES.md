@@ -93,7 +93,10 @@ professionally". Decisions confirmed with the owner:
   printed invoice and in the WhatsApp PDF.
 - Printed layout copies the client's paper bill book (letterhead constants in
   `utils/invoiceHtml.ts`, `COMPANY`). A second copy of the template is
-  `src/utils/invoicePdf.ts` in the backend — keep them identical.
+  `src/utils/invoicePdf.ts` in the backend — keep them identical. Auto-generated
+  item code prefixes (`ITEM-... - `) are stripped by `cleanParticulars` so customer
+  bills show clean item names/particulars rather than internal SKU codes. Order,
+  invoice and estimate forms default new items to the clean item name on selection.
 - WhatsApp (manual — decided with the owner 2026-10-27; the only automatic
   WhatsApp message is the payment reminder, see "WhatsApp messages to
   customers"): the "WhatsApp" button on a sales invoice that has a

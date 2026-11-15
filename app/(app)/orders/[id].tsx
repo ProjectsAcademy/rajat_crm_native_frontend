@@ -11,6 +11,7 @@ import PaymentFormSheet from '../../../components/PaymentFormSheet';
 import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
 import { useAuthStore, canOpen, useCan } from '../../../store/auth';
 import { confirmAndSendWhatsapp } from '../../../utils/whatsappSend';
+import { cleanParticulars } from '../../../utils/invoiceHtml';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: '#FFF8E1', text: '#F57F17' },
@@ -219,7 +220,7 @@ export default function OrderDetailScreen() {
                 <View key={it.id} style={[styles.itemRow, i > 0 && styles.itemBorder]}>
                   <View style={styles.itemLeft}>
                     {it.inventory && <Text style={styles.itemCode}>{it.inventory.itemCode}</Text>}
-                    <Text style={styles.itemDesc}>{it.description || it.inventory?.name || '—'}</Text>
+                    <Text style={styles.itemDesc}>{cleanParticulars(it.description) || it.inventory?.name || '—'}</Text>
                     <Text style={styles.itemMeta}>
                       {parseFloat(it.quantity).toFixed(2)} {it.inventory?.unit ?? 'pcs'} × {fmtAmt(it.unitPrice)}
                       {it.isRental && it.rentalDays > 1 ? ` × ${it.rentalDays} days` : ''}

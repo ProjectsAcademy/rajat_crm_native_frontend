@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { estimatesApi, customersApi, projectsApi, ordersApi, inventoryApi, EstimateDetail } from '../services/api';
 import { Colors } from '../constants/colors';
 import DatePickerModal from './DatePickerModal';
+import { cleanParticulars } from '../utils/invoiceHtml';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // inventoryId is optional — same convention as InvoiceFormSheet: picking from
@@ -34,7 +35,7 @@ interface Props {
   onSaved: (newEstimateId?: number) => void;
   estimate?: EstimateDetail | null;
 }
-interface SearchItem { id: number; label: string; sub?: string }
+interface SearchItem { id: number; label: string; sub?: string; name?: string }
 
 const STATUSES = [
   { key: 'draft',    label: 'Draft'    },
@@ -151,7 +152,7 @@ export default function EstimateFormSheet({ visible, onClose, onSaved, estimate 
   const [showProjectPicker,  setShowProjectPicker]  = useState(false);
   const [showOrderPicker,    setShowOrderPicker]    = useState(false);
   const [inventoryList,    setInventoryList]    = useState<SearchItem[]>([]);
-  const [inventoryMap,     setInventoryMap]     = useState<Record<number, { unit: string; price: string }>>({});
+  const [inventoryMap,     setInventoryMap]     = useState<Record<number, { unit: string; price: string; name?: string }>>({});
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [showInventoryPicker, setShowInventoryPicker] = useState(false);
   const [editingItemKey, setEditingItemKey] = useState<string | null>(null);
@@ -232,10 +233,10 @@ export default function EstimateFormSheet({ visible, onClose, onSaved, estimate 
       setLoadingInventory(true);
       inventoryApi.list({ limit: 500, active: true })
         .then(({ data }) => {
-          const map: Record<number, { unit: string; price: string }> = {};
+          const map: Record<number, { unit: string; price: string; name: string }> = {};
           const list = data.inventory.map(inv => {
-            map[inv.id] = { unit: inv.unit, price: inv.unitPrice };
-            return { id: inv.id, label: `${inv.itemCode} - ${inv.name}`, sub: inv.unit };
+            map[inv.id] = { unit: inv.unit, price: inv.unitPrice, name: inv.name };
+            return { id: inv.id, label: `${inv.itemCode} - ${inv.name}`, sub: inv.unit, name: inv.name };
           });
           setInventoryList(list);
           setInventoryMap(map);
@@ -290,7 +291,7 @@ export default function EstimateFormSheet({ visible, onClose, onSaved, estimate 
           key: `order-${it.id}`,
           inventoryId: it.inventory?.id ?? null,
           inventoryLabel: it.inventory ? `${it.inventory.itemCode} - ${it.inventory.name}` : '',
-          description: it.description || (it.inventory ? `${it.inventory.itemCode} - ${it.inventory.name}` : ''),
+          description: it.description ? cleanParticulars(it.description) : (it.inventory?.name ?? ''),
           quantity: it.quantity,
           unitPrice: unitPrice ? String(unitPrice) : '',
         };
@@ -352,7 +353,8 @@ export default function EstimateFormSheet({ visible, onClose, onSaved, estimate 
         onSelect={item => {
           if (item && editingItemKey) {
             const extra = inventoryMap[item.id];
-            const patch = { inventoryId: item.id, inventoryLabel: item.label, description: item.label, unitPrice: extra?.price ?? '' };
+            const cleanName = item.name || extra?.name || cleanParticulars(item.label);
+            const patch = { inventoryId: item.id, inventoryLabel: item.label, description: cleanName, unitPrice: extra?.price ?? '' };
             if (editingItemKey === '__new__') {
               setItems(p => [...p, { ...makeItem(), ...patch }]);
             } else {

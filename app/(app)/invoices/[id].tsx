@@ -9,7 +9,7 @@ import { invoicesApi, InvoiceDetail } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
 import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
-import { buildInvoiceHtml } from '../../../utils/invoiceHtml';
+import { buildInvoiceHtml, cleanParticulars } from '../../../utils/invoiceHtml';
 import { useCan } from '../../../store/auth';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -304,7 +304,7 @@ export default function InvoiceDetailScreen() {
               {invoice.items.map((it, i) => (
                 <View key={it.id} style={[styles.itemRow, i > 0 && styles.itemBorder]}>
                   <View style={styles.itemLeft}>
-                    <Text style={styles.itemDesc}>{it.description || '—'}</Text>
+                    <Text style={styles.itemDesc}>{cleanParticulars(it.description) || '—'}</Text>
                     <Text style={styles.itemMeta}>{parseFloat(it.quantity).toFixed(2)} × {fmtAmt(it.unitPrice)}{parseFloat(it.taxRate)>0 ? ` + ${it.taxRate}% tax` : ''}</Text>
                   </View>
                   <Text style={styles.itemTotal}>{fmtAmt(it.total)}</Text>

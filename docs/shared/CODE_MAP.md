@@ -627,10 +627,11 @@ Exported from `src/lib`, `src/utils`, `src/middleware`, plus functions local to 
 | fmtQty | src/utils/invoicePdf.ts:45 | — | num | utils/invoicePdf.ts |
 | fmtAmt | src/utils/invoicePdf.ts:49 | — | num | utils/invoicePdf.ts |
 | iconChip | src/utils/invoicePdf.ts:58 | — | — | utils/invoicePdf.ts, utils/statementPdf.ts |
-| buildInvoiceHtml | src/utils/invoicePdf.ts:84 | — | esc, num, fmtDate, fmtQty, fmtAmt, iconChip | utils/invoicePdf.ts |
-| renderHtmlToPdf | src/utils/invoicePdf.ts:255 | — | renderNow | utils/invoicePdf.ts, utils/statementPdf.ts |
-| renderNow | src/utils/invoicePdf.ts:261 | — | — | utils/invoicePdf.ts |
-| renderInvoicePdf | src/utils/invoicePdf.ts:282 | — | buildInvoiceHtml, renderHtmlToPdf | lib/whatsappBot.ts, routes/invoices.ts |
+| cleanParticulars | src/utils/invoicePdf.ts:88 | — | — | utils/invoicePdf.ts |
+| buildInvoiceHtml | src/utils/invoicePdf.ts:93 | — | esc, num, fmtDate, fmtQty, fmtAmt, iconChip, cleanParticulars | utils/invoicePdf.ts |
+| renderHtmlToPdf | src/utils/invoicePdf.ts:264 | — | renderNow | utils/invoicePdf.ts, utils/statementPdf.ts |
+| renderNow | src/utils/invoicePdf.ts:270 | — | — | utils/invoicePdf.ts |
+| renderInvoicePdf | src/utils/invoicePdf.ts:291 | — | buildInvoiceHtml, renderHtmlToPdf | lib/whatsappBot.ts, routes/invoices.ts |
 | isoToDisplay | src/utils/statementPdf.ts:17 | — | — | utils/statementPdf.ts |
 | todayIso | src/utils/statementPdf.ts:21 | — | todayKey | utils/statementPdf.ts |
 | amt | src/utils/statementPdf.ts:25 | — | — | utils/statementPdf.ts |

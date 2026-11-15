@@ -6,6 +6,22 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-11-15 — Clean invoice particulars (strip item code prefix)
+
+- **Request:** Client highlighted that printed/PDF invoices were unnecessarily flooded with long item codes (e.g., `ITEM-260505-060006 - LED PAR LIGHT`) under the Particulars column.
+- **Done by:** Antigravity (Gemini 3.8 Flash)
+- **Changes:**
+  - Backend: `src/utils/invoicePdf.ts` (`cleanParticulars` helper strips `ITEM-... - ` prefix from invoice line items), `test/orders.test.ts` (unit tests for cleanParticulars).
+  - App: `utils/invoiceHtml.ts` (matching `cleanParticulars` helper), `app/(app)/invoices/[id].tsx` and `app/(app)/orders/[id].tsx` (use `cleanParticulars` in UI list), `components/InvoiceFormSheet.tsx`, `components/OrderFormSheet.tsx`, `components/EstimateFormSheet.tsx` (picker defaults `description` to item name instead of `${itemCode} - ${name}`, and converts orders cleanly).
+- **Database:** none (resolved cleanly at presentation and form layer, preserving existing historical data safely).
+- **Decisions:** Strip `ITEM... - ` prefixes dynamically in invoice templates and detail UI to instantly clean all existing records without touching production database tables; forms default new lines to clean item names. Custom notes/descriptions remain untouched.
+- **Tested:** Node regex test suite across multiple item code formats; backend automated test suite (`test/orders.test.ts` 11 tests passed); `tsc --noEmit` verified (backend 0 errors, frontend 85 baseline errors).
+- **Not tested / risks:** physical thermal/paper printing (HTML and PDF structure verified).
+- **Deploy status:** committed on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
 ## 2026-10-29 — KNOWN_ISSUES D: answered question removed
 
 - **Request:** the owner asked what is still open; the list had a stale
