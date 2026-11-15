@@ -97,6 +97,10 @@ professionally". Decisions confirmed with the owner:
   item code prefixes (`ITEM-... - `) are stripped by `cleanParticulars` so customer
   bills show clean item names/particulars rather than internal SKU codes. Order,
   invoice and estimate forms default new items to the clean item name on selection.
+- App screen (`/invoices`): responsive multi-column card grid — 3 columns on desktop
+  (>=1024px), 2 columns on tablet (>=640px), and 1 column on phone (<640px) with
+  uniform card sizing, placeholder padding for incomplete rows, and side-by-side
+  search/filter controls on wide screens.
 - WhatsApp (manual — decided with the owner 2026-10-27; the only automatic
   WhatsApp message is the payment reminder, see "WhatsApp messages to
   customers"): the "WhatsApp" button on a sales invoice that has a
