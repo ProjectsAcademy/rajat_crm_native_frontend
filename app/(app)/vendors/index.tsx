@@ -10,6 +10,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 import { vendorsApi, VendorSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import VendorFormSheet from '../../../components/VendorFormSheet';
+import { useCan } from '../../../store/auth';
 
 const ACTIVE_FILTERS = [
   { label: 'All',      value: undefined },
@@ -18,6 +19,7 @@ const ACTIVE_FILTERS = [
 ];
 
 export default function VendorsScreen() {
+  const may = useCan();
   const [vendors, setVendors]       = useState<VendorSummary[]>([]);
   const [search, setSearch]         = useState('');
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
@@ -155,9 +157,11 @@ export default function VendorsScreen() {
       )}
 
       {/* FAB — Add Vendor */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('vendors.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       {/* Create form */}
       <VendorFormSheet

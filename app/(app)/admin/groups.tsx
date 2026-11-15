@@ -81,10 +81,12 @@ export default function AdminGroupsScreen() {
         <Ionicons name="people-circle-outline" size={22} color={Colors.info} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.name}>{item.name}</Text>
+        <Text style={styles.name}>{item.name}{item.isActive ? '' : ' (inactive)'}</Text>
         {!!item.description && <Text style={styles.sub}>{item.description}</Text>}
         <Text style={styles.meta}>
-          {item.memberCount} member{item.memberCount === 1 ? '' : 's'} · {item.features.length} module{item.features.length === 1 ? '' : 's'}
+          {item.memberCount} member{item.memberCount === 1 ? '' : 's'} · {item.roles.length
+            ? `roles: ${item.roles.map((r) => r.name).join(', ')}`
+            : 'no roles — members get nothing from this group'}
         </Text>
       </View>
       <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)} hitSlop={8}>
@@ -114,7 +116,7 @@ export default function AdminGroupsScreen() {
           ListEmptyComponent={
             <View style={styles.center}>
               <Ionicons name="people-circle-outline" size={40} color={Colors.textMuted} />
-              <Text style={styles.errorText}>No groups yet. Create one to start assigning module access.</Text>
+              <Text style={styles.errorText}>No groups yet. A group gathers users and gives them its roles.</Text>
             </View>
           }
           refreshControl={

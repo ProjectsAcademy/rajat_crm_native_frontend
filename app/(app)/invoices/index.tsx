@@ -8,6 +8,7 @@ import { Colors } from '../../../constants/colors';
 import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
+import { useCan } from '../../../store/auth';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,        text: Colors.textMuted  },
@@ -27,6 +28,7 @@ function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-IN',{day
 const FILTERS = ['All', 'Sales', 'Purchase'];
 
 export default function InvoicesScreen() {
+  const may = useCan();
   const { customerId, customerName } = useLocalSearchParams<{ customerId?: string; customerName?: string }>();
   const [items, setItems]     = useState<InvoiceSummary[]>([]);
   const [search, setSearch]   = useState('');
@@ -114,9 +116,11 @@ export default function InvoicesScreen() {
         />
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('invoices.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       <InvoiceFormSheet
         visible={showForm}

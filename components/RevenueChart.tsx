@@ -19,7 +19,7 @@ import {
   CustomerAmountRow,
   AuthUser,
 } from '../services/api';
-import { userHasFeature } from '../store/auth';
+import { canOpen } from '../store/auth';
 import { Colors } from '../constants/colors';
 
 const COLLECTED_COLOR = '#067D62';
@@ -115,7 +115,7 @@ interface Props {
 }
 
 export default function RevenueChart({ user }: Props) {
-  const canView = userHasFeature(user, 'revenue');
+  const canView = canOpen(user, 'revenue');
   const [monthly, setMonthly] = useState<RevenueMonth[]>([]);
   const [snapshot, setSnapshot] = useState<RevenueSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -153,8 +153,8 @@ export default function RevenueChart({ user }: Props) {
 
   const customerRoute = (customerId: number | null): string | null => {
     if (!customerId) return null;
-    if (userHasFeature(user, 'ledger')) return `/(app)/ledger/${customerId}`;
-    if (userHasFeature(user, 'customers')) return `/(app)/customers/${customerId}`;
+    if (canOpen(user, 'ledger')) return `/(app)/ledger/${customerId}`;
+    if (canOpen(user, 'customers')) return `/(app)/customers/${customerId}`;
     return null;
   };
 

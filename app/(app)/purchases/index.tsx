@@ -7,6 +7,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 import { purchasesApi, PurchaseSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import PurchaseFormSheet from '../../../components/PurchaseFormSheet';
+import { useCan } from '../../../store/auth';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,        text: Colors.textMuted  },
@@ -25,6 +26,7 @@ function fmtAmt(v: string) { const n=parseFloat(v||'0'); if(n>=100000) return `â
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}); }
 
 export default function PurchasesScreen() {
+  const may = useCan();
   const [items, setItems]     = useState<PurchaseSummary[]>([]);
   const [search, setSearch]   = useState('');
   const [loading, setLoading] = useState(true);
@@ -115,9 +117,11 @@ export default function PurchasesScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('purchases.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       <PurchaseFormSheet visible={showForm} onClose={() => setShowForm(false)} onSaved={onSaved} />
     </SafeAreaView>

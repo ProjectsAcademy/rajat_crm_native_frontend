@@ -130,7 +130,8 @@ for (const script of ['scripts/verify.js', 'scripts/code-map.js']) {
 }
 
 const map = run(process.execPath, [path.join(HERE, 'scripts/code-map.js'), '--check']);
-if (map.status === 0) ok('docs/shared/CODE_MAP.md matches the code');
+if (map.status === 0) ok('docs/shared/CODE_MAP.md matches the code; every endpoint checks a permission');
+else if (map.status === 3) fail(`${map.out.trim()} — add can('<key>') to the route (keys: src/lib/features.ts), or list it in OPEN_ENDPOINTS (scripts/code-map.js) if it is open on purpose`);
 else fail('docs/shared/CODE_MAP.md is out of date — run `npm run map` and commit the result in both repos');
 
 // ─── 3. Rules on the added lines and commit messages ─────────────────────────

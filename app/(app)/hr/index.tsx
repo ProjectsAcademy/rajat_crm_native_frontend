@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dashboardApi, DashboardResponse } from '../../../services/api';
-import { useAuthStore, userHasFeature } from '../../../store/auth';
+import { useAuthStore, canOpen } from '../../../store/auth';
 import { Colors } from '../../../constants/colors';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 
@@ -19,7 +19,7 @@ const MODULES = [
 export default function HRIndexScreen() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
-  const visibleModules = MODULES.filter((m) => userHasFeature(user, m.feature));
+  const visibleModules = MODULES.filter((m) => canOpen(user, m.feature));
   const [kpis, setKpis] = useState<DashboardResponse['kpis'] | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { gstApi, GstRecord } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import GstFormSheet from '../../../components/GstFormSheet';
+import { useCan } from '../../../store/auth';
 
 function fmtAmt(v: string) {
   const n = parseFloat(v || '0');
@@ -16,6 +17,7 @@ function fmtDate(d: string) {
 }
 
 export default function GstDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [record, setRecord] = useState<GstRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,14 +100,18 @@ export default function GstDetailScreen() {
           </View>
 
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="create-outline" size={15} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.6 }]} onPress={handleDelete} disabled={deleting}>
-              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
-              <Text style={styles.deleteBtnText}>Delete</Text>
-            </TouchableOpacity>
+            {may('gst.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="create-outline" size={15} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+            {may('gst.delete') && (
+              <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.6 }]} onPress={handleDelete} disabled={deleting}>
+                {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
+                <Text style={styles.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

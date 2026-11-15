@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { employeesApi, Employee, EmployeePayload } from '../services/api';
 import { Colors } from '../constants/colors';
+import { useCan } from '../store/auth';
 
 // ─── Skill type options ───────────────────────────────────────────────────────
 
@@ -69,6 +70,7 @@ function Field({
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function EmployeeFormSheet({ visible, employee, onClose, onSaved }: Props) {
+  const may = useCan();
   const isEdit = !!employee;
 
   // ── Form state ──
@@ -118,7 +120,9 @@ export default function EmployeeFormSheet({ visible, employee, onClose, onSaved 
     try {
       const payload: EmployeePayload = {
         name: name.trim(),
-        phone:       phone.trim()    || undefined,
+        // Always sent: '' clears it, so the number loses the staff menu on
+        // the business WhatsApp (WHATSAPP_AUTOMATION_PLAN.md step 0.3).
+        phone:       phone.trim(),
         email:       email.trim()    || undefined,
         address:     address.trim()  || undefined,
         aadharNo:    aadharNo.trim() || undefined,
@@ -190,7 +194,10 @@ export default function EmployeeFormSheet({ visible, employee, onClose, onSaved 
         {/* ── Personal ── */}
         <Text style={s.sectionLabel}>Personal</Text>
         <Field label="Full Name"  value={name}  onChangeText={setName}  required />
-        <Field label="Phone"      value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <Field
+          label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad"
+          hint="Also their WhatsApp: messages from this number to the business WhatsApp get the staff menu."
+        />
         <Field label="Email"      value={email} onChangeText={setEmail} keyboardType="email-address" />
         <Field label="Address"    value={address} onChangeText={setAddress} />
 
@@ -215,15 +222,20 @@ export default function EmployeeFormSheet({ visible, employee, onClose, onSaved 
           </View>
         </View>
 
-        <View style={s.row}>
-          <View style={{ flex: 1 }}>
-            <Field label="Daily Wage (₹)" value={dailyWage} onChangeText={setDailyWage} keyboardType="decimal-pad" placeholder="0" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Field label="CTC/Month (₹)" value={ctc} onChangeText={setCtc} keyboardType="decimal-pad" placeholder="0" />
-          </View>
-        </View>
-        <Field label="Basic Salary (₹)" value={basicSalary} onChangeText={setBasicSalary} keyboardType="decimal-pad" placeholder="0" />
+        {/* Wages are a hidden field (employees.fields.salary). */}
+        {may('employees.fields.salary') && (
+          <>
+            <View style={s.row}>
+              <View style={{ flex: 1 }}>
+                <Field label="Daily Wage (₹)" value={dailyWage} onChangeText={setDailyWage} keyboardType="decimal-pad" placeholder="0" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Field label="CTC/Month (₹)" value={ctc} onChangeText={setCtc} keyboardType="decimal-pad" placeholder="0" />
+              </View>
+            </View>
+            <Field label="Basic Salary (₹)" value={basicSalary} onChangeText={setBasicSalary} keyboardType="decimal-pad" placeholder="0" />
+          </>
+        )}
 
         {/* ── Identity ── */}
         <Text style={s.sectionLabel}>Identity Documents</Text>

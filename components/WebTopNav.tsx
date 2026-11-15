@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore, userHasFeature } from '../store/auth';
+import { useAuthStore, canOpen } from '../store/auth';
 import { Colors } from '../constants/colors';
 
 // Desktop & tablet/mobile-web top navigation bar. Replaces the bottom tab bar
@@ -57,7 +57,7 @@ export default function WebTopNav() {
   const initials = (user?.username ?? '?').slice(0, 2).toUpperCase();
   const role = user?.isSuperuser ? 'Administrator' : 'User';
   const accessibleLinks = LINKS.filter(
-    (l) => !l.features || l.features.some((f) => userHasFeature(user, f))
+    (l) => !l.features || l.features.some((f) => canOpen(user, f))
   );
 
   return (

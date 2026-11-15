@@ -10,6 +10,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 import { employeesApi, EmployeeSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import EmployeeFormSheet from '../../../components/EmployeeFormSheet';
+import { useCan } from '../../../store/auth';
 
 const SKILL_FILTERS = [
   { label: 'All',        value: undefined },
@@ -33,6 +34,7 @@ function formatWage(val: string) {
 }
 
 export default function EmployeesScreen() {
+  const may = useCan();
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [search, setSearch] = useState('');
   const [skillFilter, setSkillFilter] = useState<string | undefined>(undefined);
@@ -166,9 +168,11 @@ export default function EmployeesScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('employees.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       <EmployeeFormSheet
         visible={showForm}

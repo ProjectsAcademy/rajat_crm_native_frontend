@@ -74,11 +74,21 @@ docs/                              this file, FRONTEND_UI_RULES.md, shared/ (mir
   (web `localStorage`, native `expo-secure-store`). The key is used in
   `store/auth.ts`, `services/api.ts` and `hooks/useMediaUpload.ts` — never
   rename it.
-- `userHasFeature(user, key)`: superuser → true; permissions missing → true;
-  exact key or any `key.*` child → true.
-- `useFeatureGuard(...keys)`: in every module `_layout.tsx`; redirects to Home
-  when the user has none of the keys; also records the module in
-  `store/recents.ts` (Home "Recently visited").
+- Permissions (docs/shared/ARCHITECTURE.md "Permissions"): the user's
+  `permissions` are catalog keys with parents expanded and denied keys left
+  out (`permissionModel: 2`).
+  - `can(user, key)` = `userHasFeature`: superuser → true; permissions
+    missing → true; exact key, or for a module key any key below it. With an
+    older server (no `permissionModel`) a held parent covers its children.
+  - `useCan()`: the same for the signed-in user as a hook —
+    `const may = useCan(); {may('orders.payments.add') && <Button/>}`.
+  - `canOpen(user, module)`: the module's `view` (for `hr`, any sub-module's
+    view) — hub cards, menus, the Inventory tab, links to other modules.
+  - `refresh()`: re-reads `/me`; called when the app returns to the
+    foreground (`app/(app)/_layout.tsx`).
+- `useFeatureGuard(...modules)`: in every module `_layout.tsx`; redirects to
+  Home when the user may open none of them (`canOpen`); also records the
+  module in `store/recents.ts` (Home "Recently visited").
 - `store/payrollMonth.ts`: payroll month shared by the salary screens (clamped
   to the current month).
 - On a web deep link the user can arrive after the first render — effects that
@@ -110,7 +120,7 @@ They are maintained by hand — update them whenever the backend shape changes.
 | `LedgerEntrySheet` | Ledger adjustments (discount / write-off / charge / refund) and opening balance |
 | `LedgerSheetFrame` | Shared web-dialog / native-modal shell for the two ledger sheets |
 | `SalaryComponentFormSheet`, `SalaryPaymentSheet`, `AttendanceEditSheet` | HR forms |
-| `UserFormSheet`, `GroupFormSheet` | Admin |
+| `UserFormSheet` (groups, roles for the user, link to effective access), `GroupFormSheet` (roles, members), `RoleFormSheet` (permission matrix, conditions) | Admin (`app/(app)/admin/`: index, users, groups, roles, access, audit) |
 | `SearchPickerModal`, `DatePickerModal`, `MonthYearPickerModal` | Custom pickers (no native selects). `OrderFormSheet` has its own inline SearchPickerModal |
 | `MediaSection`, `CameraUploadSheet` | Attachments on detail screens (upload via `useMediaUpload`, XHR) |
 | `RevenueChart`, `DashboardCalendar`, `ModuleCard` | Dashboard widgets and presentational module card |

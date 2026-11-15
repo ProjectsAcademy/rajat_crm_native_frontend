@@ -8,6 +8,7 @@ import { Colors } from '../../../constants/colors';
 import CustomerFilterBanner from '../../../components/CustomerFilterBanner';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import EstimateFormSheet from '../../../components/EstimateFormSheet';
+import { useCan } from '../../../store/auth';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:    { bg: Colors.border,       text: Colors.textMuted },
@@ -29,6 +30,7 @@ function fmtDate(d: string) {
 const FILTERS = ['All', 'Draft', 'Sent', 'Accepted', 'Rejected'];
 
 export default function EstimatesScreen() {
+  const may = useCan();
   const { customerId, customerName } = useLocalSearchParams<{ customerId?: string; customerName?: string }>();
   const [items, setItems]     = useState<EstimateSummary[]>([]);
   const [search, setSearch]   = useState('');
@@ -134,9 +136,11 @@ export default function EstimatesScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('estimates.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       <EstimateFormSheet
         visible={showForm}

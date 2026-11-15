@@ -7,6 +7,7 @@ import { purchasesApi, stockApi, PurchaseDetail, StockMovement } from '../../../
 import { Colors } from '../../../constants/colors';
 import PurchaseFormSheet from '../../../components/PurchaseFormSheet';
 import StockEntryFormSheet, { PurchaseItemOption } from '../../../components/StockEntryFormSheet';
+import { useCan } from '../../../store/auth';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: Colors.border,        text: Colors.textMuted },
@@ -25,6 +26,7 @@ function fmtAmt(v: string) { const n=parseFloat(v||'0'); if(n>=100000) return `â
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
 
 export default function PurchaseDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [purchase,      setPurchase]      = useState<PurchaseDetail | null>(null);
   const [loading,       setLoading]       = useState(true);
@@ -136,16 +138,20 @@ export default function PurchaseDetailScreen() {
 
           {/* Edit / Delete actions */}
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="create-outline" size={15} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.5 }]} onPress={handleDelete} disabled={deleting}>
-              {deleting
-                ? <ActivityIndicator size="small" color={Colors.error} />
-                : <><Ionicons name="trash-outline" size={15} color={Colors.error} /><Text style={styles.deleteBtnText}>Delete</Text></>
-              }
-            </TouchableOpacity>
+            {may('purchases.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="create-outline" size={15} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+            {may('purchases.delete') && (
+              <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.5 }]} onPress={handleDelete} disabled={deleting}>
+                {deleting
+                  ? <ActivityIndicator size="small" color={Colors.error} />
+                  : <><Ionicons name="trash-outline" size={15} color={Colors.error} /><Text style={styles.deleteBtnText}>Delete</Text></>
+                }
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -277,10 +283,12 @@ export default function PurchaseDetailScreen() {
                 <View style={styles.countBadge}><Text style={styles.countBadgeText}>{stockEntries.length}</Text></View>
               )}
             </View>
-            <TouchableOpacity style={styles.addEntryBtn} onPress={() => setShowAddEntry(true)}>
-              <Ionicons name="add" size={14} color="#111" />
-              <Text style={styles.addEntryBtnText}>Add Entry</Text>
-            </TouchableOpacity>
+            {(may('purchases.stock-entries') || may('stock.create')) && (
+              <TouchableOpacity style={styles.addEntryBtn} onPress={() => setShowAddEntry(true)}>
+                <Ionicons name="add" size={14} color="#111" />
+                <Text style={styles.addEntryBtnText}>Add Entry</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {loadingEntries ? (
@@ -322,20 +330,24 @@ export default function PurchaseDetailScreen() {
                       </Text>
                     </View>
                     <View style={styles.stockEntryActions}>
-                      <TouchableOpacity
-                        onPress={() => setEditingEntry(entry)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        style={styles.entryActionBtn}
-                      >
-                        <Ionicons name="create-outline" size={16} color={Colors.accent} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleDeleteEntry(entry)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        style={styles.entryActionBtn}
-                      >
-                        <Ionicons name="trash-outline" size={16} color={Colors.error} />
-                      </TouchableOpacity>
+                      {(may('purchases.stock-entries') || may('stock.edit')) && (
+                        <TouchableOpacity
+                          onPress={() => setEditingEntry(entry)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={styles.entryActionBtn}
+                        >
+                          <Ionicons name="create-outline" size={16} color={Colors.accent} />
+                        </TouchableOpacity>
+                      )}
+                      {(may('purchases.stock-entries') || may('stock.delete')) && (
+                        <TouchableOpacity
+                          onPress={() => handleDeleteEntry(entry)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={styles.entryActionBtn}
+                        >
+                          <Ionicons name="trash-outline" size={16} color={Colors.error} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 );

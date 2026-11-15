@@ -107,7 +107,7 @@ function collectFunctions(file, text) {
 for (const dir of ['src/lib', 'src/utils', 'src/middleware']) {
   for (const f of walk(path.join(BE, dir), ['.ts'])) collectFunctions(f, read(f));
 }
-const MIDDLEWARE = new Set(['requireAuth', 'requireStaff', 'requirePermission', 'requireAnyPermission', 'requireSuperAdmin']);
+const MIDDLEWARE = new Set(['requireAuth', 'requireStaff', 'requirePermission', 'requireAnyPermission', 'requireModulePermission', 'requireSuperAdmin', 'can']);
 
 function helperCalls(body, ownFile) {
   const names = [];
@@ -130,8 +130,22 @@ const mounts = [...appText.matchAll(/^app\.use\('([^']+)',\s*(\w+)\)/gm)]
 // Permission middleware on a router.use()/route line. `fileText` resolves
 // requireAnyPermission(SOME_KEYS) to `const SOME_KEYS = ['a', 'b']`, and a
 // file's own require*() middleware is shown by name.
-function permissionOf(text, fileText, rel) {
+// requireModulePermission('x', { readers, writers }) depends on the method:
+// GET → x or a reader, anything else → x (or a writer).
+function permissionOf(text, fileText, rel, method = '') {
   const keys = [...text.matchAll(/requirePermission\('([^']+)'\)/g)].map((m) => m[1]);
+  // can('a', 'b', ...PICKERS): a or b, plus the actions listed in PICKERS
+  // (forms of other modules that may read this list).
+  for (const m of text.matchAll(/(?<![\w.])can\(([^)]*)\)/g)) {
+    const own = [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+    const spread = /\.\.\.(\w+)/.exec(m[1]);
+    const readers = spread ? [...(((new RegExp(`const ${spread[1]}\\b[^=]*=\\s*\\[([^\\]]*)\\]`).exec(fileText) || [])[1] || '').matchAll(/'([^']+)'/g))].map((x) => x[1]) : [];
+    keys.push(own.join(' or ') + (readers.length ? ` (read also by ${readers.join(', ')})` : ''));
+  }
+  for (const m of text.matchAll(/requireModulePermission\('([^']+)'(?:,\s*\{([^}]*)\})?\)/g)) {
+    const list = (name) => [...(((new RegExp(`${name}:\\s*\\[([^\\]]*)\\]`).exec(m[2] || '') || [])[1] || '').matchAll(/'([^']+)'/g))].map((x) => x[1]);
+    keys.push([m[1], ...(method === 'get' ? list('readers') : list('writers'))].join(' or '));
+  }
   for (const m of text.matchAll(/requireAnyPermission\(([^)]*)\)/g)) {
     let arg = m[1].trim();
     if (!arg.includes("'")) arg = (new RegExp(`const ${arg}\\b[^=]*=\\s*\\[([^\\]]*)\\]`).exec(fileText) || [])[1] || arg;
@@ -153,17 +167,26 @@ for (const { prefix, file } of mounts) {
   collectFunctions(fullFile, text);
   const tops = topLevelStarts(text);
 
-  const uses = [...text.matchAll(/^router\.use\((?:'([^']+)',\s*)?([^\n]*)\);/gm)].map((m) => ({ scope: m[1] || '', perms: permissionOf(m[2], text, rel), auth: /requireAuth/.test(m[2]) }));
+  const uses = [...text.matchAll(/^router\.use\((?:'([^']+)',\s*)?([^\n]*)\);/gm)].map((m) => ({
+    scope: m[1] || '', perms: (method) => permissionOf(m[2], text, rel, method), auth: /requireAuth/.test(m[2]),
+    module: (/requireModulePermission\('([^']+)'/.exec(m[2]) || [])[1],
+  }));
   const routes = [...text.matchAll(/^router\.(get|post|put|patch|delete)\('([^']*)',?([^\n]*)/gm)];
   const mod = { file, rel, prefix, endpoints: [], perms: new Set() };
   routes.forEach((m) => {
     const body = bodyFrom(text, tops, m.index);
     const sub = m[2];
     const scoped = uses.filter((u) => !u.scope || sub === u.scope || sub.startsWith(`${u.scope}/`));
-    const perms = [...scoped.flatMap((u) => u.perms), ...permissionOf(m[3], text, rel)];
+    const perms = [...scoped.flatMap((u) => u.perms(m[1])), ...permissionOf(m[3], text, rel, m[1])];
     const auth = scoped.some((u) => u.auth) || /requireAuth/.test(m[3]);
-    const permission = perms.length ? perms.join(' + ') : auth ? 'auth only (any check is in the handler)' : 'public';
-    mod.perms.add(perms.length ? perms.join(' + ') : auth ? 'auth only' : 'public');
+    // Checks made inside the handler with the record or the body.
+    const inner = [...new Set([...body.matchAll(/\b(?:ensure\(req, res|holds\(req), '([^']+)'/g)].map((x) => x[1]))];
+    const permission = (perms.length ? perms.join(' + ') : auth ? 'auth only (any check is in the handler)' : 'public')
+      + (inner.length ? ` · in handler: ${inner.join(', ')}` : '');
+    // A requireModulePermission router is listed under its own key; the
+    // endpoint rows show who else may read (GET) or write.
+    const own = scoped.find((u) => u.module)?.module;
+    mod.perms.add(own ? `${own} (+ readers)` : perms.length ? perms.join(' + ') : auth ? 'auth only' : 'public');
     const fullPath = (prefix + (sub === '/' ? '' : sub)) || '/';
     const ep = {
       method: m[1].toUpperCase(), sub, fullPath, file: rel, line: lineAt(text, m.index), permission,
@@ -365,6 +388,19 @@ out();
 out(unusedFns.length ? `- ${unusedFns.map((f) => f.name).join(', ')}` : '- none');
 out();
 
+// Every endpoint must check a permission, except these (public by design, or
+// open to every signed-in user). verify fails on any other.
+const OPEN_ENDPOINTS = new Set([
+  'GET /api/whatsapp/webhook', 'POST /api/whatsapp/webhook', 'POST /api/auth/login', 'GET /api/auth/me',
+  'POST /api/auth/logout', 'GET /api/dashboard',
+]);
+const unguarded = endpoints.filter((e) => /^(auth only|public)/.test(e.permission) && !OPEN_ENDPOINTS.has(`${e.method} ${e.fullPath}`));
+out('Endpoints without a permission check (verify fails on these; open ones are listed in OPEN_ENDPOINTS, scripts/code-map.js):');
+out();
+if (unguarded.length) unguarded.forEach((e) => out(`- ${e.method} ${e.fullPath} (${e.file}:${e.line})`));
+else out('- none');
+out();
+
 const map = L.join('\n') + '\n';
 let stale = false;
 for (const dir of [BE, FE]) {
@@ -374,6 +410,10 @@ for (const dir of [BE, FE]) {
   if (CHECK) { stale = true; continue; }
   fs.writeFileSync(target, map);
   console.log(`wrote ${path.basename(dir)}/${OUT}`);
+}
+if (CHECK && unguarded.length) {
+  console.error(`Endpoints without a permission check: ${unguarded.map((e) => `${e.method} ${e.fullPath}`).join(', ')}`);
+  process.exit(3);
 }
 if (CHECK && stale) {
   console.error(`${OUT} is out of date — run \`npm run map\` and commit the result in both repositories.`);

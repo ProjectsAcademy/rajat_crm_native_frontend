@@ -67,7 +67,8 @@ Opened from the parent folder with both repos? See `docs/shared/WORKSPACE_GUIDE.
 4. No native `<select>`: use `SearchPickerModal` / `DatePickerModal` /
    `MonthYearPickerModal`.
 5. `Alert.alert` does nothing on web — use `utils/dialogs.ts`.
-6. Gate UI with `userHasFeature` / `useFeatureGuard`; the backend enforces.
+6. Gate every button with its action (`useCan()`), menus with `canOpen`,
+   module layouts with `useFeatureGuard`; the backend enforces.
 7. Keep `utils/invoiceHtml.ts` in sync with the backend's
    `src/utils/invoicePdf.ts`.
 8. Uploads use XHR (`useMediaUpload`), never axios.

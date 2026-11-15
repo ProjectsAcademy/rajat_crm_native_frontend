@@ -10,6 +10,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 import { tendersApi, TenderSummary } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import TenderFormSheet from '../../../components/TenderFormSheet';
+import { useCan } from '../../../store/auth';
 
 const STATUS_FILTERS = [
   { label: 'All', value: undefined },
@@ -73,6 +74,7 @@ function compareTenders(a: TenderSummary, b: TenderSummary, key: SortKey, dir: '
 }
 
 export default function TendersScreen() {
+  const may = useCan();
   const isWeb = Platform.OS === 'web';
 
   const [tenders, setTenders] = useState<TenderSummary[]>([]);
@@ -266,9 +268,11 @@ export default function TendersScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#111" />
-      </TouchableOpacity>
+      {may('tenders.create') && (
+        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={26} color="#111" />
+        </TouchableOpacity>
+      )}
 
       <TenderFormSheet
         visible={showForm}

@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dashboardApi, ledgerApi } from '../../services/api';
 import { fmtMoney } from '../../utils/ledgerFormat';
-import { useAuthStore, userHasFeature } from '../../store/auth';
+import { useAuthStore, canOpen } from '../../store/auth';
 import { Colors } from '../../constants/colors';
 import WebHubPage, { HubCard } from '../../components/WebHubPage';
 
@@ -22,10 +22,10 @@ const CARDS = [
 export default function FinanceScreen() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
-  const visibleCards = CARDS.filter((c) => userHasFeature(user, c.feature));
+  const visibleCards = CARDS.filter((c) => canOpen(user, c.feature));
   const [kpis, setKpis] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
-  const canLedger = userHasFeature(user, 'ledger');
+  const canLedger = canOpen(user, 'ledger');
 
   const fetchData = useCallback(async () => {
     try {

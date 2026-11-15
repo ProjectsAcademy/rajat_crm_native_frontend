@@ -28,7 +28,8 @@
 2. Global middleware: `helmet`, `cors({ origin: '*' })`, `morgan('dev')`,
    JSON and urlencoded body parsers.
 3. Route group mounted at `/api/<module>`. Almost every router starts with
-   `router.use(requireAuth, requirePermission('<feature-key>'))`.
+   `router.use(requireAuth, requirePermission('<feature-key>'))`, or
+   `requireModulePermission('<feature-key>', { readers })` (below).
 4. `requireAuth` (`src/middleware/auth.ts`) verifies the JWT
    (`JWT_SECRET`, default lifetime `JWT_EXPIRES_IN=7d`) and sets
    `req.user = { id, username, email, isStaff, isSuperuser }`.
@@ -52,25 +53,74 @@ Public endpoints: `GET /api/health`, `POST /api/auth/login`.
 
 ## Permissions (RBAC)
 
-- Feature catalog: `rajat_crm_node_backend/src/lib/features.ts` — one key per
-  module (`orders`, `customers`, `ledger`, `revenue`, ...), HR sub-keys
-  (`hr.attendance`, ...; granting `hr` grants all of them), and three
-  independent calendar tiers (`calendar`, `calendar-write`, `calendar-manage`).
-- Users belong to **groups**; groups hold feature keys
-  (tables `groups`, `user_groups`, `group_permissions`). Managed in the app at
-  Admin → Users / Groups (super admin only, `/api/admin/*`).
-- Decision order in `requirePermission`:
-  1. inactive user → 401
-  2. `is_superuser` → allowed
-  3. `is_legacy_access` and `RBAC_STRICT` is not `true` → allowed
-  4. a granted key covers the requested key → allowed
-  5. otherwise: if `RBAC_ENFORCE` is not `true` → allowed but logged as
-     `[rbac-shadow] deny ...` (shadow mode); if `true` → 403.
+Built 2026-10-29 to the client's wish of full freedom (PERMISSIONS_PLAN.md,
+"permissions v2"); the super admin manages everything in Admin.
+
+- **Catalog** (`rajat_crm_node_backend/src/lib/features.ts`): modules
+  (`orders`), their actions (`orders.view`, `.create`, `.edit`, `.delete`,
+  `orders.status`, `orders.payments.add`, `orders.whatsapp`, ...) and hidden
+  fields (`orders.fields.vendor-cost`, `employees.fields.salary`). HR has
+  sub-modules (`hr.attendance.view`, ...). Calendar tiers (`calendar`,
+  `calendar-write`, `calendar-manage`) and `revenue` have no actions. A grant
+  on a key covers every key below it (`orders` = everything in Orders), so
+  pre-v2 groups kept exactly their access. Some actions offer conditions.
+- **Roles** = named permission sets: per key Allow or Deny, an Allow
+  optionally with conditions (`own`, `withinDays`, `statusIn`,
+  `maxAmount`). **Groups** = sets of users with roles assigned. A user gets
+  the roles of their active groups plus roles assigned to them directly.
+  Tables `roles`, `role_permissions`, `group_roles`, `user_roles`, `groups`,
+  `user_groups` (`group_permissions` is no longer read).
+- **Decision** (`decide()` in `src/middleware/permissions.ts`):
+  1. inactive user → deny (401 at the route)
+  2. `is_superuser` → allow (cannot be limited)
+  3. a Deny covering the action, in any of the user's roles → deny (also
+     beats legacy access and picker reads)
+  4. an Allow covering it whose conditions pass → allow
+  5. `is_legacy_access` and `RBAC_STRICT` not `true` → allow
+  6. otherwise deny: with `RBAC_ENFORCE` not `true` it is logged as
+     `[rbac-shadow] deny ...` and allowed (shadow mode); with `true` → 403
+     with a message ("You do not have permission for \"Invoices: Edit\"" or
+     "Not allowed — Orders: Edit: only records you created.").
+- **On the server:** every route has `can('<action>')` (verify fails on an
+  endpoint without a check; open ones are listed in `OPEN_ENDPOINTS`,
+  `scripts/code-map.js`). Handlers check what depends on the body or the
+  record with `ensure(req, res, '<action>', factsOf(row))`: status changes
+  (`orders.status`, `invoices.status`), vendor work, an invoice made with an
+  order, deactivate / reactivate, the "Show on WhatsApp" switch, and the
+  conditions (records carry `created_by_id` since 2026-10-29; older rows
+  have none, so "own" never matches them).
+- **Picker reads:** `can('customers.view', ...PICKERS)` — a form of another
+  module may list the records it picks from (read only):
+
+  | Module (`/api/...`) | Also readable with |
+  |---|---|
+  | customers | create / edit of orders, invoices, estimates, gst |
+  | inventory | create / edit of orders, invoices, estimates, purchases; purchases.stock-entries; stock view / create / edit |
+  | projects | create / edit of orders, invoices, estimates |
+  | vendors | create / edit of orders, invoices, gst, purchases |
+  | orders | create / edit of invoices, estimates |
+  | tenders | create / edit of projects |
+  | employees | create / edit of hr.salary-components |
+  | stock | inventory.view, purchases.view |
+  | media of inventory items | stock.view |
+
+  Stock writes: the stock action, or `purchases.stock-entries` for an
+  existing purchase's entries (`mayWrite`, `src/routes/stock.ts`).
+- **Hidden fields:** without `orders.fields.vendor-cost` the order detail
+  answers vendor work amounts as null (editing vendor work needs it too);
+  without `employees.fields.salary` the Employees API leaves out wages and
+  ignores them in writes. HR payroll screens show wages to whoever has
+  those HR actions.
+- **Audit log:** every write and login → `audit_logs` (`src/lib/auditLog.ts`,
+  kept 2 years); Admin → Activity Log.
 - Errors inside the RBAC check fail open (logged) so a bug there cannot take
   down working features.
-- Frontend: `userHasFeature(user, key)` hides UI; `useFeatureGuard(key)` in each
-  module `_layout.tsx` redirects to Home. UI hiding is convenience; the
-  backend check is the real gate.
+- **App:** `can(user, key)` / `useCan()` hide buttons (exact key; an older
+  server without `permissionModel: 2` sends module keys, where a held parent
+  covers its children); `canOpen(user, module)` (the module's `view`)
+  drives menus, hub cards and `useFeatureGuard`. Permissions reload when the
+  app returns to the foreground. UI hiding is convenience; the server is the
+  real gate.
 - Rollout status of the two flags: see KNOWN_ISSUES_AND_PENDING.md.
 
 ## Data model (PostgreSQL via Prisma)
@@ -161,7 +211,7 @@ Customer ledger balance =
   on each server with `WHATSAPP_REMINDERS_ENABLED=true` (one per database).
 - **WhatsApp bot**: customers who message the business number get a list
   menu (pending amount, latest orders, my invoices → invoice PDF, payment
-  history, statement PDF, our items → categories → items with rates). Meta calls
+  history, statement PDF, our items → categories → item names). Meta calls
   `POST /api/whatsapp/webhook` (signature-checked); `src/lib/whatsappBot.ts`
   answers inside the free 24-hour window. Statement PDFs come from
   `src/utils/statementPdf.ts` (server copy of the app's statement layout).

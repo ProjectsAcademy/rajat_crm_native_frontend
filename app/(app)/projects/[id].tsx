@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { projectsApi, Project } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
-import { useAuthStore } from '../../../store/auth';
+import { useAuthStore, useCan } from '../../../store/auth';
 import ProjectFormSheet from '../../../components/ProjectFormSheet';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -40,6 +40,7 @@ function fmtDate(d: string | null) {
 }
 
 export default function ProjectDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,12 +123,14 @@ export default function ProjectDetailScreen() {
 
           {/* Action buttons */}
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
+            {may('projects.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
             {canDelete && (
-              <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
+              may('projects.delete') && <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
                 {deleting
                   ? <ActivityIndicator size="small" color={Colors.error} />
                   : <><Ionicons name="trash-outline" size={14} color={Colors.error} /><Text style={styles.deleteBtnText}>Delete</Text></>

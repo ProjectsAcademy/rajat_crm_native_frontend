@@ -146,8 +146,9 @@ invoices, optional link to an order.
   entries.
 - Purchase number `PUR-MMMYY-NNN` still uses `count()+1` (see KNOWN_ISSUES).
 - "Show on WhatsApp" (`inventory.show_on_whatsapp`, off by default, a switch
-  in the item form; a WhatsApp icon in the list): the item is listed with its
-  description and rate under "Our items" in the WhatsApp bot menu.
+  in the item form; a WhatsApp icon in the list): the item's name is listed
+  under "Our items" in the WhatsApp bot menu (no rate, description or
+  quantity since 2026-10-29).
 
 ## HR and Payroll (People → HR)
 
@@ -161,6 +162,9 @@ invoices, optional link to an order.
   month are allowed; the API prevents paying more than the
   attendance-computed net payable.
 - EPF/ESIC records are unique per employee per month.
+- An employee's phone is also their WhatsApp: messages from it to the
+  business WhatsApp get the staff menu (WhatsApp self-service bot below).
+  Clearing it in the form saves the empty phone (since 2026-10-29).
 
 ## WhatsApp messages to customers (templates)
 
@@ -275,17 +279,18 @@ menu with data options only — no "talk to us" option; no AI/LLM.
   - Statement PDF: current financial year statement, rendered on the server
     (`src/utils/statementPdf.ts`) and sent as a document with the closing
     balance in the caption.
-  - Our items (decisions, owner 2026-10-28: registered customers only, name +
-    description + rate, no photos yet, only items ticked "Show on WhatsApp"):
+  - Our items (decisions, owner 2026-10-28: registered customers only, no
+    photos yet, only items ticked "Show on WhatsApp"; 2026-10-29: names only —
+    no rate, description or quantity):
     a second list with the categories of the active ticked items (item
     count; no category → "Other"; more than 10 categories → pages of 9 and a
     "More categories" row, id `CATS:<offset>`). Picking one (`CAT:<name>`)
-    answers "• Name — Rs. 150.00 per pcs" plus the description (first 120
-    characters), at most 80 items, split into several messages above about
-    3,500 characters, then "To book or check availability for your date,
-    please call us on 8839032230 / 9131847282." and the menu. Rate 0 → "rate
-    on request". No stock numbers: orders do not move stock, so the system
-    cannot say what is free on a date (later phase).
+    answers one line per item, "• Name", at most 80 items, split into several
+    messages above about 3,500 characters, then "To book or check
+    availability for your date, please call us on 8839032230 / 9131847282."
+    and the menu. Rates and stock are given on the phone (owner, 2026-10-29);
+    the system cannot say what is free on a date anyway (orders do not move
+    stock).
   - Row ids `PENDING`, `ORDERS`, `STATEMENT` are the same as the old
     three-button menu, so taps on old messages still work.
 - Identity: the sender's WhatsApp number must match a customer's saved phone
@@ -293,6 +298,15 @@ menu with data options only — no "talk to us" option; no AI/LLM.
   If several customers share the number, each is shown, skipping the ones with
   no ledger activity. Unknown numbers get one fixed message per 24 h with the
   business phone numbers, and no data.
+- Staff (since 2026-10-29, WHATSAPP_AUTOMATION_PLAN.md step 0.3): the phone
+  of an **active employee** (HR → Employees, matched like customers'
+  phones) gets the staff menu instead — also when a customer has the same
+  number. The staff menu has no options yet (later steps add them); it
+  answers with one text naming the employee and their code. STOP / START
+  from a number that is also a customer's still change the customer
+  opt-out. A deactivated employee's number, or a cleared phone, is treated
+  like any other number. Two active employees with one number → the older
+  record.
 - Replies are normal (non-template) messages inside the 24-hour customer
   service window, so no template approval is needed and Meta does not charge
   for them.
@@ -337,6 +351,23 @@ menu with data options only — no "talk to us" option; no AI/LLM.
 
 ## Admin (super admin only)
 
-Users (create, edit, activate, groups, legacy-access flag, password in Django
-format) and Groups (feature permissions matrix built from `features.ts`). The
-last active super admin cannot be removed.
+Since 2026-10-29 (PERMISSIONS_PLAN.md; client's decision: full freedom):
+
+- **Users**: create, edit, activate, password (Django format), legacy-access
+  flag, groups, and roles for that user only (exceptions on top of the
+  groups). The last active super admin cannot be removed.
+- **Groups**: name, members, roles; inactive groups give nothing.
+- **Roles & Permissions**: the client builds every role (none are shipped;
+  "copy" starts from an existing one). The editor lists every module with
+  View · Create · Edit · Delete and "More" (other actions and hidden
+  fields); a cell cycles not set → Allow → Deny; "All" sets the whole
+  module. An Allow can carry conditions where the action offers them: only
+  records they created, within N days of creation, only while the status
+  is ..., up to an amount. Export / import roles and groups as JSON (dev →
+  production; members by username only on request).
+- **Effective Access**: per user and module what they can do, and from which
+  role and group; "Can this user do ...?" with an optional record.
+- **Activity Log**: every login and change (refused ones too), filters by
+  user, module and refused only; kept two years.
+- Buttons without permission are hidden in the app (owner's choice); the
+  server refuses anyway with a message naming the action or the condition.

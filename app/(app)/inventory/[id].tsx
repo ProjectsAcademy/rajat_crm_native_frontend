@@ -8,6 +8,7 @@ import { Colors } from '../../../constants/colors';
 import MediaSection from '../../../components/MediaSection';
 import InventoryFormSheet from '../../../components/InventoryFormSheet';
 import StockMovementSheet from '../../../components/StockMovementSheet';
+import { useCan } from '../../../store/auth';
 
 const TX_COLORS: Record<string, { bg: string; text: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
   in:         { bg: Colors.successLight, text: Colors.success, icon: 'arrow-down-circle-outline' },
@@ -53,6 +54,7 @@ function StockRow({ s, unit, onDelete }: { s: StockMovement; unit: string; onDel
 }
 
 export default function InventoryDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [item, setItem]           = useState<InventoryDetail | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -195,16 +197,20 @@ export default function InventoryDetailScreen() {
 
           {/* Action buttons */}
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="create-outline" size={15} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.stockBtn} onPress={() => setShowStock(true)}>
-              <Ionicons name="add-circle-outline" size={15} color={Colors.info} />
-              <Text style={styles.stockBtnText}>Add Stock</Text>
-            </TouchableOpacity>
+            {may('inventory.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="create-outline" size={15} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+            {may('stock.create') && (
+              <TouchableOpacity style={styles.stockBtn} onPress={() => setShowStock(true)}>
+                <Ionicons name="add-circle-outline" size={15} color={Colors.info} />
+                <Text style={styles.stockBtnText}>Add Stock</Text>
+              </TouchableOpacity>
+            )}
             {item.isActive ? (
-              <TouchableOpacity
+              may('inventory.deactivate') && <TouchableOpacity
                 style={[styles.deactivateBtn, deactivating && { opacity: 0.6 }]}
                 onPress={handleDeactivate} disabled={deactivating}
               >
@@ -212,7 +218,7 @@ export default function InventoryDetailScreen() {
                 <Text style={styles.deactivateBtnText}>Deactivate</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
+              may('inventory.deactivate') && <TouchableOpacity
                 style={[styles.reactivateBtn, deactivating && { opacity: 0.6 }]}
                 onPress={handleReactivate} disabled={deactivating}
               >
@@ -220,13 +226,15 @@ export default function InventoryDetailScreen() {
                 <Text style={styles.reactivateBtnText}>Reactivate</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
-              onPress={handlePermanentDelete} disabled={deleting}
-            >
-              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
-              <Text style={styles.deleteBtnText}>Delete</Text>
-            </TouchableOpacity>
+            {may('inventory.delete') && (
+              <TouchableOpacity
+                style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
+                onPress={handlePermanentDelete} disabled={deleting}
+              >
+                {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="trash-outline" size={15} color="#fff" />}
+                <Text style={styles.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

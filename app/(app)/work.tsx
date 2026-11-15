@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { dashboardApi, DashboardResponse } from '../../services/api';
-import { useAuthStore, userHasFeature } from '../../store/auth';
+import { useAuthStore, canOpen } from '../../store/auth';
 import { Colors } from '../../constants/colors';
 import WebHubPage, { HubCard } from '../../components/WebHubPage';
 
@@ -29,7 +29,7 @@ export default function WorkScreen() {
       { key: 'projects',    label: 'Projects',             sub: 'total projects',      icon: 'construct-outline',        color: Colors.accent, bg: Colors.accentLight,  route: '/(app)/projects',    count: kpis?.projects?.total ?? null },
       { key: 'vehicles',    label: 'Vehicles',             sub: 'active vehicles',     icon: 'car-outline',              color: Colors.info,   bg: Colors.infoLight,    route: '/(app)/vehicles',    count: kpis?.vehicles?.total ?? null },
       { key: 'maintenance', label: 'Maintenance & FD',     sub: 'maintenance periods', icon: 'shield-checkmark-outline', color: '#7A5400',     bg: Colors.warningLight, route: '/(app)/maintenance', count: kpis?.maintenancePeriods?.total ?? null },
-    ].filter((c) => userHasFeature(user, c.key)) as HubCard[];
+    ].filter((c) => canOpen(user, c.key)) as HubCard[];
     return (
       <WebHubPage
         title="Work"
@@ -52,7 +52,7 @@ export default function WorkScreen() {
         <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-          {userHasFeature(user, 'tenders') && (
+          {canOpen(user, 'tenders') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/tenders' as any)}
@@ -70,7 +70,7 @@ export default function WorkScreen() {
           </TouchableOpacity>
           )}
 
-          {userHasFeature(user, 'projects') && (
+          {canOpen(user, 'projects') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/projects' as any)}
@@ -88,7 +88,7 @@ export default function WorkScreen() {
           </TouchableOpacity>
           )}
 
-          {userHasFeature(user, 'vehicles') && (
+          {canOpen(user, 'vehicles') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/vehicles' as any)}
@@ -106,7 +106,7 @@ export default function WorkScreen() {
           </TouchableOpacity>
           )}
 
-          {userHasFeature(user, 'maintenance') && (
+          {canOpen(user, 'maintenance') && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push('/(app)/maintenance' as any)}
@@ -124,7 +124,7 @@ export default function WorkScreen() {
           </TouchableOpacity>
           )}
 
-          {!['tenders', 'projects', 'vehicles', 'maintenance'].some((k) => userHasFeature(user, k)) && (
+          {!['tenders', 'projects', 'vehicles', 'maintenance'].some((k) => canOpen(user, k)) && (
             <View style={styles.emptyBox}>
               <Ionicons name="lock-closed-outline" size={32} color={Colors.textMuted} />
               <Text style={styles.emptyText}>No work modules assigned to your account.</Text>

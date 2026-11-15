@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { customersApi, Customer, ledgerApi, LedgerPosition } from '../../../services/api';
-import { useAuthStore, userHasFeature } from '../../../store/auth';
+import { useAuthStore, canOpen, useCan } from '../../../store/auth';
 import { fmtDrCr } from '../../../utils/ledgerFormat';
 import { Colors } from '../../../constants/colors';
 import CustomerFormSheet from '../../../components/CustomerFormSheet';
@@ -39,6 +39,7 @@ function RelatedRow({ icon, label, count, onPress }: { icon: string; label: stri
 }
 
 export default function CustomerDetailScreen() {
+  const may = useCan();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -47,7 +48,7 @@ export default function CustomerDetailScreen() {
   const [deactivating, setDeactivating] = useState(false);
   const [deleting, setDeleting]         = useState(false);
   const [ledger, setLedger]             = useState<LedgerPosition | null>(null);
-  const canLedger = userHasFeature(useAuthStore((st) => st.user), 'ledger');
+  const canLedger = canOpen(useAuthStore((st) => st.user), 'ledger');
 
   const loadCustomer = () => {
     setLoading(true);
@@ -188,12 +189,14 @@ export default function CustomerDetailScreen() {
 
           {/* Action buttons */}
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="create-outline" size={15} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
+            {may('customers.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="create-outline" size={15} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
             {customer.isActive ? (
-              <TouchableOpacity
+              may('customers.delete') && <TouchableOpacity
                 style={[styles.deactivateBtn, deactivating && { opacity: 0.6 }]}
                 onPress={handleDeactivate}
                 disabled={deactivating}
@@ -204,7 +207,7 @@ export default function CustomerDetailScreen() {
                 <Text style={styles.deactivateBtnText}>Deactivate</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
+              may('customers.delete') && <TouchableOpacity
                 style={[styles.reactivateBtn, deactivating && { opacity: 0.6 }]}
                 onPress={handleReactivate}
                 disabled={deactivating}
@@ -215,16 +218,18 @@ export default function CustomerDetailScreen() {
                 <Text style={styles.reactivateBtnText}>Reactivate</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
-              onPress={handleDelete}
-              disabled={deleting}
-            >
-              {deleting
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Ionicons name="trash-outline" size={15} color="#fff" />}
-              <Text style={styles.deleteBtnText}>Delete</Text>
-            </TouchableOpacity>
+            {may('customers.delete') && (
+              <TouchableOpacity
+                style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
+                onPress={handleDelete}
+                disabled={deleting}
+              >
+                {deleting
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Ionicons name="trash-outline" size={15} color="#fff" />}
+                <Text style={styles.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

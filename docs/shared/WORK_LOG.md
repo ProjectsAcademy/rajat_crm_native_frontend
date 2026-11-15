@@ -6,6 +6,385 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-10-29 — KNOWN_ISSUES D: answered question removed
+
+- **Request:** the owner asked what is still open; the list had a stale
+  question.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — KNOWN_ISSUES D: "same database for dev and prod?"
+  removed (answered 2026-10-28: two separate databases, A.1 and
+  INFRASTRUCTURE_AND_DEPLOY.md §4).
+- **Database:** none. **Tested:** n/a. **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
+## 2026-10-29 — WhatsApp "Our items": item names only
+
+- **Request:** the owner: when a customer asks for items on WhatsApp, show
+  only the item names — no available quantity and no price per unit.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend: `src/lib/whatsappBot.ts` (`categoryItemsText` lists
+  "• Name" only; the menu row reads "Items we rent out"),
+  `test/whatsapp-bot-items.test.ts`. App: `components/InventoryFormSheet.tsx`
+  (switch hint). Docs: FEATURES (Inventory, bot), ARCHITECTURE.
+- **Database:** none.
+- **Decisions:** owner, 2026-10-29 — names only. The description went too
+  ("sirf inventory name"); it can come back on request. Quantities were
+  never shown (orders do not move stock).
+- **Tested:** `npm test -- whatsapp-bot-items` (names in order, no "Rs.",
+  unit, "rate on request" or description).
+- **Not tested / risks:** a real WhatsApp message (dev number after deploy).
+- **Deploy status:** on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
+## 2026-10-29 — Permissions plan: cleanup step P7
+
+- **Request:** the owner asked whether the plan says to clean up the old
+  table after a few weeks if everything works.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — PERMISSIONS_PLAN.md: status row P7 and §12
+  (when: 4 weeks of v2 enforced on production without problems; steps:
+  drop `group_permissions`, remove its model; after it no rollback to
+  pre-v2).
+- **Database:** none now; P7 itself will drop a table.
+- **Tested:** n/a.
+- **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** P7 when its condition is met.
+
+---
+
+## 2026-10-29 — KNOWN_ISSUES B.11 was wrong; B.12 explained
+
+- **Request:** the owner asked how B.11 (HR screens opened by URL) would be
+  solved and why B.12 (`group_permissions`) exists.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — KNOWN_ISSUES: B.11 removed (every HR screen
+  already calls `useFeatureGuard('hr.<sub-module>')`; I had listed it
+  without checking), old B.12 / B.13 are now B.11 (why the table stays and
+  when to drop it) / B.12 (owner releases the new APK right after the
+  backend).
+- **Database:** none.
+- **Tested:** web UI on a throwaway database (backend on 3011): a user with
+  only a "Salary only" role (`hr.salary-components`) sees only "Salary
+  Structure" in HR; `/hr/attendance`, `/hr/salary-payments`,
+  `/hr/incentives`, `/hr/epf-esic` send them to Home;
+  `/hr/salary-components` opens.
+- **Not tested / risks:** none.
+- **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
+## 2026-10-29 — Permissions v2: roles, groups, per-action control, conditions, hidden fields, audit log
+
+- **Request:** the client wants full freedom: build any roles and groups and
+  set any permission (view / create / edit / delete and every action, e.g.
+  the invoice WhatsApp button) from the admin account. The owner chose roles
+  and groups as two things (Azure-like), everything on `dev_01`, and asked
+  for the whole plan to be built without waiting for replies, plus a simple
+  page explaining roles, groups and users.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `61895d0`, `5b7ba6a`: catalog `src/lib/features.ts`
+  (modules, about 110 actions, 2 hidden fields, conditions per action);
+  engine `src/middleware/permissions.ts` (`decide`, `can`, `ensure`,
+  `holds`, `factsOf`); every route with its action and body / record checks
+  in the handlers; admin API for roles, groups, user roles, effective
+  access, check, audit, export / import; `src/lib/auditLog.ts`;
+  `/me` `permissionModel: 2`; `scripts/code-map.js` (action per endpoint,
+  in-handler checks, unchecked endpoints) and `scripts/verify.js` (fails on
+  an endpoint without a check). App `6e8b4f9`: Admin screens (roles with
+  the matrix editor and conditions, groups, users, effective access with
+  "Can X do Y?", activity log, export / import), `store/auth.ts` (`can`,
+  `useCan`, `canOpen`, `refresh` on foreground), every create / edit /
+  delete / status / payment / receipt / adjustment / WhatsApp / print /
+  file / stock button gated, order form (vendor work, status, invoice
+  option), employee form (wages), `components/MediaSection.tsx`,
+  `components/LedgerSheetFrame.tsx` (`maxWidth`). Docs: PERMISSIONS_PLAN
+  (status P1–P6 done), ARCHITECTURE "Permissions" rewritten, RULES 2 and 5,
+  both AGENTS.md, FEATURES "Admin", BACKEND_REFERENCE, FRONTEND_REFERENCE
+  §3 and §5, INFRASTRUCTURE_AND_DEPLOY (release notes), LOCAL_DEV_AND_TESTING
+  §4, KNOWN_ISSUES A.2, B.11–13 (old B.11 fixed by the gating), C.
+- **Database:** three additive migrations — `20261029140000_roles` (new
+  tables; every group copied into a role of the same name with the same
+  keys and assigned to it: no access changes; checked on a throwaway
+  database with synthetic groups, including an inactive one),
+  `20261029150000_created_by` (`created_by_id` on nine tables),
+  `20261029160000_audit_logs`. `prisma migrate diff` against the schema:
+  empty.
+- **Decisions:** client — full freedom from the super admin account; owner
+  — roles and groups separate, build on `dev_01`, buttons hidden (not
+  greyed out), audit log kept 2 years and visible to super admins only.
+  Mine (documented in ARCHITECTURE): a Deny also beats legacy access and
+  picker reads; editing vendor work also needs seeing its costs; hidden
+  wages are ignored in writes; "own" uses `created_by_id`, so records from
+  before today never match.
+- **Tested:** `npm test` 86 passed + 1 todo (new: 13 per-action /
+  condition / hidden-field tests, 7 admin API tests, 3 audit log tests; the
+  8 earlier RBAC tests now run on roles). Mutation checks, each caught:
+  deny ignored, own condition skipped, deny bypassed through pickers, status
+  change unchecked, any condition accepted, receipt limit unchecked, a route
+  without `can()` (verify). Web UI on a throwaway database with synthetic
+  data (backend on 3011 — port 3001 was the owner's own server, untouched):
+  Admin hub, roles list and role editor at 1280 and 390 px, a role built in
+  the editor (View / Create / Edit, Delete denied, Edit with "3 days" and
+  "pending") saved exactly so, group editor, effective access, activity
+  log; a limited user (Invoice clerk via a group + a "No deletes" role):
+  Finance shows only Orders and Invoices, the invoice has no Edit / Delete /
+  WhatsApp / Print / Preview, the order has only "Make Invoice" and shows
+  vendor cost as "—", /customers sends them home.
+- **Not tested / risks:** native Android layouts of the new Admin screens
+  and gated buttons (web only); conditions in the app for every action
+  (server tests cover them); the production data migration on real groups
+  (synthetic only). Release order matters: backend, then app.
+- **Deploy status:** on `dev_01`, not pushed.
+- **Follow-ups:** owner: push, test on dev with real-looking roles, release
+  backend then app, then `RBAC_ENFORCE=true`; KNOWN_ISSUES B.11–13.
+
+---
+
+## 2026-10-29 — Permissions plan: client wants full freedom (roles + groups)
+
+- **Request:** the client's answer to PERMISSIONS_PLAN.md §10, through the
+  owner: full freedom — they create any roles, set any CRUD / action
+  permission later, and create groups too, all from the admin account as
+  today.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — PERMISSIONS_PLAN.md: direction recorded; §4
+  rewritten to an Azure-like model (roles = permission sets with allow /
+  deny and conditions; groups = sets of users; roles assigned to groups or
+  directly to users; today's groups migrate to one role each with no change
+  in access); no fixed templates ("copy role" instead); conditions and
+  hidden fields become settings the client makes per role; §10 answers and
+  defaults (hide buttons; audit log 2 years, super admins only); release P0
+  before P1 lands. README, ARCHITECTURE, KNOWN_ISSUES A.2 pointers.
+- **Database:** none.
+- **Decisions:** client, 2026-10-29 — full freedom from the super admin
+  account. Defaults for hide-vs-grey and audit retention stay open.
+- **Tested:** n/a (plan).
+- **Not tested / risks:** "roles and groups" read as two separate things
+  (Azure model); to confirm with the client before P2.
+- **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** owner: release P0 (readers) to production and enforce;
+  then P1.
+
+---
+
+## 2026-10-29 — Plan: fine-grained permissions (PERMISSIONS_PLAN.md)
+
+- **Request:** the owner tested five role cases with `RBAC_ENFORCE=true` on
+  dev — all fine. The client then asked for more: inside a module, control
+  of each action (view / create / edit / delete; for example no WhatsApp
+  button on invoices for some users), "like AWS and Azure policies", and
+  asked for a deep plan.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** docs only — new `docs/shared/PERMISSIONS_PLAN.md` (action
+  catalog of about 110 keys drafted from every endpoint and app action,
+  allow / deny with deny winning, per-user exceptions, a fixed menu of
+  conditions, field hiding, audit log, Admin matrix with templates and
+  effective access, app gating, phases P0–P6, client decisions), README
+  index, ARCHITECTURE pointer, KNOWN_ISSUES A.2.
+- **Database:** none (the plan lists additive migrations for later).
+- **Decisions:** none yet; §10 of the plan lists the client's.
+- **Tested:** n/a (plan). The catalog was built from CODE_MAP's endpoint
+  list and a search of the app for print, share and WhatsApp buttons.
+- **Not tested / risks:** the catalog is a draft until the client confirms
+  the roles and actions.
+- **Deploy status:** docs on `dev_01`.
+- **Follow-ups:** owner takes §10 to the client; then P1 (engine and catalog,
+  no visible change) can start while P0 is enforced on production.
+
+---
+
+## 2026-10-29 — RBAC: readers for the forms' pickers (plan step 0.2)
+
+- **Request:** the owner: finish the RBAC work while the templates are in
+  review. Their production Admin → Users screenshot: three active users
+  (super admin, one Legacy Access, one "Calendar & Revenue" group), the
+  rest disabled.
+- **Done by:** Claude Code (Opus 5.5)
+- **Finding:** a cross-check of every screen's API calls against its
+  module guard (from CODE_MAP) showed that many forms list another
+  module's records — orders/invoices/estimates pick customers, items,
+  projects, vendors (and orders); GST picks customers and vendors;
+  purchases pick vendors and items and manage stock entries; projects pick
+  tenders; salary components pick employees. In shadow mode these pass; with
+  `RBAC_ENFORCE=true` a user in a limited group (say "Ord-Att-Pur-Emp")
+  could not even choose a customer for a new order. The other cross-calls
+  are already hidden by `userHasFeature` in the app (ledger on customer
+  detail and Finance, invoice from an order, calendar writes).
+- **Decisions:** owner, 2026-10-29 — such modules may read those lists, not
+  change them; purchases users may add, edit and delete a purchase's stock
+  entries.
+- **Changes:** backend `9187ed5`: `src/middleware/permissions.ts`
+  (`requireModulePermission`, `userHasPermission`), routers customers,
+  inventory, projects, vendors, orders, tenders, employees, stock (readers;
+  `refusePurchaseOnly`), media (item photos for stock users),
+  `test/rbac.test.ts`, `scripts/code-map.js` (permission per method; app
+  `215aae8` mirrors it). Docs: RULES 2, AGENTS.md rule 5, ARCHITECTURE
+  (readers table), FEATURES (Admin), BACKEND_REFERENCE §1, KNOWN_ISSUES A.2
+  and B.11 (new), WHATSAPP_AUTOMATION_PLAN 0.2, LOCAL_DEV_AND_TESTING §4,
+  CODE_MAP.
+- **Database:** none.
+- **Tested:** `npm test` (8 new tests with `RBAC_ENFORCE=true`: an orders
+  user reads customers, items, projects, vendors but cannot create, edit or
+  delete them, nor read employees, the ledger or item photos; no group →
+  403; salary components reads employees only; stock user reads items and
+  photos; purchases user adds / edits / deletes a purchase's stock entry
+  but not a manual one or one for a purchase that does not exist; stock
+  user writes any). Mutation checks: removing a reader, letting readers
+  write, skipping the purchase check or its existence check, or dropping
+  the photo reader each fail a test. The audit run again: only the
+  UI-gated calls remain.
+- **Not tested / risks:** shadow mode for the new purchase check (logged
+  and allowed, like requirePermission); the app with a limited user on a
+  real server — next step on dev.
+- **Deploy status:** on `dev_01`; no app change needed (the app already
+  calls these endpoints).
+- **Follow-ups:** owner: production `RBAC_*` values and the `[rbac-shadow]`
+  summary; `RBAC_ENFORCE=true` on dev with a limited test user, then
+  production. KNOWN_ISSUES B.11 if inventory-only or stock-only users are
+  created.
+
+---
+
+## 2026-10-29 — Staff WhatsApp message: short company name
+
+- **Request:** the owner checked step 0.3 on the dev number (an employee
+  with their number got the staff message) and asked for "RAJAT
+  Electricals" instead of the full name in it.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend: `src/lib/whatsappBot.ts` (`STAFF_BUSINESS`, staff
+  message only), `test/whatsapp-staff.test.ts` (the whole text). Docs:
+  WHATSAPP_AUTOMATION_PLAN step 0.3 (done, checked on dev).
+- **Database:** none.
+- **Decisions:** owner, 2026-10-29 — staff see "RAJAT Electricals";
+  customer messages keep "RAJAT Electric Decoration & Power Point".
+- **Tested:** `npm test -- whatsapp-staff`.
+- **Not tested / risks:** none beyond the earlier step 0.3 entry.
+- **Deploy status:** on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
+## 2026-10-29 — Staff WhatsApp menu for employees, not app users (step 0.3)
+
+- **Request:** the owner: the staff number is for employees, not for app
+  users — "make it for employees".
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `d12a09e`: `src/lib/whatsappBot.ts`
+  (`findStaffByPhone` now matches active employees' phone like customers'
+  phones; staff text names the employee and code), `src/routes/admin.ts`
+  and `prisma/schema.prisma` back to before `82c2bd1`, migration
+  `20261029120000_drop_user_whatsapp_phone`, `test/whatsapp-staff.test.ts`
+  rewritten. App `529c08c`: reverts the Admin field (`fef2785`);
+  `components/EmployeeFormSheet.tsx` (hint under Phone; a cleared phone is
+  saved). Docs: WHATSAPP_AUTOMATION_PLAN (rules 2, 3 and step 0.3),
+  FEATURES (bot, HR, Admin), BACKEND_REFERENCE §5, LOCAL_DEV_AND_TESTING
+  §4, KNOWN_ISSUES B.10 (new).
+- **Database:** the new migration DROPS `users.phone` and its unique index
+  — a deliberate exception to RULES.md rule 3 (additive only): the column
+  was added the same day by `20261029100000`, only the dev database got it
+  (pushed, auto-deployed), no production release or released code ever
+  read it, and dev and production have separate databases (2026-10-28).
+  Production will apply both migrations in a row (add, then drop). Any
+  number saved on a dev user that day is lost (none expected). Checked on a
+  throwaway database: all migrations applied, `prisma migrate diff` against
+  `schema.prisma` empty.
+- **Decisions:** owner, 2026-10-29 — staff = employees. Plan rule 3
+  rewritten: employees have no app permissions, so every later staff step
+  decides which employees may use its options.
+- **Tested:** `npm test` (5 tests: employee → staff menu, employee +
+  customer → staff menu without customer data, STOP still opts the
+  customer out, deactivated employee → "not registered" or the customer
+  menu, cleared phone → "not registered"). Mutation checks: without the
+  staff branch, the STOP exception or the active filter, a test fails. Web
+  UI at 390 px and 1280 px on a throwaway database: the hint shows, an
+  emptied phone saves as "", a new phone saves.
+- **Not tested / risks:** native Android form; a real WhatsApp message from
+  an employee's number (dev server, after deploy). While the dev server
+  deploys, the old process may fail user queries between the migration and
+  its restart (seconds, dev only).
+- **Deploy status:** on `dev_01` (backend partly pushed: `82c2bd1` is on
+  dev already). Backend before app.
+- **Follow-ups:** owner: an employee with their own number in HR (the
+  number must be in `WHATSAPP_ALLOWED_RECIPIENTS` on dev), "hi" to the dev
+  number. Later staff steps decide who may use each option (plan rule 3).
+
+---
+
+## 2026-10-29 — Staff WhatsApp number (automation plan step 0.3)
+
+> Replaced the same day: staff are employees, not app users (next entry
+> above).
+
+- **Request:** the owner asked to carry on with the next pending phase of the
+  WhatsApp automation plan. Step 0.2 (RBAC enforced) is owner work in Admin
+  and the server `.env`, so step 0.3 was built.
+- **Done by:** Claude Code (Opus 5.5)
+- **Changes:** backend `82c2bd1`: `prisma/schema.prisma` + migration
+  `20261029100000_user_whatsapp_phone` (`users.phone` VARCHAR(12), unique,
+  nullable), `src/routes/admin.ts` (create / edit accept `phone`, stored as
+  `91XXXXXXXXXX`, '' clears, wrong format or a number used by another user →
+  400), `src/lib/whatsappBot.ts` (`findStaffByPhone`, `sendStaffMenu`;
+  checked before the customer lookup; STOP / START from a customer's number
+  still reach the opt-out), `test/whatsapp-staff.test.ts`. App `fef2785`:
+  `components/UserFormSheet.tsx` (WhatsApp Number field, same rule as the
+  server), `app/(app)/admin/users.tsx` (number under the name),
+  `services/api.ts` (`AdminUser.phone`, `AdminUserPayload.phone`). Docs:
+  WHATSAPP_AUTOMATION_PLAN 0.3, FEATURES (bot, Admin), BACKEND_REFERENCE §5,
+  LOCAL_DEV_AND_TESTING §4.
+- **Database:** additive migration (one nullable column + unique index);
+  applied by the deploy's `prisma migrate deploy`. Checked against
+  `schema.prisma` on a throwaway database (`prisma migrate diff`: empty).
+- **Decisions:** which staff get a number is filled in by the owner in Admin
+  (plan decision closed); a number on both a user and a customer gets the
+  staff menu (plan); STOP / START still work for the customer (rule 7).
+- **Tested:** `npm test` (6 new tests: saved as `91…`, blank = none, wrong
+  format and duplicates refused on create and edit, staff menu, user +
+  customer number → staff menu without customer data, STOP still opts out,
+  deactivated user → "not registered" or the customer menu). Mutation
+  checks: without the staff branch, the STOP exception, the active-user
+  filter or the duplicate message on edit, a test fails. Web UI at 390 px
+  and 1280 px on a throwaway database with synthetic users: field, error
+  banner for "12345", the server's duplicate message, saved number shown as
+  "+91 98765…" in the list and as 10 digits when editing again, clearing.
+- **Not tested / risks:** native Android form (`phone-pad` keyboard); a real
+  WhatsApp message from a staff number (dev server, after deploy).
+- **Deploy status:** on `dev_01`. Backend before app (the old backend
+  ignores `phone`, so a number typed in the new app would not be saved).
+- **Follow-ups:** owner saves their number on their user, adds it to
+  `WHATSAPP_ALLOWED_RECIPIENTS` on dev if missing, sends "hi" to the dev
+  number; then step 1.1 (owner daily summary — template needed).
+
+---
+
+## 2026-10-28 — Second production release (backend and app code)
+
+- **Request:** the owner merged `dev_01` into `main` in both repos after the
+  recipient allow-list and the custom reminder interval.
+- **Done by:** the owner (merge, "Deploy Backend" on `main`, frontend
+  `git pull` on `main`); docs by Claude Code (Opus 5.5)
+- **Changes:** none in code. Backend production now runs `dev_01` up to
+  `b52be0d`; frontend `main` is `e8a7185` (PR #11, contains `dbc44dd`).
+  Docs: KNOWN_ISSUES A.1, WHATSAPP_AUTOMATION_PLAN 0.1.
+- **Database:** none (no new migration since the first release).
+- **Tested:** the owner reported the deploy without problems. Locally
+  checked: frontend `main` contains `dbc44dd`, `utils/whatsappSend.ts` is
+  present, the `production` profile in `eas.json` points to `prod-api`.
+  The backend merge commit could not be read from here (no GitHub
+  credentials in this checkout).
+- **Not tested / risks:** the production APK is not built or installed yet;
+  no template send from the production app yet (A.3).
+- **Deploy status:** backend on production; app code on `main`, APK pending.
+- **Follow-ups:** build and install the APK; one test send of each template
+  from the production app; then `WHATSAPP_REMINDERS_ENABLED=true` on
+  production when the owner wants it.
+
+---
+
 ## 2026-10-28 — Custom reminder interval (3 to 90 days)
 
 - **Request:** the owner asked why automatic payment reminders offer only

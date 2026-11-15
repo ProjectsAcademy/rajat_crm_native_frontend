@@ -9,7 +9,7 @@ import MediaSection from '../../../components/MediaSection';
 import OrderFormSheet from '../../../components/OrderFormSheet';
 import PaymentFormSheet from '../../../components/PaymentFormSheet';
 import InvoiceFormSheet from '../../../components/InvoiceFormSheet';
-import { useAuthStore, userHasFeature } from '../../../store/auth';
+import { useAuthStore, canOpen, useCan } from '../../../store/auth';
 import { confirmAndSendWhatsapp } from '../../../utils/whatsappSend';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -37,6 +37,7 @@ function fmtAmt(v: string) { const n = parseFloat(v||'0'); if(n>=100000) return 
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
 
 export default function OrderDetailScreen() {
+  const may = useCan();
   // offerWhatsapp=1: opened right after "New order" (orders list).
   const { id, offerWhatsapp } = useLocalSearchParams<{ id: string; offerWhatsapp?: string }>();
   const [order,       setOrder]       = useState<OrderDetail | null>(null);
@@ -92,7 +93,7 @@ export default function OrderDetailScreen() {
     if (!order || offerWhatsapp !== '1' || offered.current) return;
     offered.current = true;
     router.setParams({ offerWhatsapp: '' }); // not again after a web reload
-    if (order.status !== 'cancelled') setTimeout(() => sendConfirmation(true), AFTER_SHEET_MS);
+    if (order.status !== 'cancelled' && may('orders.whatsapp')) setTimeout(() => sendConfirmation(true), AFTER_SHEET_MS);
   }, [order, offerWhatsapp]);
 
   const handleDelete = () => {
@@ -151,28 +152,32 @@ export default function OrderDetailScreen() {
 
           {/* Action buttons */}
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
-              <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
-            {userHasFeature(user, 'invoices') && (
+            {may('orders.edit') && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setShowEdit(true)}>
+                <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+            {may('invoices.create') && (
               <TouchableOpacity style={styles.editBtn} onPress={() => setShowInvoice(true)}>
                 <Ionicons name="document-text-outline" size={14} color={Colors.accent} />
                 <Text style={styles.editBtnText}>Make Invoice</Text>
               </TouchableOpacity>
             )}
             {order.customer && order.status !== 'cancelled' && (
-              <TouchableOpacity style={styles.whatsappBtn} onPress={() => sendConfirmation()}>
+              may('orders.whatsapp') && <TouchableOpacity style={styles.whatsappBtn} onPress={() => sendConfirmation()}>
                 <Ionicons name="logo-whatsapp" size={14} color="#fff" />
                 <Text style={styles.whatsappBtnText}>WhatsApp</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
-              {deleting
-                ? <ActivityIndicator size="small" color={Colors.error} />
-                : <><Ionicons name="trash-outline" size={14} color={Colors.error} /><Text style={styles.deleteBtnText}>Delete</Text></>
-              }
-            </TouchableOpacity>
+            {may('orders.delete') && (
+              <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
+                {deleting
+                  ? <ActivityIndicator size="small" color={Colors.error} />
+                  : <><Ionicons name="trash-outline" size={14} color={Colors.error} /><Text style={styles.deleteBtnText}>Delete</Text></>
+                }
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -236,10 +241,12 @@ export default function OrderDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Payments ({order.payments.length})</Text>
-            <TouchableOpacity style={styles.addPayBtn} onPress={() => setShowPayment(true)}>
-              <Ionicons name="add" size={14} color={Colors.accent} />
-              <Text style={styles.addPayBtnText}>Add Payment</Text>
-            </TouchableOpacity>
+            {may('orders.payments.add') && (
+              <TouchableOpacity style={styles.addPayBtn} onPress={() => setShowPayment(true)}>
+                <Ionicons name="add" size={14} color={Colors.accent} />
+                <Text style={styles.addPayBtnText}>Add Payment</Text>
+              </TouchableOpacity>
+            )}
           </View>
           {order.payments.length > 0 && (
             <View style={styles.card}>
@@ -264,7 +271,7 @@ export default function OrderDetailScreen() {
                   ) : (
                     <>
                       {order.customer && (
-                        <TouchableOpacity
+                        may('orders.payments.whatsapp') && <TouchableOpacity
                           style={styles.payEditBtn}
                           onPress={() => sendPaymentReceipt(p)}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -273,13 +280,15 @@ export default function OrderDetailScreen() {
                           <Ionicons name="logo-whatsapp" size={15} color={Colors.whatsapp} />
                         </TouchableOpacity>
                       )}
-                      <TouchableOpacity
-                        style={styles.payEditBtn}
-                        onPress={() => { setEditPayment(p); setShowPayment(true); }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
-                      </TouchableOpacity>
+                      {may('orders.payments.edit') && (
+                        <TouchableOpacity
+                          style={styles.payEditBtn}
+                          onPress={() => { setEditPayment(p); setShowPayment(true); }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="pencil-outline" size={14} color={Colors.accent} />
+                        </TouchableOpacity>
+                      )}
                     </>
                   )}
                 </View>
@@ -294,12 +303,12 @@ export default function OrderDetailScreen() {
             <Text style={styles.sectionTitle}>Vendor Work ({order.vendorWorks!.length})</Text>
             <View style={styles.card}>
               {order.vendorWorks!.map((vw, i) => {
-                const canOpen = userHasFeature(user, 'vendors');
+                const canOpenVendor = canOpen(user, 'vendors');
                 return (
                   <TouchableOpacity
                     key={vw.id}
                     style={[styles.payRow, i > 0 && styles.itemBorder]}
-                    disabled={!canOpen}
+                    disabled={!canOpenVendor}
                     onPress={() => router.push(`/(app)/vendors/${vw.vendor.id}` as any)}
                     activeOpacity={0.7}
                   >
@@ -312,7 +321,7 @@ export default function OrderDetailScreen() {
                       {vw.vendor.phone ? <Text style={styles.payDate}>{vw.vendor.phone}</Text> : null}
                     </View>
                     <Text style={[styles.payAmt, { color: Colors.textPrimary }]}>{parseFloat(vw.amount) ? fmtAmt(vw.amount) : '—'}</Text>
-                    {canOpen && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />}
+                    {canOpenVendor && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />}
                   </TouchableOpacity>
                 );
               })}
@@ -388,7 +397,7 @@ export default function OrderDetailScreen() {
         onClose={() => { setShowPayment(false); setEditPayment(null); }}
         onSaved={(created) => {
           loadOrder();
-          if (created) setTimeout(() => sendPaymentReceipt(created, true), AFTER_SHEET_MS);
+          if (created && may('orders.payments.whatsapp')) setTimeout(() => sendPaymentReceipt(created, true), AFTER_SHEET_MS);
         }}
       />
     </SafeAreaView>

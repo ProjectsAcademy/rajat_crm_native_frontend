@@ -10,6 +10,7 @@ import { Colors } from '../../../constants/colors';
 import SalaryPaymentSheet from '../../../components/SalaryPaymentSheet';
 import MonthYearPickerModal from '../../../components/MonthYearPickerModal';
 import { usePayrollMonth, currentMonth } from '../../../store/payrollMonth';
+import { useCan } from '../../../store/auth';
 
 // Employee-wise monthly payment ledger. Reads the same computation as the
 // Payroll tab (salary-components/payroll) so totals always match.
@@ -47,6 +48,7 @@ const STATUS_BADGES: Record<PayrollRow['status'], { label: string; bg: string; t
 };
 
 export default function SalaryPaymentsScreen() {
+  const may = useCan();
   useFeatureGuard('hr.salary-payments');
   const month = usePayrollMonth((s) => s.month);          // shared with the Payroll page
   const setMonth = usePayrollMonth((s) => s.setMonth);
@@ -155,6 +157,7 @@ export default function SalaryPaymentsScreen() {
                             <TouchableOpacity
                               key={p.id}
                               style={styles.payRow}
+                              disabled={!may('hr.salary-payments.edit')}
                               onPress={() => setEditTarget({ row: r, payment: p })}
                               activeOpacity={0.7}
                             >

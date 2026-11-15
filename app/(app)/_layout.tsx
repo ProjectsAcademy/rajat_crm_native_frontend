@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { useEffect } from 'react';
+import { AppState, Platform, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore, userHasFeature } from '../../store/auth';
+import { useAuthStore, canOpen } from '../../store/auth';
 import { Colors } from '../../constants/colors';
 import WebTopNav from '../../components/WebTopNav';
 
@@ -9,7 +10,15 @@ const isWeb = Platform.OS === 'web';
 
 export default function AppLayout() {
   const user = useAuthStore((s) => s.user);
-  const canInventory = userHasFeature(user, 'inventory') || userHasFeature(user, 'stock');
+  const canInventory = canOpen(user, 'inventory') || canOpen(user, 'stock');
+
+  // Role changes in Admin apply when the app comes back to the foreground.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') useAuthStore.getState().refresh();
+    });
+    return () => sub.remove();
+  }, []);
   return (
     <View style={{ flex: 1 }}>
       {/* Desktop web gets a top nav bar; the bottom tab bar is native-only */}

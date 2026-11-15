@@ -13,6 +13,7 @@ import {
   ALLOWED_MIME_TYPES, ALLOWED_MIME_SET,
 } from '../hooks/useMediaUpload';
 import CameraUploadSheet from './CameraUploadSheet';
+import { useCan } from '../store/auth';
 
 export type { MediaFile };
 
@@ -54,7 +55,14 @@ const TOP_PAD = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 8 
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+// Uploading and deleting follow '<module>.files.upload' / '.files.delete'
+// (docs/shared/PERMISSIONS_PLAN.md).
+const ENTITY_MODULE: Record<MediaEntity, string> = { tender: 'tenders', order: 'orders', invoice: 'invoices', inventory: 'inventory' };
+
 export default function MediaSection({ entity, entityId, files, onRefresh }: Props) {
+  const may = useCan();
+  const canUpload = may(`${ENTITY_MODULE[entity]}.files.upload`);
+  const canDelete = may(`${ENTITY_MODULE[entity]}.files.delete`);
   // Camera / upload sheet
   const [showCamera,   setShowCamera]   = useState(false);
   // File viewer
@@ -235,25 +243,27 @@ export default function MediaSection({ entity, entityId, files, onRefresh }: Pro
           <>
             <Text style={styles.title}>Attachments</Text>
             <View style={styles.headerRight}>
-              {files.length > 0 && (
+              {files.length > 0 && canDelete && (
                 <TouchableOpacity style={styles.iconBtn} onPress={() => setSelectMode(true)}>
                   <Ionicons name="checkmark-circle-outline" size={14} color={Colors.textSecondary} />
                   <Text style={styles.iconBtnText}>Select</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                style={[styles.attachBtn, uploading && styles.attachBtnDisabled]}
-                onPress={handleAttach}
-                disabled={uploading}
-                activeOpacity={0.8}
-              >
-                {uploading
-                  ? <ActivityIndicator size="small" color={Colors.accent} />
-                  : <Ionicons name="attach-outline" size={14} color={Colors.accent} />}
-                <Text style={styles.attachBtnText}>
-                  {uploading && progress ? `${progress.done}/${progress.total}` : 'Attach'}
-                </Text>
-              </TouchableOpacity>
+              {canUpload && (
+                <TouchableOpacity
+                  style={[styles.attachBtn, uploading && styles.attachBtnDisabled]}
+                  onPress={handleAttach}
+                  disabled={uploading}
+                  activeOpacity={0.8}
+                >
+                  {uploading
+                    ? <ActivityIndicator size="small" color={Colors.accent} />
+                    : <Ionicons name="attach-outline" size={14} color={Colors.accent} />}
+                  <Text style={styles.attachBtnText}>
+                    {uploading && progress ? `${progress.done}/${progress.total}` : 'Attach'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </>
         )}
@@ -315,7 +325,7 @@ export default function MediaSection({ entity, entityId, files, onRefresh }: Pro
               {!selectMode && (
                 <>
                   {/* Set as main photo button — inventory images only */}
-                  {entity === 'inventory' && isImage && (
+                  {entity === 'inventory' && isImage && canUpload && (
                     <TouchableOpacity
                       onPress={e => { e.stopPropagation(); handleSetPrimary(file); }}
                       style={styles.actionBtn}
@@ -344,14 +354,16 @@ export default function MediaSection({ entity, entityId, files, onRefresh }: Pro
                       </View>
                     )
                   }
-                  <TouchableOpacity
-                    onPress={e => { e.stopPropagation(); handleDelete(file); }}
-                    style={styles.actionBtn}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                  >
-                    <Ionicons name="trash-outline" size={16} color={Colors.error} />
-                  </TouchableOpacity>
+                  {canDelete && (
+                    <TouchableOpacity
+                      onPress={e => { e.stopPropagation(); handleDelete(file); }}
+                      style={styles.actionBtn}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    >
+                      <Ionicons name="trash-outline" size={16} color={Colors.error} />
+                    </TouchableOpacity>
+                  )}
                 </>
               )}
             </TouchableOpacity>

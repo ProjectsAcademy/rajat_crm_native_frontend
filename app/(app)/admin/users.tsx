@@ -1,6 +1,6 @@
 import {
   View, Text, TouchableOpacity, StyleSheet, ActivityIndicator,
-  FlatList, RefreshControl, Platform, Alert,
+  FlatList, RefreshControl, Platform,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { adminApi, AdminUser } from '../../../services/api';
 import { Colors } from '../../../constants/colors';
 import UserFormSheet from '../../../components/UserFormSheet';
+import { confirmAsync, notify } from '../../../utils/dialogs';
 
 export default function AdminUsersScreen() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -37,15 +38,11 @@ export default function AdminUsersScreen() {
   const openCreate = () => { setEditUser(null); setShowForm(true); };
   const openEdit = (u: AdminUser) => { setEditUser(u); setShowForm(true); };
 
-  const confirmDelete = (u: AdminUser) => {
-    Alert.alert(
-      'Delete user?',
-      `This permanently deletes "${u.username}". This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => performDelete(u.id) },
-      ]
-    );
+  // confirmAsync: Alert.alert does nothing on web.
+  const confirmDelete = async (u: AdminUser) => {
+    if (await confirmAsync('Delete user?', `This permanently deletes "${u.username}". This cannot be undone.`, 'Delete', true)) {
+      performDelete(u.id);
+    }
   };
 
   const performDelete = async (id: number) => {
@@ -54,7 +51,7 @@ export default function AdminUsersScreen() {
       await adminApi.users.remove(id);
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (e: any) {
-      Alert.alert('Could not delete user', e?.response?.data?.error ?? 'Something went wrong.');
+      notify('Could not delete user', e?.response?.data?.error ?? 'Something went wrong.');
     } finally {
       setDeletingId(null);
     }
@@ -84,14 +81,22 @@ export default function AdminUsersScreen() {
               <Text style={styles.groupHint}>Full access to all modules</Text>
             ) : item.isLegacyAccess ? (
               <Text style={styles.groupHint}>Legacy access — bypasses groups</Text>
-            ) : item.groups.length === 0 ? (
-              <Text style={styles.groupHint}>No groups — no access yet</Text>
+            ) : item.groups.length === 0 && (item.roles ?? []).length === 0 ? (
+              <Text style={styles.groupHint}>No groups or roles — no access yet</Text>
             ) : (
-              item.groups.map((g) => (
-                <View key={g.id} style={styles.groupChip}>
-                  <Text style={styles.groupChipText}>{g.name}</Text>
-                </View>
-              ))
+              <>
+                {item.groups.map((g) => (
+                  <View key={`g${g.id}`} style={styles.groupChip}>
+                    <Text style={styles.groupChipText}>{g.name}</Text>
+                  </View>
+                ))}
+                {(item.roles ?? []).map((r) => (
+                  <View key={`r${r.id}`} style={[styles.groupChip, { backgroundColor: Colors.infoLight }]}>
+                    <Ionicons name="key-outline" size={10} color={Colors.info} />
+                    <Text style={[styles.groupChipText, { color: Colors.info }]}>{r.name}</Text>
+                  </View>
+                ))}
+              </>
             )}
           </View>
         </View>
@@ -177,7 +182,7 @@ const styles = StyleSheet.create({
   badge:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 },
   badgeText: { fontSize: 10, fontWeight: '700' },
   groupRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
-  groupChip: { backgroundColor: Colors.accentLight, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
+  groupChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.accentLight, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
   groupChipText: { fontSize: 11, fontWeight: '600', color: '#7A5400' },
   groupHint: { fontSize: 11, color: Colors.textMuted, fontStyle: 'italic' },
   deleteBtn: { padding: 6 },

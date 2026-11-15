@@ -232,6 +232,13 @@ and `recipients all` on production.
 4. Then release the frontend for production (below) — never ship a frontend
    that calls API routes production does not have yet.
 
+Permissions v2 (2026-10-29) in particular: the deploy applies
+`20261029140000_roles` (copies every group into a role of the same name —
+nobody's access changes), `20261029150000_created_by` and
+`20261029160000_audit_logs`. After it, Admin → Roles lists one role per old
+group; release the app soon after (older builds show buttons the server
+refuses). `RBAC_ENFORCE` stays as it was until the owner switches it.
+
 ## 3. Frontend deployment
 
 ### Android / iOS (EAS Build)

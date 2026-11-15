@@ -42,18 +42,41 @@ export const adminApi = {
       api.put<{ user: AdminUser }>(`/api/admin/users/${id}`, data),
     setGroups: (id: number, groupIds: number[]) =>
       api.put<{ user: AdminUser }>(`/api/admin/users/${id}/groups`, { groupIds }),
+    setRoles: (id: number, roleIds: number[]) =>
+      api.put<{ user: AdminUser }>(`/api/admin/users/${id}/roles`, { roleIds }),
+    access: (id: number) => api.get<EffectiveAccess>(`/api/admin/users/${id}/access`),
     remove: (id: number) => api.delete<{ message: string }>(`/api/admin/users/${id}`),
+  },
+  roles: {
+    list: () => api.get<{ roles: AdminRole[]; total: number }>('/api/admin/roles'),
+    create: (data: AdminRolePayload) => api.post<{ role: AdminRole }>('/api/admin/roles', data),
+    update: (id: number, data: Partial<Omit<AdminRolePayload, 'permissions'>>) =>
+      api.put<{ role: AdminRole }>(`/api/admin/roles/${id}`, data),
+    setPermissions: (id: number, permissions: RolePermission[]) =>
+      api.put<{ role: AdminRole }>(`/api/admin/roles/${id}/permissions`, { permissions }),
+    copy: (id: number, name: string) => api.post<{ role: AdminRole }>(`/api/admin/roles/${id}/copy`, { name }),
+    remove: (id: number, force = false) =>
+      api.delete<{ message: string }>(`/api/admin/roles/${id}${force ? '?force=true' : ''}`),
   },
   groups: {
     list: () => api.get<{ groups: AdminGroup[]; total: number }>('/api/admin/groups'),
     create: (data: AdminGroupPayload) => api.post<{ group: AdminGroup }>('/api/admin/groups', data),
-    update: (id: number, data: Partial<AdminGroupPayload>) =>
+    update: (id: number, data: Partial<Omit<AdminGroupPayload, 'roleIds' | 'userIds'>>) =>
       api.put<{ group: AdminGroup }>(`/api/admin/groups/${id}`, data),
+    setRoles: (id: number, roleIds: number[]) =>
+      api.put<{ group: AdminGroup }>(`/api/admin/groups/${id}/roles`, { roleIds }),
+    setMembers: (id: number, userIds: number[]) =>
+      api.put<{ group: AdminGroup }>(`/api/admin/groups/${id}/members`, { userIds }),
     remove: (id: number, force = false) =>
       api.delete<{ message: string }>(`/api/admin/groups/${id}${force ? '?force=true' : ''}`),
-    setPermissions: (id: number, features: string[]) =>
-      api.put<{ group: AdminGroup }>(`/api/admin/groups/${id}/permissions`, { features }),
   },
+  check: (data: { userId: number; action: string; record?: CheckRecord }) =>
+    api.post<{ allowed: boolean; conditional: boolean; reason: string; enforced: boolean }>('/api/admin/check', data),
+  audit: (params: { userId?: number; module?: string; from?: string; to?: string; denied?: boolean; page?: number; limit?: number }) =>
+    api.get<{ entries: AuditEntry[]; total: number; page: number; limit: number }>('/api/admin/audit', { params }),
+  exportAll: () => api.get<PermissionsExport>('/api/admin/export'),
+  importAll: (data: PermissionsExport & { includeMembers?: boolean }) =>
+    api.post<{ roles: number; groups: number; skippedMembers: string[] }>('/api/admin/import', data),
 };
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -438,30 +461,72 @@ export interface AuthUser {
   // RBAC fields — absent when talking to a pre-RBAC backend (treat as full access)
   groups?: { id: number; name: string }[];
   permissions?: string[];
+  // 2 = per-action keys with parents expanded and denied keys left out;
+  // absent = an older server that sends module keys only.
+  permissionModel?: number;
 }
 export interface LoginResponse { token: string; user: AuthUser; }
 export interface MeResponse { user: AuthUser; }
 
-export interface FeatureDef { key: string; label: string; hub: string; parent?: string; }
+export type ConditionType = 'own' | 'maxAmount' | 'withinDays' | 'statusIn';
+// Permission catalog entry (backend src/lib/features.ts).
+export interface FeatureDef {
+  key: string; label: string; hub: string; parent?: string;
+  kind: 'module' | 'action' | 'field';
+  appOnly?: boolean; conditions?: ConditionType[]; statuses?: string[];
+}
+export interface PermissionConditions { own?: boolean; maxAmount?: number; withinDays?: number; statusIn?: string[]; }
+export interface RolePermission { key: string; effect: 'allow' | 'deny'; conditions?: PermissionConditions | null; }
+export interface AdminRole {
+  id: number; name: string; description: string; isActive: boolean;
+  createdAt: string; updatedAt: string;
+  permissions: RolePermission[];
+  groups: { id: number; name: string }[];
+  users: { id: number; username: string }[];
+}
+export interface AdminRolePayload { name?: string; description?: string; isActive?: boolean; permissions?: RolePermission[]; }
+export interface AccessSource {
+  role: string; roleId: number; via: string | null; effect: 'allow' | 'deny';
+  conditions: PermissionConditions | null; grantedOn: string;
+}
+export interface EffectiveAccess {
+  user: { id: number; username: string };
+  isActive: boolean; isSuperuser: boolean; isLegacyAccess: boolean; strict: boolean; enforced: boolean;
+  access: { key: string; allowed: boolean; conditional: boolean; reason: string; sources: AccessSource[] }[];
+}
+export interface CheckRecord { ownerIsUser?: boolean; ageDays?: number; status?: string; amount?: number; }
+export interface AuditEntry {
+  id: number; createdAt: string; userId: number | null; username: string; action: string;
+  method: string; path: string; entityId: string; status: number; summary: string; ip: string;
+}
+export interface PermissionsExport {
+  version: number; exportedAt?: string;
+  roles: { name: string; description: string; isActive: boolean; permissions: RolePermission[] }[];
+  groups: { name: string; description: string; isActive: boolean; roles: string[]; members: string[] }[];
+}
 export interface AdminUser {
   id: number; username: string; email: string;
   firstName: string; lastName: string;
   isActive: boolean; isStaff: boolean; isSuperuser: boolean; isLegacyAccess: boolean;
   lastLogin: string | null; dateJoined: string;
   groups: { id: number; name: string }[];
+  // Roles assigned directly to the user (exceptions); groups bring their own.
+  roles: { id: number; name: string }[];
 }
 export interface AdminUserPayload {
   username?: string; password?: string; email?: string;
   firstName?: string; lastName?: string; isActive?: boolean; isLegacyAccess?: boolean;
-  groupIds?: number[];
+  groupIds?: number[]; roleIds?: number[];
 }
 export interface AdminGroup {
   id: number; name: string; description: string; isActive: boolean;
   createdAt: string; updatedAt: string;
-  features: string[]; memberCount: number;
+  roles: { id: number; name: string }[];
+  members: { id: number; username: string }[];
+  memberCount: number;
 }
 export interface AdminGroupPayload {
-  name?: string; description?: string; isActive?: boolean; features?: string[];
+  name?: string; description?: string; isActive?: boolean; roleIds?: number[]; userIds?: number[];
 }
 
 export interface KpiItem { total: number; label: string; phase: number; active?: number; }

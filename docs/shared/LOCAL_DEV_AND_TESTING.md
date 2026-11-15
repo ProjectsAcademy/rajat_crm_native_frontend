@@ -138,7 +138,19 @@ the same checks without relying on memory.
   and once-a-day claim), the bot's "Our items" and STOP / START through
   signed webhook messages (`test/whatsapp-bot-items.test.ts`,
   `test/whatsapp-opt-out.test.ts`), the test-server recipient limit
-  (`test/whatsapp-allowed-recipients.test.ts`). All test files share one throwaway
+  (`test/whatsapp-allowed-recipients.test.ts`), the staff menu for
+  employees' numbers (`test/whatsapp-staff.test.ts`: employee only, employee
+  + customer, STOP still works, deactivated employee, cleared phone), RBAC
+  enforced (`test/rbac.test.ts`: readers may GET but not write, no-group
+  users get 403, the ledger stays closed, purchase stock entries;
+  `test/rbac-actions.test.ts`: per-action keys, deny beats allow and legacy
+  access, parents cover children, inactive roles, conditions own / status /
+  days / amount, status and vendor-work actions, hidden fields;
+  `test/admin-roles.test.ts`: catalog, role validation, copy / delete,
+  groups and user roles, effective access, "Can X do Y?", export / import;
+  `test/audit-log.test.ts`). `test/run.js` runs every file with
+  `RBAC_ENFORCE=true` and `RBAC_STRICT=true`; a test that needs legacy
+  access switches strict off for itself. All test files share one throwaway
   database, run one after another: a scheduler test switches off every
   reminder but its own first. The PDF tests are skipped when Playwright's Chromium
   is not installed (`npx playwright install chromium`).

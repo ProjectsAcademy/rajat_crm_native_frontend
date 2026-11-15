@@ -6,14 +6,16 @@ anything older than a few weeks.
 
 ## A. Pending work (status as of 2026-10-22)
 
-1. **Production is behind development** (as of 2026-10-28, release in
-   progress — WHATSAPP_AUTOMATION_PLAN.md step 0.1):
-   - Backend: released 2026-10-28 (PR #15, production `main` at `750c73b`;
-     `npx prisma migrate status` on the server: 27 migrations, schema up to
-     date). Production WhatsApp set up the same day (A.3, A.5).
-   - Frontend `main` lacks the dashboard redesign, vendor work, the WhatsApp
-     buttons, the inventory "Show on WhatsApp" switch and the phone-width
-     fixes. The app release is the next step.
+1. **Production release of 2026-10-28** (WHATSAPP_AUTOMATION_PLAN.md step 0.1):
+   - Backend: first release PR #15 (`750c73b`; `npx prisma migrate status`
+     on the server: 27 migrations, schema up to date), then a second release
+     the same evening with `dev_01` up to `b52be0d` (recipient allow-list,
+     custom reminder interval); owner confirmed the deploy. Production
+     WhatsApp set up the same day (A.3, A.5).
+   - Frontend: `main` at `e8a7185` (PR #11) holds everything on `dev_01` up
+     to `dbc44dd`. Still to do: the production APK from that commit
+     (`eas build --platform android --profile production`; the build page
+     on expo.dev shows the commit) and installing it on the team's phones.
    - Production database backup taken 2026-10-28 (INFRASTRUCTURE_AND_DEPLOY.md
      §4).
    - Verify with `git fetch && git log --oneline origin/main..origin/dev_01`
@@ -25,6 +27,23 @@ anything older than a few weeks.
    `pm2 logs`, then set `RBAC_ENFORCE=true`, and `RBAC_STRICT=true` only when
    no user relies on legacy access. New key `ledger` must be granted to groups
    that should see the customer ledger.
+   2026-10-29: production Admin shows three active users — the super admin,
+   one Legacy Access user, one user in a "Calendar & Revenue" group — all
+   others disabled. Before enforcing, the forms' pickers were found to call
+   other modules (an order form lists customers, items, projects, vendors);
+   fixed the same day with readers (ARCHITECTURE.md "Permissions (RBAC)").
+   Next: `RBAC_ENFORCE=true` on dev with a limited test user, then
+   production. Dev: five role test cases passed (owner, 2026-10-29). The
+   client then asked for per-action control (CRUD per module, WhatsApp /
+   print buttons per user): PERMISSIONS_PLAN.md — direction agreed the
+   same day: full freedom, the client builds roles and groups from Admin.
+   **Permissions v2 built the same day** (P1–P6, on `dev_01`): per-action
+   catalog, roles and groups, deny, conditions, hidden fields, audit log,
+   every button gated. Release: backend first — its migration turns every
+   existing group into a role of the same name, so nobody's access changes
+   — then the app. Then on dev: build roles in Admin, test with limited
+   users, `RBAC_ENFORCE=true`; then production. `RBAC_STRICT=true` only
+   when no user relies on Legacy Access.
 3. **WhatsApp invoice sending** (manual button) — status as of 2026-10-28:
    **working on the dev server.** Template `invoice_share` is APPROVED
    (Utility, `en`, Document header + 4 body variables — matches
@@ -113,8 +132,28 @@ anything older than a few weeks.
    form has no limit. Seen in the production log (code from before
    2026-09-18). Fix: a clear 400 message, or wider columns (additive
    migration).
+10. The employee form (`components/EmployeeFormSheet.tsx`) sends
+    `undefined` for an emptied Email, Address, Aadhar or PAN, so clearing one
+    of them in edit mode keeps the old value. Phone was fixed on 2026-10-29
+    (it decides the WhatsApp staff menu); the others are untouched.
+11. `group_permissions` (the pre-v2 table: group → module keys) is no longer
+    read since permissions v2 (2026-10-29); migration `20261029140000_roles`
+    copied it into roles. It stays on purpose: (a) RULES.md 3 — migrations
+    are additive; (b) while a deploy runs, the old process still reads it
+    until pm2 restarts; (c) rollback — if v2 had to be reverted, the
+    previous backend would find its data unchanged (as of the release; role
+    changes made after it are not written back). Drop it in a cleanup
+    migration once both servers have run v2 for a few weeks.
+12. An app build from before permissions v2 shows every button of a module
+    to limited users; the server refuses with a message. Fix: the new APK
+    right after the backend release (owner's plan, 2026-10-29).
 
 ## C. Looks wrong but is intended
+
+- **"Only records they created" never matches records from before
+  2026-10-29**: `created_by_id` was added that day, older rows have none.
+  A role with that condition cannot edit old records — by design (nobody
+  can say who made them).
 
 - **Frontend TypeScript baseline: 85 errors** from `npx tsc --noEmit` (as of
   2026-10-22). All are TS2769 caused by the mandated
@@ -135,6 +174,5 @@ anything older than a few weeks.
 
 ## D. Open questions for the owner
 
-- Do dev and prod use the same Supabase database or two databases?
 - Current web hosting (see A.6).
 - Should vendor work costs feed a vendor payable / profit report later?
