@@ -6,6 +6,22 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-11-15 — Invoices screen responsive multi-column grid layout
+
+- **Request:** User disliked the single full-width row layout on `/invoices` for wasting horizontal screen space on desktop/web, while needing clean compatibility for mobile screens. User chose Option 1 (Responsive Multi-Column Grid Cards).
+- **Done by:** Antigravity (Gemini 3.8 Flash)
+- **Changes:**
+  - Frontend `dev_01`: `app/(app)/invoices/index.tsx` — responsive column count using `useWindowDimensions` (3 columns on desktop >= 1024px, 2 columns on tablet >= 640px, 1 column on mobile < 640px). Dynamic FlatList key `invoices-grid-${numColumns}` to avoid React Native column switch invariant. Final row padding with invisible placeholder cards to guarantee uniform card widths. Responsive filter/search bar (side-by-side on wide web, stacked on mobile). Compact card hierarchy showing invoice number, type/status pills, customer/project, total amount, and due date.
+  - Backend `dev_01`: docs and code map mirrored.
+- **Database:** none.
+- **Decisions:** Used Option 1 (Responsive Multi-Column Grid Cards) as requested. Preserved mobile layout with 1-column view while leveraging 2 columns on tablet and 3 columns on desktop.
+- **Tested:** Tested live in browser at 1280px (desktop), 768px (tablet), and 375px (mobile); verified search input behavior; TypeScript checked (backend 0 errors, frontend 85 baseline errors unchanged); `scripts/verify.js` passed.
+- **Not tested / risks:** none.
+- **Deploy status:** committed on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
 ## 2026-11-15 — Clean invoice particulars (strip item code prefix)
 
 - **Request:** Client highlighted that printed/PDF invoices were unnecessarily flooded with long item codes (e.g., `ITEM-260505-060006 - LED PAR LIGHT`) under the Particulars column.
