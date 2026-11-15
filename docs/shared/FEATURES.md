@@ -100,7 +100,11 @@ professionally". Decisions confirmed with the owner:
 - App screen (`/invoices`): responsive multi-column card grid — 3 columns on desktop
   (>=1024px), 2 columns on tablet (>=640px), and 1 column on phone (<640px) with
   uniform card sizing, placeholder padding for incomplete rows, and side-by-side
-  search/filter controls on wide screens.
+  search/filter controls on wide screens. Includes a **View Mode Switcher**
+  (`Invoices` vs `By Customer`): "By Customer" rolls up multiple invoices into
+  party summary cards (total billed, invoice count, status breakdown, latest
+  invoice) with 1-click drill-down into filtered invoices. Individual invoice cards
+  also have a 1-tap customer filter icon.
 - WhatsApp (manual — decided with the owner 2026-10-27; the only automatic
   WhatsApp message is the payment reminder, see "WhatsApp messages to
   customers"): the "WhatsApp" button on a sales invoice that has a

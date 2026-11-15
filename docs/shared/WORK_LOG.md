@@ -6,6 +6,22 @@ history and are short; later entries were written at the time.
 
 ---
 
+## 2026-11-15 — Customer-centric invoice grouping and drill-down (Option A)
+
+- **Request:** User wanted to avoid repetitive customer cards for clients with multiple invoices on `/invoices` and requested a production-level design to view by customer and drill into their invoices. User selected Option A (View Mode Switcher: Invoices vs By Customer).
+- **Done by:** Antigravity (Gemini 3.8 Flash)
+- **Changes:**
+  - Frontend `dev_01`: `app/(app)/invoices/index.tsx` — added `viewMode` toggle (`Invoices` vs `By Customer`), customer/party aggregation with rollup statistics (party name, invoice count badge, total amount billed, status breakdown, and latest invoice details). Tapping any customer card applies `customerId` and `customerName` filters, smoothly opening all invoices for that customer with `CustomerFilterBanner` and breadcrumb navigation. Added inline quick filter chip on individual invoice cards. Dynamic search respects the active view mode (searching customers or invoices).
+  - Backend `dev_01`: docs and features reference updated and mirrored.
+- **Database:** none (aggregates in memory from invoice summaries; seamless client-side drilldown using existing API endpoints).
+- **Decisions:** Implemented Option A (Stripe Billing / Zoho Books pattern). Preserved full chronological invoice list in "Invoices" mode while providing zero-clutter summary rollup in "By Customer" mode with 1-click drilldown into that customer's invoice list.
+- **Tested:** Live browser verification via Playwright/browser subagent on `http://localhost:8081/invoices` (verified "By Customer" view with 6 parties, verified clicking "Sky Line Club And Resort" filters list to 6 invoices with active filter banner, verified clearing filter returns to full list). Verified TypeScript: backend 0 errors, frontend 85 baseline errors unchanged.
+- **Not tested / risks:** none.
+- **Deploy status:** committed on `dev_01`.
+- **Follow-ups:** none.
+
+---
+
 ## 2026-11-15 — Invoices screen responsive multi-column grid layout
 
 - **Request:** User disliked the single full-width row layout on `/invoices` for wasting horizontal screen space on desktop/web, while needing clean compatibility for mobile screens. User chose Option 1 (Responsive Multi-Column Grid Cards).
